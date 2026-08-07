@@ -44,13 +44,17 @@ ssh ubuntu@IP
 cd /opt/dpmp-gtfs
 
 cat > .env <<'ENV'
-DPMP_API_KEY=3e86570d-56a1-4ec1-8012-c1a9f98d18cc
+DPMP_API_KEY=sem-vloz-klic
 TUNNEL_TOKEN=sem-vloz-token-z-kroku-1
 ENV
 chmod 600 .env
 
 docker compose -f docker/compose.tunnel.yaml up -d --build
 ```
+
+`DPMP_API_KEY` je klíč, který veřejná aplikace DPMP posílá ze svého JS bundlu
+(`online.dpmp.cz`, chunk `pages/lines-*.js`, hledej `key`). Není to tajemství,
+ale do repozitáře nepatří — jeho výměna má být restart, ne commit.
 
 Hotovo. DNS záznam vytvoří Cloudflare sám, certifikát taky.
 
@@ -84,6 +88,26 @@ docker compose -f docker/compose.tunnel.yaml exec feed dpmp-gtfs build-static
 # zastávky, které přišly o obsluhu (obvykle výluka)
 docker compose -f docker/compose.tunnel.yaml logs feed | grep -i "lost all service"
 ```
+
+## HTTPS
+
+Certifikát vydává a obnovuje Cloudflare, takže `https://` funguje hned a nic
+se kolem něj nekonfiguruje. Dvě věci ale stojí za zapnutí v dashboardu
+(**SSL/TLS → Edge Certificates**):
+
+- **Always Use HTTPS** — přesměruje případný `http://` požadavek. Bez toho
+  je HTTP dostupné taky.
+- **HSTS** — až si ověříš, že vše na HTTPS jede. Zapíná se snadno, vypíná
+  špatně (prohlížeče si hlavičku pamatují měsíce), takže až nakonec.
+
+Režim SSL/TLS nech na **Full** nebo **Flexible**; spojení mezi Cloudflare
+a strojem drží tunel, ne certifikát na originu.
+
+Compose spouští uvicorn s `--proxy-headers --forwarded-allow-ips=*`, aby
+aplikace viděla původní schéma a IP klienta. Výchozí nastavení by hlavičky
+zahodilo, protože nepřicházejí z localhostu, ale z kontejneru s tunelem.
+Důvěřovat jim je tu bezpečné právě proto, že port není nikam publikovaný —
+jediné, co na službu dosáhne, je tunel.
 
 ## Na co si dát pozor
 

@@ -22,6 +22,18 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     restart: unless-stopped
+    # Requests arrive from the tunnel container, not from localhost, so
+    # uvicorn's default forwarded-header allowlist would drop
+    # X-Forwarded-Proto and see every request as plain HTTP. Trusting any
+    # source is safe here precisely because the port is never published: the
+    # tunnel is the only thing that can reach it.
+    command:
+      - uvicorn
+      - dpmp_gtfs.web.app:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --proxy-headers
+      - --forwarded-allow-ips=*
     environment:
       # Public in the sense that DPMP's own web app ships it in its JS bundle,
       # but still out of the image so rotating it is a restart, not a rebuild.
