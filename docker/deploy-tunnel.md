@@ -49,8 +49,13 @@ TUNNEL_TOKEN=sem-vloz-token-z-kroku-1
 ENV
 chmod 600 .env
 
-docker compose -f docker/compose.tunnel.yaml up -d --build
+./docker/tunnel-up.sh
 ```
+
+Skript vygeneruje konfiguraci tunelu ze šablony a spustí stack. Před tím
+zkontroluje, že `.env` i credentials existují a že `TUNNEL_ID` souhlasí
+s tím, co je v credentials — nesoulad by jinak vyrobil tunel, který se
+připojí a pak neobsluhuje nic, což se z logu čte špatně.
 
 `DPMP_API_KEY` je klíč, který veřejná aplikace DPMP posílá ze svého JS bundlu
 (`online.dpmp.cz`, chunk `pages/lines-*.js`, hledej `key`). Není to tajemství,
@@ -68,8 +73,7 @@ docker compose -f docker/compose.tunnel.yaml logs -f
 ## Aktualizace
 
 ```bash
-cd /opt/dpmp-gtfs && git pull && \
-  docker compose -f docker/compose.tunnel.yaml up -d --build
+cd /opt/dpmp-gtfs && git pull && ./docker/tunnel-up.sh
 ```
 
 Volume `feed-data` zůstává, takže restart trvá sekundy — feed se načte z disku
