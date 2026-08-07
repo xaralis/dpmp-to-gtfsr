@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>GTFS pro pardubickou MHD</h1>
+<p class="lede">
+  Jízdní řády a polohy vozů dopravního podniku města Pardubic v otevřených
+  standardech <a href="https://gtfs.org/schedule/">GTFS</a> a
+  <a href="https://gtfs.org/realtime/">GTFS Realtime</a>.
+</p>
+
+<h2>Feedy</h2>
+<div class="wrap">
+<table>
+  <tr><th>Feed</th><th>Adresa</th><th>Obsah</th></tr>
+  <tr>
+    <td>Statický</td>
+    <td><a href="/gtfs.zip"><code>/gtfs.zip</code></a></td>
+    <td>Zastávky, linky, jízdní řády</td>
+  </tr>
+  <tr>
+    <td>Realtime</td>
+    <td><a href="/gtfs-rt.pb"><code>/gtfs-rt.pb</code></a></td>
+    <td>Polohy vozidel a zpoždění</td>
+  </tr>
+  <tr>
+    <td>Realtime (ladicí)</td>
+    <td><a href="/gtfs-rt.json"><code>/gtfs-rt.json</code></a></td>
+    <td>Totéž jako JSON</td>
+  </tr>
+</table>
+</div>
+
+<h2>Stav</h2>
+<div class="wrap">
+<table>
+  <tr>
+    <th>Realtime</th>
+    <td>
+      {% if status.realtime.age_seconds is not none %}
+        aktualizováno před {{ status.realtime.age_seconds | round | int }} s,
+        {{ status.realtime.vehicles }} vozidel
+      {% else %}
+        zatím nesestaven
+      {% endif %}
+      {% if status.realtime.error %}<br><strong>chyba:</strong> {{ status.realtime.error }}{% endif %}
+    </td>
+  </tr>
+  <tr>
+    <th>Jízdní řády</th>
+    <td>
+      {% if status.static.built_at %}
+        {{ status.static.trips }} spojů, verze <code>{{ status.static.version or "načteno z disku" }}</code><br>
+        sestaveno {{ status.static.built_at[:16] | replace("T", " ") }} UTC
+      {% else %}
+        zatím nesestaveny
+      {% endif %}
+      {% if status.static.error %}<br><strong>chyba:</strong> {{ status.static.error }}{% endif %}
+    </td>
+  </tr>
+</table>
+</div>
+
+<h2>Proč to existuje</h2>
+<p>
+  DPMP provozuje <a href="https://online.dpmp.cz/">online.dpmp.cz</a>, kde je vidět poloha spojů
+  v reálném čase, ale nepublikuje žádný export v průmyslovém standardu. Bez něj se pardubická
+  MHD neobjeví v Google Maps, Mapy.cz, Transitous ani v žádné analytice. Tahle služba ten most
+  staví z veřejného API zmíněné aplikace.
+</p>
+
+<div class="note">
+  <p>
+    <strong>Neoficiální zdroj.</strong> Feed nevytváří ani neschvaluje dopravní podnik.
+    Vzniká odvozením z veřejně dostupného API jeho vlastní aplikace, takže se může
+    kdykoli rozbít. Ideálním výsledkem je, že publikaci převezme sám DPMP.
+  </p>
+</div>
+
+<p><a href="/docs">Jak feedy konzumovat →</a></p>
+{% endblock %}

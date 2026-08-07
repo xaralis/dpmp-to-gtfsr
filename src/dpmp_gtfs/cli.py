@@ -71,6 +71,18 @@ def build_static(
     asyncio.run(run())
 
 
+@app.command("serve")
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Address to bind."),
+    port: int = typer.Option(8000, help="Port to bind."),
+    reload: bool = typer.Option(False, help="Reload on code changes (development only)."),
+) -> None:
+    """Run the HTTP service that publishes both feeds."""
+    import uvicorn
+
+    uvicorn.run("dpmp_gtfs.web.app:app", host=host, port=port, reload=reload)
+
+
 @app.command("dump-fixtures")
 def dump_fixtures(
     dest: Path = typer.Option(Path("tests/fixtures"), help="Where to write the recordings."),

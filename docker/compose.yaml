@@ -1,0 +1,25 @@
+services:
+  feed:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: dpmp-to-gtfsr:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # The public web app ships this key in its JS bundle, so it is not a
+      # secret -- but it stays out of the image so rotating it is a restart,
+      # not a rebuild.
+      DPMP_API_KEY: ${DPMP_API_KEY:?set DPMP_API_KEY in .env}
+      DPMP_DATA_DIR: /data
+    volumes:
+      - feed-data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  feed-data:

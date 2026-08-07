@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}dpmp-to-gtfsr{% endblock %}</title>
+<style>
+  :root {
+    --bg: #fbfbf9;
+    --fg: #1a1a17;
+    --muted: #6b6b63;
+    --line: #e0dfd8;
+    --accent: #1f6f4a;
+    --warn: #a8541b;
+    --card: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16171a; --fg: #e8e8e4; --muted: #9a9a92;
+      --line: #2c2e33; --accent: #58c493; --warn: #e2a06a; --card: #1d1f23;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2.5rem 1.25rem 4rem;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 .3rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.15rem; margin: 2.5rem 0 .75rem; letter-spacing: -.005em; }
+  h3 { font-size: .95rem; margin: 1.5rem 0 .4rem; }
+  p, li { color: var(--fg); }
+  .lede { color: var(--muted); margin: 0 0 2rem; font-size: 1.05rem; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .875em; }
+  code { background: var(--card); border: 1px solid var(--line); border-radius: 3px; padding: .1em .35em; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 6px;
+        padding: .85rem 1rem; overflow-x: auto; }
+  pre code { background: none; border: 0; padding: 0; }
+  nav { margin-bottom: 2rem; font-size: .9rem; }
+  nav a { margin-right: 1.1rem; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; font-size: .925rem; }
+  th, td { text-align: left; padding: .5rem .65rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: .8rem; text-transform: uppercase;
+       letter-spacing: .04em; }
+  .wrap { overflow-x: auto; }
+  .note {
+    border-left: 3px solid var(--warn); background: var(--card);
+    padding: .75rem 1rem; margin: 1.5rem 0; border-radius: 0 4px 4px 0;
+  }
+  .note strong { color: var(--warn); }
+  footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <nav><a href="/">Přehled</a><a href="/docs">Dokumentace</a><a href="/healthz">Stav</a></nav>
+  {% block content %}{% endblock %}
+  <footer>
+    <p>
+      Neoficiální projekt, není provozován ani schválen DPMP.
+      Zdrojový kód <a href="https://github.com/xaralis/dpmp-to-gtfsr">na GitHubu</a>, licence AGPL-3.0.
+      Souřadnice tří zastávek pocházejí z <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL).
+    </p>
+  </footer>
+</main>
+</body>
+</html>

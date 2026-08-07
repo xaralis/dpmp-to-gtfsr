@@ -28,6 +28,7 @@ dev = [
     "respx>=0.22",
     "ruff>=0.14",
     "mypy>=1.18",
+    "types-protobuf>=7.34.1.20260518",
 ]
 
 [build-system]

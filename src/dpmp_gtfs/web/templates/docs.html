@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Dokumentace – dpmp-to-gtfsr{% endblock %}
+
+{% block content %}
+<h1>Dokumentace</h1>
+<p class="lede">Jak feedy konzumovat a co v nich čekat.</p>
+
+<h2>Endpointy</h2>
+<div class="wrap">
+<table>
+  <tr><th>Cesta</th><th>Typ</th><th>Cache</th><th>Popis</th></tr>
+  <tr>
+    <td><code>GET /gtfs.zip</code></td><td><code>application/zip</code></td><td>1 h, <code>ETag</code></td>
+    <td>Statický feed. Přestavuje se jednou denně v noci.</td>
+  </tr>
+  <tr>
+    <td><code>GET /gtfs-rt.pb</code></td><td><code>application/x-protobuf</code></td>
+    <td>{{ settings.realtime_interval | int }} s</td>
+    <td>VehiclePositions a TripUpdates v jedné zprávě.</td>
+  </tr>
+  <tr>
+    <td><code>GET /gtfs-rt.json</code></td><td><code>application/json</code></td><td>—</td>
+    <td>Totéž pro ladění. Nepoužívat v provozu, formát není stabilní.</td>
+  </tr>
+  <tr>
+    <td><code>GET /healthz</code></td><td><code>application/json</code></td><td>—</td>
+    <td>Stáří feedů a poslední chyba. Vrací 503, když jsou data zastaralá.</td>
+  </tr>
+</table>
+</div>
+
+<p>Feed se obnovuje každých {{ settings.realtime_interval | int }} sekund; častější dotazování nemá smysl.</p>
+
+<pre><code>curl -s https://…/gtfs-rt.pb -o gtfs-rt.pb
+curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
+
+<h2>Identifikátory</h2>
+<p>ID jsou odvozená z číslování DPMP, takže jsou napříč oběma feedy stabilní a čitelná.</p>
+<div class="wrap">
+<table>
+  <tr><th>Typ</th><th>Tvar</th><th>Příklad</th></tr>
+  <tr><td>Stanice</td><td><code>S&lt;číslo&gt;</code></td><td><code>S16</code> — Hlavní nádraží</td></tr>
+  <tr><td>Nástupiště</td><td><code>S&lt;číslo&gt;P&lt;nástupiště&gt;</code></td><td><code>S16P2</code></td></tr>
+  <tr><td>Linka</td><td><code>L&lt;číslo&gt;</code></td><td><code>L9</code></td></tr>
+  <tr><td>Spoj</td><td><code>L&lt;linka&gt;C&lt;spoj&gt;</code></td><td><code>L9C115</code></td></tr>
+</table>
+</div>
+<p>
+  Jízdní řády i realtime odkazují na <strong>nástupiště</strong>, ne na stanici. Stanice existuje
+  jako <code>parent_station</code>, aby šlo nástupiště seskupit a rozumět přestupům mezi nimi.
+</p>
+
+<h2>Co ve feedu čekat</h2>
+
+<h3>Zpoždění</h3>
+<p>
+  Zpoždění se <strong>měří</strong> — sleduje se, kdy vůz projede zastávkou, a porovná se
+  s jízdním řádem. Rozlišení je zhruba {{ settings.realtime_interval | int }} sekund.
+  Jakmile je změřeno, drží se po zbytek spoje konstantní: jízdní řády sice mají rezervu
+  a vůz ji často dožene, ale předpovídat doháněni by znamenalo model, ne měření.
+</p>
+<p>
+  Vozidlo, u kterého zpoždění změřené není — typicky čeká na výchozí zastávce a ještě
+  nevyjelo — dostane <strong>VehiclePosition, ale žádný TripUpdate</strong>. Nulové zpoždění
+  by tvrdilo, že jede přesně, což z dat nevyplývá. Takových vozidel bývá kolem 40 %.
+</p>
+
+<h3>Kalendář</h3>
+<p>
+  Pět služeb: pracovní dny, sobota, neděle, víkend a denně. Státní svátky se přepínají
+  na nedělní provoz přes <code>calendar_dates.txt</code>, včetně pohyblivých Velikonoc.
+</p>
+
+<h3>Co ve feedu není</h3>
+<ul>
+  <li><code>shapes.txt</code> — zdrojové API nemá geometrii tras, jen zastávky. Trasy po silnicích by vyžadovaly map-matching na OSM.</li>
+  <li><code>transfers.txt</code>, <code>frequencies.txt</code> — pro tuhle síť nejsou potřeba.</li>
+  <li>Mimořádnosti (ServiceAlerts) — zdroj je má, ale za dobu vývoje nevrátil ani jednu, takže se nedá odvodit jejich struktura.</li>
+</ul>
+
+<h3>Známé nepřesnosti</h3>
+<ul>
+  <li>
+    Tři zastávky (Vápenka, Svítkov&nbsp;západ, Mikulovice) v podkladových datech DPMP
+    <strong>vůbec nemají souřadnice</strong>. Doplněny jsou z OpenStreetMap. Týká se to
+    přes 250 spojů, takže je vynechat nešlo.
+  </li>
+  <li>
+    Tři nástupiště, která DPMP neuvádí, jsou umístěna na souřadnice své stanice —
+    nepřesnost v řádu desítek metrů.
+  </li>
+  <li>
+    Zastávky, kam podle jízdních řádů nic nejede, jsou z feedu vyřazené. Změny v této
+    množině se sledují mezi přestavbami, protože bývají důsledkem výluky.
+  </li>
+</ul>
+
+<h2>Licence a citace</h2>
+<p>
+  Jízdní řády a polohy vozidel pocházejí od Dopravního podniku města Pardubic a.s.
+  Kód této služby je AGPL-3.0. Doplněné souřadnice tří zastávek pocházejí z
+  OpenStreetMap a podléhají <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>.
+</p>
+{% endblock %}

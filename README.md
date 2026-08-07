@@ -22,20 +22,21 @@ přes HTTP.
 | `GET /gtfs-rt.json` | totéž v JSON, pro ladění |
 | `GET /healthz` | stáří feedů a poslední chyba |
 
+Homepage se stavem služby je na `/`, dokumentace feedů na `/docs`.
+
 ## Provoz
 
 ```bash
+echo 'DPMP_API_KEY=...' > docker/.env
 docker compose -f docker/compose.yaml up -d
 ```
 
+První start postaví feed od nuly (~3 min), další starty ho načtou z volume (~5 s).
+Podrobný postup nasazení včetně TLS: [docker/deploy-lightsail.md](docker/deploy-lightsail.md).
+
 Konfigurace přes proměnné prostředí s prefixem `DPMP_`, viz
-[`config.py`](src/dpmp_gtfs/config.py). Povinná je jediná:
-
-```bash
-DPMP_API_KEY=...
-```
-
-Klíč není tajemství — veřejná webová aplikace DPMP ho má napevno ve svém JS bundlu. V repozitáři
+[`config.py`](src/dpmp_gtfs/config.py). Povinná je jediná — `DPMP_API_KEY`.
+Klíč není tajemství, veřejná aplikace DPMP ho má napevno ve svém JS bundlu, ale v repozitáři
 přesto není, aby jeho výměna neznamenala změnu kódu.
 
 ## Vývoj
