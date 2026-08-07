@@ -1,0 +1,52 @@
+# Deployment through a Cloudflare Tunnel.
+#
+# For putting this on a host that already runs something else. The tunnel
+# dials *out* to Cloudflare, so this stack:
+#
+#   * publishes no ports and needs none free,
+#   * shares no network, nginx, or certificate with anything already there,
+#   * needs no DNS record, no certbot, and no inbound firewall rule.
+#
+# Nothing else on the host is touched or even aware of it, which is the whole
+# point: a reverse proxy already terminating TLS for another service would
+# have meant editing that service's compose file and dropping a config into
+# its directory, coupling two projects that have no reason to know about each
+# other.
+#
+# Setup is in deploy-tunnel.md; it comes down to pasting one token.
+
+services:
+  feed:
+    image: ${FEED_IMAGE:-dpmp-to-gtfsr:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Public in the sense that DPMP's own web app ships it in its JS bundle,
+      # but still out of the image so rotating it is a restart, not a rebuild.
+      DPMP_API_KEY: ${DPMP_API_KEY:?set DPMP_API_KEY in .env}
+      DPMP_DATA_DIR: /data
+    volumes:
+      - feed-data:/data
+    # Reachable only from the tunnel, never from the host's network.
+    expose:
+      - "8000"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    depends_on:
+      - feed
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  feed-data:

@@ -35,8 +35,14 @@ echo 'DPMP_API_KEY=...' > docker/.env
 docker compose -f docker/compose.yaml up -d
 ```
 
-První start postaví feed od nuly (~3 min), další starty ho načtou z volume (~5 s).
-Podrobný postup nasazení včetně TLS: [docker/deploy-lightsail.md](docker/deploy-lightsail.md).
+První start postaví feed od nuly (~7 min včetně geometrie tras), další starty
+ho načtou z volume (~5 s).
+
+Nasazení na veřejnou adresu:
+
+- **[Cloudflare Tunnel](docker/deploy-tunnel.md)** — pro stroj, kde už něco běží.
+  Žádné porty, žádný nginx, žádný certbot, žádný zásah do toho, co tam je.
+- **[Vlastní instance](docker/deploy-lightsail.md)** — když má služba stroj pro sebe.
 
 Konfigurace přes proměnné prostředí s prefixem `DPMP_`, viz
 [`config.py`](src/dpmp_gtfs/config.py). Povinná je jediná — `DPMP_API_KEY`.
