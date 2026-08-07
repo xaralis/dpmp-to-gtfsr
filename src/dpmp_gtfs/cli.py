@@ -13,7 +13,7 @@ import typer
 
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.config import settings
-from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references
+from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.watch import UnservedStops, report
 from dpmp_gtfs.static.watch import load as load_unserved
@@ -38,6 +38,7 @@ def _write(path: Path, payload: Any) -> None:
 @app.command("build-static")
 def build_static(
     dest: Path = typer.Option(None, help="Output path. Defaults to <data_dir>/gtfs.zip."),
+    shapes: bool = typer.Option(True, help="Route trip geometry against OpenStreetMap."),
 ) -> None:
     """Crawl the full timetable and write a GTFS zip."""
 
@@ -45,7 +46,11 @@ def build_static(
         async with DpmpApiClient() as api:
             timetable = await crawl(api)
 
+        destination = dest or settings.gtfs_zip_path
         feed = build_feed(timetable)
+
+        if shapes:
+            feed = with_shapes(feed, destination.parent / "shape-cache.json")
 
         missing = sorted(set(iter_missing_stop_references(feed)))
         if missing:
@@ -58,7 +63,6 @@ def build_static(
             )
             raise typer.Exit(1)
 
-        destination = dest or settings.gtfs_zip_path
         write_zip(feed, destination)
 
         # Losing service is not always permanent, so compare against the last

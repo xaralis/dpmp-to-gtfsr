@@ -71,9 +71,21 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
   na nedělní provoz přes <code>calendar_dates.txt</code>, včetně pohyblivých Velikonoc.
 </p>
 
+<h3>Geometrie tras</h3>
+<p>
+  Zdrojové API geometrii nemá, takže <code>shapes.txt</code> vzniká zroutováním posloupnosti
+  zastávek přes <a href="https://valhalla.github.io/valhalla/">Valhallu</a> nad daty
+  OpenStreetMap, autobusovým profilem. Spoje sdílejí trasy — 2 728 spojů se scvrkne na
+  218 různých posloupností — takže shape má každý spoj.
+</p>
+<p>
+  <code>shape_dist_traveled</code> je v <strong>metrech</strong> a je vyplněné jak
+  v <code>shapes.txt</code>, tak v <code>stop_times.txt</code>. Zastávky leží od trasy
+  v mediánu 6,6 m, nejvíc 10 m.
+</p>
+
 <h3>Co ve feedu není</h3>
 <ul>
-  <li><code>shapes.txt</code> — zdrojové API nemá geometrii tras, jen zastávky. Trasy po silnicích by vyžadovaly map-matching na OSM.</li>
   <li><code>transfers.txt</code>, <code>frequencies.txt</code> — pro tuhle síť nejsou potřeba.</li>
   <li>Mimořádnosti (ServiceAlerts) — zdroj je má, ale za dobu vývoje nevrátil ani jednu, takže se nedá odvodit jejich struktura.</li>
 </ul>

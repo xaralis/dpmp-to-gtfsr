@@ -57,6 +57,9 @@ Několik vlastností zdrojového API, které nejsou zřejmé a stály za ověře
   [`realtime/tracker.py`](src/dpmp_gtfs/realtime/tracker.py).
 - **`current_stop_number`** kóduje stanici i nástupiště jako `stanice * 100 + nástupiště`,
   kdežto `last_stop_number` nese jen holé číslo stanice.
+- **Geometrie tras v API není.** `shapes.txt` vzniká zroutováním zastávek přes
+  [Valhallu](https://valhalla.github.io/valhalla/) nad OpenStreetMap. Výsledky se cachují
+  v `shape-cache.json`, takže běžná noční přestavba nepošle na router ani jeden dotaz.
 
 ## Předchůdce
 

@@ -23,7 +23,7 @@ from dpmp_gtfs.config import Settings
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import StaticIndex
 from dpmp_gtfs.realtime.tracker import DelayTracker
-from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references
+from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.watch import UnservedStops
 from dpmp_gtfs.static.watch import load as load_unserved
@@ -146,6 +146,13 @@ class Scheduler:
             async with DpmpApiClient(self.settings) as api:
                 timetable = await crawl(api)
             feed = build_feed(timetable)
+
+            if self.settings.shapes_enabled:
+                # Routing reaches the network, so it runs in a worker thread to
+                # keep the realtime loop ticking through a slow first build.
+                feed = await asyncio.to_thread(
+                    with_shapes, feed, self.settings.data_dir / "shape-cache.json"
+                )
 
             missing = sorted(set(iter_missing_stop_references(feed)))
             if missing:

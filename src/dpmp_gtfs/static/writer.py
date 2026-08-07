@@ -72,6 +72,7 @@ def feed_files(feed: Feed) -> dict[str, bytes]:
         "trip_headsign",
         "direction_id",
         "wheelchair_accessible",
+        "shape_id",
     )
     stop_time_columns = (
         "trip_id",
@@ -81,6 +82,7 @@ def feed_files(feed: Feed) -> dict[str, bytes]:
         "stop_sequence",
         "pickup_type",
         "drop_off_type",
+        "shape_dist_traveled",
     )
 
     routes = [{**r, "agency_id": AGENCY_ID} for r in _as_rows(feed.routes, route_columns)]
@@ -123,6 +125,32 @@ def feed_files(feed: Feed) -> dict[str, bytes]:
     }
     if exception_rows:
         files["calendar_dates.txt"] = _csv(exception_rows, list(exception_rows[0]))
+
+    # shapes.txt is optional, and the feed stays valid without it when the
+    # router is unreachable.
+    shape_columns = (
+        "shape_id",
+        "shape_pt_lat",
+        "shape_pt_lon",
+        "shape_pt_sequence",
+        "shape_dist_traveled",
+    )
+    shape_rows = [
+        {
+            "shape_id": shape.shape_id,
+            "shape_pt_lat": f"{lat:.6f}",
+            "shape_pt_lon": f"{lon:.6f}",
+            "shape_pt_sequence": sequence,
+            "shape_dist_traveled": f"{distance:.1f}",
+        }
+        for shape in feed.shapes
+        for sequence, ((lat, lon), distance) in enumerate(
+            zip(shape.points, shape.point_distances, strict=True)
+        )
+    ]
+    if shape_rows:
+        files["shapes.txt"] = _csv(shape_rows, shape_columns)
+
     return files
 
 

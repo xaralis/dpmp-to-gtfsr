@@ -5,7 +5,8 @@ from __future__ import annotations
 import datetime as dt
 import logging
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 from dpmp_gtfs.api.models import ConnectionDetail, ConnectionStop
 from dpmp_gtfs.ids import route_id, station_id, stop_id, trip_id
@@ -13,6 +14,7 @@ from dpmp_gtfs.ids import route_id, station_id, stop_id, trip_id
 from .calendar import LOW_FLOOR, STEP_FREE_STOP, STOP_ON_REQUEST, Service, calendar_exceptions
 from .crawler import Timetable
 from .overrides import STATION_COORDINATES, STATION_NAMES, unused_overrides
+from .shapes import Point, Shape, ShapeCache, StopSequence, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +100,8 @@ class Trip:
     trip_headsign: str
     direction_id: int
     wheelchair_accessible: int
+    shape_id: str = ""
+    """Empty when geometry could not be routed. GTFS allows trips without one."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,11 +113,14 @@ class StopTime:
     stop_sequence: int
     pickup_type: int
     drop_off_type: int
+    shape_dist_traveled: str = ""
+    """Metres along the shape. Blank when the trip has no shape."""
 
 
 @dataclass(slots=True)
 class Feed:
     stops: list[Stop] = field(default_factory=list)
+    shapes: list[Shape] = field(default_factory=list)
     unserved_stops: dict[str, str] = field(default_factory=dict)
     """Stop id -> name for stops excluded from the feed because nothing calls
     at them. Kept so rebuilds can spot diversions starting and ending."""
@@ -387,6 +394,93 @@ def prune_unserved_stops(
     return ordered, unserved
 
 
+def stop_sequences(
+    stop_times: list[StopTime], stops: list[Stop]
+) -> dict[StopSequence, list[Point]]:
+    """Distinct stop sequences and their coordinates.
+
+    Trips overwhelmingly share routes: 2,728 trips collapse to roughly 220
+    sequences, which is what makes routing geometry affordable.
+    """
+    position = {s.stop_id: (s.stop_lat, s.stop_lon) for s in stops}
+
+    by_trip: dict[str, list[tuple[int, str]]] = {}
+    for st in stop_times:
+        by_trip.setdefault(st.trip_id, []).append((st.stop_sequence, st.stop_id))
+
+    sequences: dict[StopSequence, list[Point]] = {}
+    for entries in by_trip.values():
+        sequence = tuple(stop_id for _, stop_id in sorted(entries))
+        if len(sequence) < 2 or any(s not in position for s in sequence):
+            continue
+        sequences.setdefault(sequence, [position[s] for s in sequence])
+
+    return sequences
+
+
+def apply_shapes(
+    trips: list[Trip],
+    stop_times: list[StopTime],
+    shapes: dict[StopSequence, Shape],
+) -> tuple[list[Trip], list[StopTime]]:
+    """Attach shape ids and distances to trips that have routed geometry."""
+    by_trip: dict[str, list[StopTime]] = {}
+    for st in stop_times:
+        by_trip.setdefault(st.trip_id, []).append(st)
+
+    sequence_of = {
+        trip_id: tuple(st.stop_id for st in sorted(times, key=lambda s: s.stop_sequence))
+        for trip_id, times in by_trip.items()
+    }
+
+    updated_trips = [
+        replace(trip, shape_id=shape.shape_id)
+        if (shape := shapes.get(sequence_of.get(trip.trip_id, ())))
+        else trip
+        for trip in trips
+    ]
+
+    updated_times: list[StopTime] = []
+    for st in stop_times:
+        shape = shapes.get(sequence_of.get(st.trip_id, ()))
+        if shape is None or st.stop_sequence >= len(shape.stop_distances):
+            updated_times.append(st)
+            continue
+        distance = shape.stop_distances[st.stop_sequence]
+        updated_times.append(replace(st, shape_dist_traveled=f"{distance:.1f}"))
+
+    return updated_trips, updated_times
+
+
+def with_shapes(feed: Feed, cache_path: Path, router: ValhallaRouter | None = None) -> Feed:
+    """Route geometry for a built feed and attach it.
+
+    Separate from :func:`build_feed` because routing reaches the network and
+    can fail: a feed without geometry is still a good feed, so this returns
+    the original unchanged rather than raising.
+    """
+    sequences = stop_sequences(feed.stop_times, feed.stops)
+    if not sequences:
+        return feed
+
+    shapes = build_shapes(sequences, ShapeCache(cache_path), router)
+    if not shapes:
+        logger.warning("no geometry available; publishing the feed without shapes.txt")
+        return feed
+
+    trips, stop_times = apply_shapes(feed.trips, feed.stop_times, shapes)
+    attached = {trip.shape_id for trip in trips if trip.shape_id}
+    used = sorted((s for s in shapes.values() if s.shape_id in attached), key=lambda s: s.shape_id)
+
+    logger.info(
+        "attached %d shapes to %d of %d trips",
+        len(used),
+        sum(1 for t in trips if t.shape_id),
+        len(trips),
+    )
+    return replace(feed, trips=trips, stop_times=stop_times, shapes=used)
+
+
 def build_feed(
     timetable: Timetable,
     start_date: dt.date | None = None,
@@ -413,12 +507,13 @@ def build_feed(
         end_date=start + dt.timedelta(days=validity_days),
     )
     logger.info(
-        "built feed: %d stops, %d routes, %d trips, %d stop times, %d services",
+        "built feed: %d stops, %d routes, %d trips, %d stop times, %d services, %d shapes",
         len(feed.stops),
         len(feed.routes),
         len(feed.trips),
         len(feed.stop_times),
         len(feed.services),
+        len(feed.shapes),
     )
     return feed
 

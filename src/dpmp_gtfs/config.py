@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     static_rebuild_hour: int = 3
     """Local hour at which the static feed is rebuilt."""
 
+    # --- shapes -------------------------------------------------------------
+    shapes_enabled: bool = True
+    """Route trip geometry against OpenStreetMap.
+
+    Results are cached by stop sequence, so a rebuild whose routes have not
+    changed issues no routing requests at all."""
+
     # --- output -------------------------------------------------------------
     data_dir: Path = Path("data")
 
