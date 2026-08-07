@@ -12,6 +12,10 @@ from typing import Any
 import typer
 
 from dpmp_gtfs.api import DpmpApiClient
+from dpmp_gtfs.config import settings
+from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references
+from dpmp_gtfs.static.crawler import crawl
+from dpmp_gtfs.static.writer import write_zip
 
 app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
 
@@ -26,6 +30,34 @@ def _write(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf8")
     logger.info("wrote %s (%d B)", path, path.stat().st_size)
+
+
+@app.command("build-static")
+def build_static(
+    dest: Path = typer.Option(None, help="Output path. Defaults to <data_dir>/gtfs.zip."),
+) -> None:
+    """Crawl the full timetable and write a GTFS zip."""
+
+    async def run() -> None:
+        async with DpmpApiClient() as api:
+            timetable = await crawl(api)
+
+        feed = build_feed(timetable)
+
+        missing = sorted(set(iter_missing_stop_references(feed)))
+        if missing:
+            # A dangling stop reference makes the whole feed invalid, so refuse
+            # rather than publish something consumers will reject.
+            typer.echo(
+                f"aborting: {len(missing)} stop ids referenced but not defined: "
+                f"{', '.join(missing[:10])}",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        write_zip(feed, dest or settings.gtfs_zip_path)
+
+    asyncio.run(run())
 
 
 @app.command("dump-fixtures")
