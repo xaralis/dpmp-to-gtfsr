@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated feeds — never commit, they are build output
+/data/
+*.pb
+gtfs.zip
+
+.env
+.DS_Store
+.vscode/
+.idea/

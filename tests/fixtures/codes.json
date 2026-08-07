@@ -1,0 +1,42 @@
+[
+ {
+  "number": 1,
+  "name": "x",
+  "value": "zastávka na znamení"
+ },
+ {
+  "number": 2,
+  "name": "X",
+  "value": "jede v pracovních dnech"
+ },
+ {
+  "number": 3,
+  "name": "@",
+  "value": "garantovaný nízkopodlažní spoj"
+ },
+ {
+  "number": 4,
+  "name": "6",
+  "value": "jede v sobotu"
+ },
+ {
+  "number": 5,
+  "name": "+",
+  "value": "jede v neděli a ve státem uznané svátky"
+ },
+ {
+  "number": 6,
+  "name": "6",
+  "value": "jede v sobotu"
+ },
+ {
+  "number": 7,
+  "name": "+",
+  "value": "jede v neděli a ve státem uznané svátky"
+ },
+ {
+  "number": 8,
+  "name": "@",
+  "value": "zastávka je bezbariérově přístupná"
+ }
+]

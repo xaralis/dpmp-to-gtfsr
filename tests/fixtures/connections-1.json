@@ -1,0 +1,2146 @@
+[
+ {
+  "line_number": 1,
+  "number": 1,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0412",
+  "arrivalTime": "0427"
+ },
+ {
+  "line_number": 1,
+  "number": 3,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0433",
+  "arrivalTime": "0448"
+ },
+ {
+  "line_number": 1,
+  "number": 5,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0441",
+  "arrivalTime": "0456"
+ },
+ {
+  "line_number": 1,
+  "number": 7,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0454",
+  "arrivalTime": "0514"
+ },
+ {
+  "line_number": 1,
+  "number": 9,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0511",
+  "arrivalTime": "0528"
+ },
+ {
+  "line_number": 1,
+  "number": 11,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0513",
+  "arrivalTime": "0531"
+ },
+ {
+  "line_number": 1,
+  "number": 13,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0528",
+  "arrivalTime": "0546"
+ },
+ {
+  "line_number": 1,
+  "number": 15,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0541",
+  "arrivalTime": "0558"
+ },
+ {
+  "line_number": 1,
+  "number": 21,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0540",
+  "arrivalTime": "0601"
+ },
+ {
+  "line_number": 1,
+  "number": 25,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0558",
+  "arrivalTime": "0616"
+ },
+ {
+  "line_number": 1,
+  "number": 31,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0608",
+  "arrivalTime": "0628"
+ },
+ {
+  "line_number": 1,
+  "number": 33,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0610",
+  "arrivalTime": "0631"
+ },
+ {
+  "line_number": 1,
+  "number": 39,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0628",
+  "arrivalTime": "0646"
+ },
+ {
+  "line_number": 1,
+  "number": 45,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0641",
+  "arrivalTime": "0658"
+ },
+ {
+  "line_number": 1,
+  "number": 49,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0643",
+  "arrivalTime": "0701"
+ },
+ {
+  "line_number": 1,
+  "number": 57,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0652",
+  "arrivalTime": "0717"
+ },
+ {
+  "line_number": 1,
+  "number": 63,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0711",
+  "arrivalTime": "0728"
+ },
+ {
+  "line_number": 1,
+  "number": 67,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0710",
+  "arrivalTime": "0732"
+ },
+ {
+  "line_number": 1,
+  "number": 73,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0728",
+  "arrivalTime": "0747"
+ },
+ {
+  "line_number": 1,
+  "number": 81,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0738",
+  "arrivalTime": "0758"
+ },
+ {
+  "line_number": 1,
+  "number": 83,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0743",
+  "arrivalTime": "0802"
+ },
+ {
+  "line_number": 1,
+  "number": 87,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0755",
+  "arrivalTime": "0817"
+ },
+ {
+  "line_number": 1,
+  "number": 91,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0810",
+  "arrivalTime": "0828"
+ },
+ {
+  "line_number": 1,
+  "number": 93,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0813",
+  "arrivalTime": "0832"
+ },
+ {
+  "line_number": 1,
+  "number": 97,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0828",
+  "arrivalTime": "0847"
+ },
+ {
+  "line_number": 1,
+  "number": 103,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0834",
+  "arrivalTime": "0858"
+ },
+ {
+  "line_number": 1,
+  "number": 105,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0840",
+  "arrivalTime": "0902"
+ },
+ {
+  "line_number": 1,
+  "number": 109,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0858",
+  "arrivalTime": "0917"
+ },
+ {
+  "line_number": 1,
+  "number": 113,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0910",
+  "arrivalTime": "0928"
+ },
+ {
+  "line_number": 1,
+  "number": 115,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0913",
+  "arrivalTime": "0932"
+ },
+ {
+  "line_number": 1,
+  "number": 119,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0925",
+  "arrivalTime": "0947"
+ },
+ {
+  "line_number": 1,
+  "number": 123,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0937",
+  "arrivalTime": "0958"
+ },
+ {
+  "line_number": 1,
+  "number": 125,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0943",
+  "arrivalTime": "1002"
+ },
+ {
+  "line_number": 1,
+  "number": 129,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0955",
+  "arrivalTime": "1017"
+ },
+ {
+  "line_number": 1,
+  "number": 131,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1010",
+  "arrivalTime": "1028"
+ },
+ {
+  "line_number": 1,
+  "number": 133,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1013",
+  "arrivalTime": "1032"
+ },
+ {
+  "line_number": 1,
+  "number": 137,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1025",
+  "arrivalTime": "1047"
+ },
+ {
+  "line_number": 1,
+  "number": 143,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1034",
+  "arrivalTime": "1058"
+ },
+ {
+  "line_number": 1,
+  "number": 145,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1043",
+  "arrivalTime": "1102"
+ },
+ {
+  "line_number": 1,
+  "number": 149,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1058",
+  "arrivalTime": "1117"
+ },
+ {
+  "line_number": 1,
+  "number": 151,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1110",
+  "arrivalTime": "1128"
+ },
+ {
+  "line_number": 1,
+  "number": 153,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1113",
+  "arrivalTime": "1132"
+ },
+ {
+  "line_number": 1,
+  "number": 157,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1128",
+  "arrivalTime": "1147"
+ },
+ {
+  "line_number": 1,
+  "number": 161,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1140",
+  "arrivalTime": "1158"
+ },
+ {
+  "line_number": 1,
+  "number": 163,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1140",
+  "arrivalTime": "1202"
+ },
+ {
+  "line_number": 1,
+  "number": 169,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1158",
+  "arrivalTime": "1217"
+ },
+ {
+  "line_number": 1,
+  "number": 171,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1207",
+  "arrivalTime": "1228"
+ },
+ {
+  "line_number": 1,
+  "number": 173,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1213",
+  "arrivalTime": "1232"
+ },
+ {
+  "line_number": 1,
+  "number": 177,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1228",
+  "arrivalTime": "1247"
+ },
+ {
+  "line_number": 1,
+  "number": 181,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1240",
+  "arrivalTime": "1258"
+ },
+ {
+  "line_number": 1,
+  "number": 183,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1240",
+  "arrivalTime": "1302"
+ },
+ {
+  "line_number": 1,
+  "number": 189,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1258",
+  "arrivalTime": "1317"
+ },
+ {
+  "line_number": 1,
+  "number": 191,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1304",
+  "arrivalTime": "1328"
+ },
+ {
+  "line_number": 1,
+  "number": 193,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1313",
+  "arrivalTime": "1332"
+ },
+ {
+  "line_number": 1,
+  "number": 197,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1328",
+  "arrivalTime": "1347"
+ },
+ {
+  "line_number": 1,
+  "number": 201,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1340",
+  "arrivalTime": "1358"
+ },
+ {
+  "line_number": 1,
+  "number": 205,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1340",
+  "arrivalTime": "1402"
+ },
+ {
+  "line_number": 1,
+  "number": 213,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1358",
+  "arrivalTime": "1417"
+ },
+ {
+  "line_number": 1,
+  "number": 219,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1407",
+  "arrivalTime": "1428"
+ },
+ {
+  "line_number": 1,
+  "number": 221,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1413",
+  "arrivalTime": "1432"
+ },
+ {
+  "line_number": 1,
+  "number": 229,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1428",
+  "arrivalTime": "1447"
+ },
+ {
+  "line_number": 1,
+  "number": 237,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1440",
+  "arrivalTime": "1458"
+ },
+ {
+  "line_number": 1,
+  "number": 245,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1440",
+  "arrivalTime": "1502"
+ },
+ {
+  "line_number": 1,
+  "number": 251,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1458",
+  "arrivalTime": "1517"
+ },
+ {
+  "line_number": 1,
+  "number": 257,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1504",
+  "arrivalTime": "1528"
+ },
+ {
+  "line_number": 1,
+  "number": 259,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1510",
+  "arrivalTime": "1532"
+ },
+ {
+  "line_number": 1,
+  "number": 269,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1528",
+  "arrivalTime": "1547"
+ },
+ {
+  "line_number": 1,
+  "number": 277,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1540",
+  "arrivalTime": "1558"
+ },
+ {
+  "line_number": 1,
+  "number": 281,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1540",
+  "arrivalTime": "1602"
+ },
+ {
+  "line_number": 1,
+  "number": 289,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1558",
+  "arrivalTime": "1617"
+ },
+ {
+  "line_number": 1,
+  "number": 295,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1607",
+  "arrivalTime": "1628"
+ },
+ {
+  "line_number": 1,
+  "number": 297,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1610",
+  "arrivalTime": "1632"
+ },
+ {
+  "line_number": 1,
+  "number": 305,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1628",
+  "arrivalTime": "1647"
+ },
+ {
+  "line_number": 1,
+  "number": 313,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1640",
+  "arrivalTime": "1658"
+ },
+ {
+  "line_number": 1,
+  "number": 317,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1640",
+  "arrivalTime": "1702"
+ },
+ {
+  "line_number": 1,
+  "number": 323,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1658",
+  "arrivalTime": "1717"
+ },
+ {
+  "line_number": 1,
+  "number": 325,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1707",
+  "arrivalTime": "1728"
+ },
+ {
+  "line_number": 1,
+  "number": 327,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1713",
+  "arrivalTime": "1732"
+ },
+ {
+  "line_number": 1,
+  "number": 331,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1728",
+  "arrivalTime": "1747"
+ },
+ {
+  "line_number": 1,
+  "number": 337,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1740",
+  "arrivalTime": "1758"
+ },
+ {
+  "line_number": 1,
+  "number": 339,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1740",
+  "arrivalTime": "1802"
+ },
+ {
+  "line_number": 1,
+  "number": 341,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1755",
+  "arrivalTime": "1816"
+ },
+ {
+  "line_number": 1,
+  "number": 345,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1804",
+  "arrivalTime": "1828"
+ },
+ {
+  "line_number": 1,
+  "number": 349,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1813",
+  "arrivalTime": "1831"
+ },
+ {
+  "line_number": 1,
+  "number": 357,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1828",
+  "arrivalTime": "1846"
+ },
+ {
+  "line_number": 1,
+  "number": 361,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1840",
+  "arrivalTime": "1858"
+ },
+ {
+  "line_number": 1,
+  "number": 365,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1840",
+  "arrivalTime": "1901"
+ },
+ {
+  "line_number": 1,
+  "number": 367,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1858",
+  "arrivalTime": "1916"
+ },
+ {
+  "line_number": 1,
+  "number": 371,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1910",
+  "arrivalTime": "1928"
+ },
+ {
+  "line_number": 1,
+  "number": 375,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1913",
+  "arrivalTime": "1931"
+ },
+ {
+  "line_number": 1,
+  "number": 377,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1928",
+  "arrivalTime": "1946"
+ },
+ {
+  "line_number": 1,
+  "number": 379,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1937",
+  "arrivalTime": "1958"
+ },
+ {
+  "line_number": 1,
+  "number": 385,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1940",
+  "arrivalTime": "2001"
+ },
+ {
+  "line_number": 1,
+  "number": 387,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2008",
+  "arrivalTime": "2029"
+ },
+ {
+  "line_number": 1,
+  "number": 389,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2011",
+  "arrivalTime": "2029"
+ },
+ {
+  "line_number": 1,
+  "number": 395,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2041",
+  "arrivalTime": "2059"
+ },
+ {
+  "line_number": 1,
+  "number": 401,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2105",
+  "arrivalTime": "2126"
+ },
+ {
+  "line_number": 1,
+  "number": 411,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2141",
+  "arrivalTime": "2156"
+ },
+ {
+  "line_number": 1,
+  "number": 419,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2208",
+  "arrivalTime": "2226"
+ },
+ {
+  "line_number": 1,
+  "number": 427,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2241",
+  "arrivalTime": "2256"
+ },
+ {
+  "line_number": 1,
+  "number": 435,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2300",
+  "arrivalTime": "2321"
+ },
+ {
+  "line_number": 1,
+  "number": 441,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2303",
+  "arrivalTime": "2321"
+ },
+ {
+  "line_number": 1,
+  "number": 4,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0430",
+  "arrivalTime": "0449"
+ },
+ {
+  "line_number": 1,
+  "number": 6,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0450",
+  "arrivalTime": "0508"
+ },
+ {
+  "line_number": 1,
+  "number": 12,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0504",
+  "arrivalTime": "0523"
+ },
+ {
+  "line_number": 1,
+  "number": 18,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0520",
+  "arrivalTime": "0542"
+ },
+ {
+  "line_number": 1,
+  "number": 20,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0532",
+  "arrivalTime": "0552"
+ },
+ {
+  "line_number": 1,
+  "number": 24,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0536",
+  "arrivalTime": "0555"
+ },
+ {
+  "line_number": 1,
+  "number": 26,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0551",
+  "arrivalTime": "0610"
+ },
+ {
+  "line_number": 1,
+  "number": 28,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0602",
+  "arrivalTime": "0620"
+ },
+ {
+  "line_number": 1,
+  "number": 30,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0606",
+  "arrivalTime": "0632"
+ },
+ {
+  "line_number": 1,
+  "number": 36,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0621",
+  "arrivalTime": "0640"
+ },
+ {
+  "line_number": 1,
+  "number": 44,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0632",
+  "arrivalTime": "0652"
+ },
+ {
+  "line_number": 1,
+  "number": 46,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0636",
+  "arrivalTime": "0658"
+ },
+ {
+  "line_number": 1,
+  "number": 52,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0651",
+  "arrivalTime": "0710"
+ },
+ {
+  "line_number": 1,
+  "number": 60,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0702",
+  "arrivalTime": "0720"
+ },
+ {
+  "line_number": 1,
+  "number": 62,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0706",
+  "arrivalTime": "0725"
+ },
+ {
+  "line_number": 1,
+  "number": 70,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0721",
+  "arrivalTime": "0743"
+ },
+ {
+  "line_number": 1,
+  "number": 74,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0732",
+  "arrivalTime": "0750"
+ },
+ {
+  "line_number": 1,
+  "number": 76,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0736",
+  "arrivalTime": "0758"
+ },
+ {
+  "line_number": 1,
+  "number": 82,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0751",
+  "arrivalTime": "0810"
+ },
+ {
+  "line_number": 1,
+  "number": 92,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0800",
+  "arrivalTime": "0826"
+ },
+ {
+  "line_number": 1,
+  "number": 94,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0806",
+  "arrivalTime": "0825"
+ },
+ {
+  "line_number": 1,
+  "number": 98,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0821",
+  "arrivalTime": "0843"
+ },
+ {
+  "line_number": 1,
+  "number": 100,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0830",
+  "arrivalTime": "0849"
+ },
+ {
+  "line_number": 1,
+  "number": 102,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0836",
+  "arrivalTime": "0855"
+ },
+ {
+  "line_number": 1,
+  "number": 106,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0851",
+  "arrivalTime": "0910"
+ },
+ {
+  "line_number": 1,
+  "number": 110,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0900",
+  "arrivalTime": "0922"
+ },
+ {
+  "line_number": 1,
+  "number": 112,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0906",
+  "arrivalTime": "0928"
+ },
+ {
+  "line_number": 1,
+  "number": 116,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0921",
+  "arrivalTime": "0940"
+ },
+ {
+  "line_number": 1,
+  "number": 118,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "0930",
+  "arrivalTime": "0949"
+ },
+ {
+  "line_number": 1,
+  "number": 120,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0936",
+  "arrivalTime": "0955"
+ },
+ {
+  "line_number": 1,
+  "number": 124,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "0951",
+  "arrivalTime": "1013"
+ },
+ {
+  "line_number": 1,
+  "number": 130,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1000",
+  "arrivalTime": "1026"
+ },
+ {
+  "line_number": 1,
+  "number": 132,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1006",
+  "arrivalTime": "1025"
+ },
+ {
+  "line_number": 1,
+  "number": 136,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1021",
+  "arrivalTime": "1040"
+ },
+ {
+  "line_number": 1,
+  "number": 138,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1030",
+  "arrivalTime": "1049"
+ },
+ {
+  "line_number": 1,
+  "number": 140,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1036",
+  "arrivalTime": "1055"
+ },
+ {
+  "line_number": 1,
+  "number": 144,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1051",
+  "arrivalTime": "1113"
+ },
+ {
+  "line_number": 1,
+  "number": 148,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1100",
+  "arrivalTime": "1122"
+ },
+ {
+  "line_number": 1,
+  "number": 150,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1106",
+  "arrivalTime": "1125"
+ },
+ {
+  "line_number": 1,
+  "number": 154,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1121",
+  "arrivalTime": "1140"
+ },
+ {
+  "line_number": 1,
+  "number": 156,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1130",
+  "arrivalTime": "1149"
+ },
+ {
+  "line_number": 1,
+  "number": 158,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1136",
+  "arrivalTime": "1155"
+ },
+ {
+  "line_number": 1,
+  "number": 162,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1151",
+  "arrivalTime": "1210"
+ },
+ {
+  "line_number": 1,
+  "number": 166,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1200",
+  "arrivalTime": "1219"
+ },
+ {
+  "line_number": 1,
+  "number": 168,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1206",
+  "arrivalTime": "1228"
+ },
+ {
+  "line_number": 1,
+  "number": 174,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1221",
+  "arrivalTime": "1240"
+ },
+ {
+  "line_number": 1,
+  "number": 176,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1230",
+  "arrivalTime": "1256"
+ },
+ {
+  "line_number": 1,
+  "number": 178,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1236",
+  "arrivalTime": "1255"
+ },
+ {
+  "line_number": 1,
+  "number": 182,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1251",
+  "arrivalTime": "1310"
+ },
+ {
+  "line_number": 1,
+  "number": 186,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1300",
+  "arrivalTime": "1319"
+ },
+ {
+  "line_number": 1,
+  "number": 188,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1306",
+  "arrivalTime": "1328"
+ },
+ {
+  "line_number": 1,
+  "number": 192,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1321",
+  "arrivalTime": "1340"
+ },
+ {
+  "line_number": 1,
+  "number": 194,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1330",
+  "arrivalTime": "1352"
+ },
+ {
+  "line_number": 1,
+  "number": 196,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1336",
+  "arrivalTime": "1355"
+ },
+ {
+  "line_number": 1,
+  "number": 200,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1351",
+  "arrivalTime": "1410"
+ },
+ {
+  "line_number": 1,
+  "number": 204,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1400",
+  "arrivalTime": "1419"
+ },
+ {
+  "line_number": 1,
+  "number": 206,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1406",
+  "arrivalTime": "1428"
+ },
+ {
+  "line_number": 1,
+  "number": 220,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1421",
+  "arrivalTime": "1440"
+ },
+ {
+  "line_number": 1,
+  "number": 224,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1430",
+  "arrivalTime": "1456"
+ },
+ {
+  "line_number": 1,
+  "number": 226,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1436",
+  "arrivalTime": "1458"
+ },
+ {
+  "line_number": 1,
+  "number": 236,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1451",
+  "arrivalTime": "1510"
+ },
+ {
+  "line_number": 1,
+  "number": 244,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1500",
+  "arrivalTime": "1519"
+ },
+ {
+  "line_number": 1,
+  "number": 246,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1506",
+  "arrivalTime": "1528"
+ },
+ {
+  "line_number": 1,
+  "number": 252,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1521",
+  "arrivalTime": "1540"
+ },
+ {
+  "line_number": 1,
+  "number": 258,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1530",
+  "arrivalTime": "1552"
+ },
+ {
+  "line_number": 1,
+  "number": 260,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1536",
+  "arrivalTime": "1558"
+ },
+ {
+  "line_number": 1,
+  "number": 268,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1551",
+  "arrivalTime": "1610"
+ },
+ {
+  "line_number": 1,
+  "number": 276,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1600",
+  "arrivalTime": "1619"
+ },
+ {
+  "line_number": 1,
+  "number": 278,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1606",
+  "arrivalTime": "1628"
+ },
+ {
+  "line_number": 1,
+  "number": 284,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1621",
+  "arrivalTime": "1640"
+ },
+ {
+  "line_number": 1,
+  "number": 290,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1630",
+  "arrivalTime": "1652"
+ },
+ {
+  "line_number": 1,
+  "number": 292,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1636",
+  "arrivalTime": "1658"
+ },
+ {
+  "line_number": 1,
+  "number": 300,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1651",
+  "arrivalTime": "1710"
+ },
+ {
+  "line_number": 1,
+  "number": 308,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1700",
+  "arrivalTime": "1719"
+ },
+ {
+  "line_number": 1,
+  "number": 310,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1706",
+  "arrivalTime": "1728"
+ },
+ {
+  "line_number": 1,
+  "number": 314,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1721",
+  "arrivalTime": "1740"
+ },
+ {
+  "line_number": 1,
+  "number": 316,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1730",
+  "arrivalTime": "1756"
+ },
+ {
+  "line_number": 1,
+  "number": 318,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1736",
+  "arrivalTime": "1755"
+ },
+ {
+  "line_number": 1,
+  "number": 324,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1751",
+  "arrivalTime": "1810"
+ },
+ {
+  "line_number": 1,
+  "number": 328,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1800",
+  "arrivalTime": "1819"
+ },
+ {
+  "line_number": 1,
+  "number": 330,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1806",
+  "arrivalTime": "1828"
+ },
+ {
+  "line_number": 1,
+  "number": 334,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1821",
+  "arrivalTime": "1840"
+ },
+ {
+  "line_number": 1,
+  "number": 336,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1830",
+  "arrivalTime": "1852"
+ },
+ {
+  "line_number": 1,
+  "number": 338,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1836",
+  "arrivalTime": "1855"
+ },
+ {
+  "line_number": 1,
+  "number": 342,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1851",
+  "arrivalTime": "1910"
+ },
+ {
+  "line_number": 1,
+  "number": 344,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1900",
+  "arrivalTime": "1919"
+ },
+ {
+  "line_number": 1,
+  "number": 348,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1906",
+  "arrivalTime": "1928"
+ },
+ {
+  "line_number": 1,
+  "number": 350,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1921",
+  "arrivalTime": "1940"
+ },
+ {
+  "line_number": 1,
+  "number": 352,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "1930",
+  "arrivalTime": "1949"
+ },
+ {
+  "line_number": 1,
+  "number": 356,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1936",
+  "arrivalTime": "1958"
+ },
+ {
+  "line_number": 1,
+  "number": 358,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "1951",
+  "arrivalTime": "2010"
+ },
+ {
+  "line_number": 1,
+  "number": 360,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2002",
+  "arrivalTime": "2026"
+ },
+ {
+  "line_number": 1,
+  "number": 364,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2006",
+  "arrivalTime": "2025"
+ },
+ {
+  "line_number": 1,
+  "number": 366,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2032",
+  "arrivalTime": "2051"
+ },
+ {
+  "line_number": 1,
+  "number": 370,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2032",
+  "arrivalTime": "2058"
+ },
+ {
+  "line_number": 1,
+  "number": 374,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2102",
+  "arrivalTime": "2119"
+ },
+ {
+  "line_number": 1,
+  "number": 376,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2102",
+  "arrivalTime": "2120"
+ },
+ {
+  "line_number": 1,
+  "number": 382,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2129",
+  "arrivalTime": "2148"
+ },
+ {
+  "line_number": 1,
+  "number": 390,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2159",
+  "arrivalTime": "2216"
+ },
+ {
+  "line_number": 1,
+  "number": 398,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2229",
+  "arrivalTime": "2248"
+ },
+ {
+  "line_number": 1,
+  "number": 402,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2229",
+  "arrivalTime": "2252"
+ },
+ {
+  "line_number": 1,
+  "number": 408,
+  "codes": [
+   4,
+   5,
+   2,
+   3
+  ],
+  "departureTime": "2259",
+  "arrivalTime": "2316"
+ },
+ {
+  "line_number": 1,
+  "number": 416,
+  "codes": [
+   4,
+   5,
+   3
+  ],
+  "departureTime": "2324",
+  "arrivalTime": "2341"
+ },
+ {
+  "line_number": 1,
+  "number": 420,
+  "codes": [
+   2,
+   3
+  ],
+  "departureTime": "2324",
+  "arrivalTime": "2343"
+ }
+]

@@ -1,0 +1,104 @@
+"""Command line entry points."""
+
+from __future__ import annotations
+
+import asyncio
+import datetime as dt
+import json
+import logging
+from pathlib import Path
+from typing import Any
+
+import typer
+
+from dpmp_gtfs.api import DpmpApiClient
+
+app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+)
+logger = logging.getLogger("dpmp_gtfs")
+
+
+def _write(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf8")
+    logger.info("wrote %s (%d B)", path, path.stat().st_size)
+
+
+@app.command("dump-fixtures")
+def dump_fixtures(
+    dest: Path = typer.Option(Path("tests/fixtures"), help="Where to write the recordings."),
+    lines: int = typer.Option(2, help="How many lines to record connection details for."),
+) -> None:
+    """Record live API responses so tests can run against real data offline."""
+
+    async def run() -> None:
+        async with DpmpApiClient() as api:
+            _write(dest / "codes.json", [c.model_dump() for c in await api.codes()])
+            _write(dest / "stations.json", [s.model_dump() for s in await api.stations()])
+
+            line_list = await api.lines()
+            _write(dest / "lines.json", [line.model_dump() for line in line_list])
+
+            for line in line_list[:lines]:
+                conns = await api.connections(line.number)
+                _write(
+                    dest / f"connections-{line.number}.json",
+                    [c.model_dump() for c in conns],
+                )
+                # A couple of trips is enough to exercise the stop_times path.
+                for conn in conns[:3]:
+                    detail = await api.connection_detail(line.number, conn.number)
+                    _write(
+                        dest / f"detail-{line.number}-{conn.number}.json",
+                        detail.model_dump(),
+                    )
+
+            buses = await api.buses()
+            _write(dest / "buses.json", [b.model_dump(mode="json") for b in buses])
+
+    asyncio.run(run())
+
+
+@app.command("watch-buses")
+def watch_buses(
+    dest: Path = typer.Option(Path("tests/fixtures/snapshots"), help="Where to write snapshots."),
+    interval: float = typer.Option(15.0, help="Seconds between snapshots."),
+    count: int = typer.Option(60, help="How many snapshots to record."),
+) -> None:
+    """Record a timed sequence of /api/buses snapshots.
+
+    This is the fixture the delay tracker is tested against: reconstructing a
+    real delay needs to observe a vehicle actually moving between stops, which
+    a single snapshot can never show.
+    """
+
+    async def run() -> None:
+        dest.mkdir(parents=True, exist_ok=True)
+        async with DpmpApiClient() as api:
+            for i in range(count):
+                stamp = dt.datetime.now(dt.UTC)
+                try:
+                    buses = await api.buses()
+                except Exception:
+                    logger.exception("snapshot %d failed, continuing", i)
+                else:
+                    name = stamp.strftime("%Y%m%dT%H%M%SZ")
+                    _write(
+                        dest / f"buses-{name}.json",
+                        {
+                            "recorded_at": stamp.isoformat(),
+                            "buses": [b.model_dump(mode="json") for b in buses],
+                        },
+                    )
+                if i + 1 < count:
+                    await asyncio.sleep(interval)
+
+    asyncio.run(run())
+
+
+if __name__ == "__main__":
+    app()

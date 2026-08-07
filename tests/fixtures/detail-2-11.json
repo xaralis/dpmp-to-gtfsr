@@ -1,0 +1,191 @@
+{
+ "line_number": 2,
+ "number": 11,
+ "stops": [
+  {
+   "number": 65,
+   "name": "Dukla,vozovna",
+   "codes": [],
+   "index": 2,
+   "distance": 0,
+   "arrivalTime": null,
+   "departureTime": "0447",
+   "platform": 2
+  },
+  {
+   "number": 71,
+   "name": "Nadjezd Paramo",
+   "codes": [
+    1,
+    8
+   ],
+   "index": 3,
+   "distance": 1,
+   "arrivalTime": null,
+   "departureTime": "0449",
+   "platform": 1
+  },
+  {
+   "number": 16,
+   "name": "Hlavní nádraží",
+   "codes": [
+    8
+   ],
+   "index": 5,
+   "distance": 2,
+   "arrivalTime": null,
+   "departureTime": "0451",
+   "platform": 1
+  },
+  {
+   "number": 23,
+   "name": "U Marka",
+   "codes": [
+    8
+   ],
+   "index": 6,
+   "distance": 2,
+   "arrivalTime": null,
+   "departureTime": "0452",
+   "platform": 1
+  },
+  {
+   "number": 18,
+   "name": "Palackého",
+   "codes": [
+    8
+   ],
+   "index": 7,
+   "distance": 3,
+   "arrivalTime": null,
+   "departureTime": "0453",
+   "platform": 1
+  },
+  {
+   "number": 24,
+   "name": "Masarykovo nám.",
+   "codes": [
+    8
+   ],
+   "index": 12,
+   "distance": 3,
+   "arrivalTime": null,
+   "departureTime": "0455",
+   "platform": 3
+  },
+  {
+   "number": 187,
+   "name": "Sukova",
+   "codes": [],
+   "index": 16,
+   "distance": 3,
+   "arrivalTime": null,
+   "departureTime": "0456",
+   "platform": 1
+  },
+  {
+   "number": 58,
+   "name": "Náměstí Republiky",
+   "codes": [
+    8
+   ],
+   "index": 17,
+   "distance": 4,
+   "arrivalTime": null,
+   "departureTime": "0457",
+   "platform": 1
+  },
+  {
+   "number": 14,
+   "name": "Krajský úřad",
+   "codes": [
+    8
+   ],
+   "index": 18,
+   "distance": 4,
+   "arrivalTime": null,
+   "departureTime": "0458",
+   "platform": 2
+  },
+  {
+   "number": 9,
+   "name": "U Kostelíčka",
+   "codes": [
+    8
+   ],
+   "index": 19,
+   "distance": 5,
+   "arrivalTime": null,
+   "departureTime": "0459",
+   "platform": 1
+  },
+  {
+   "number": 19,
+   "name": "Štrossova",
+   "codes": [
+    8
+   ],
+   "index": 20,
+   "distance": 5,
+   "arrivalTime": null,
+   "departureTime": "0500",
+   "platform": 1
+  },
+  {
+   "number": 20,
+   "name": "Nem.",
+   "codes": [],
+   "index": 21,
+   "distance": 6,
+   "arrivalTime": null,
+   "departureTime": "0501",
+   "platform": 1
+  },
+  {
+   "number": 21,
+   "name": "Kyjevská",
+   "codes": [
+    8
+   ],
+   "index": 22,
+   "distance": 6,
+   "arrivalTime": null,
+   "departureTime": "0502",
+   "platform": 1
+  },
+  {
+   "number": 22,
+   "name": "Pardubičky,točna",
+   "codes": [
+    8
+   ],
+   "index": 23,
+   "distance": 6,
+   "arrivalTime": null,
+   "departureTime": "0503",
+   "platform": 1
+  },
+  {
+   "number": 96,
+   "name": "Průmyslová",
+   "codes": [],
+   "index": 24,
+   "distance": 7,
+   "arrivalTime": null,
+   "departureTime": "0504",
+   "platform": 1
+  },
+  {
+   "number": 99,
+   "name": "Zámeček",
+   "codes": [
+    8
+   ],
+   "index": 27,
+   "distance": 7,
+   "arrivalTime": "0505",
+   "departureTime": null,
+   "platform": 1
+  }
+ ]
+}

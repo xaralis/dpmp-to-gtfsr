@@ -1,0 +1,5283 @@
+[
+ {
+  "number": 1,
+  "stops": [
+   {
+    "number": 179,
+    "name": "Mikulovice,Staňkova",
+    "codes": []
+   },
+   {
+    "number": 253,
+    "name": "Mikulovice",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 177,
+    "name": "Dražkovice",
+    "codes": []
+   },
+   {
+    "number": 222,
+    "name": "Dražkovice,dolní",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 1,
+    "name": "Jesničánky,točna",
+    "codes": []
+   },
+   {
+    "number": 15,
+    "name": "Čacké",
+    "codes": []
+   },
+   {
+    "number": 2,
+    "name": "Chrudimská",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 4,
+    "name": "Gorkého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 10,
+    "name": "Na Okrouhlíku",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 11,
+    "name": "Slovany,Dašická",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 12,
+    "name": "Slovany,Spojilská",
+    "codes": []
+   },
+   {
+    "number": 206,
+    "name": "Slovany,u přejezdu",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 13,
+    "name": "Slovany,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 2,
+  "stops": [
+   {
+    "number": 39,
+    "name": "Polabiny,točna",
+    "codes": []
+   },
+   {
+    "number": 40,
+    "name": "Polabiny,Kosmonautů",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 19,
+    "name": "Štrossova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 20,
+    "name": "Nem.",
+    "codes": []
+   },
+   {
+    "number": 21,
+    "name": "Kyjevská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 22,
+    "name": "Pardubičky,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 96,
+    "name": "Průmyslová",
+    "codes": []
+   },
+   {
+    "number": 97,
+    "name": "ERA Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 98,
+    "name": "Zdravotnická škola",
+    "codes": []
+   },
+   {
+    "number": 99,
+    "name": "Zámeček",
+    "codes": [
+     8
+    ]
+   }
+  ]
+ },
+ {
+  "number": 3,
+  "stops": [
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 181,
+    "name": "Terminál Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 30,
+    "name": "Semtín,žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 31,
+    "name": "Semtín,hl.brána",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 32,
+    "name": "Semtín,vlečka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 33,
+    "name": "Rybitví,závod",
+    "codes": []
+   },
+   {
+    "number": 34,
+    "name": "Rybitví,Uma",
+    "codes": []
+   },
+   {
+    "number": 35,
+    "name": "Rybitví,Uma točna",
+    "codes": []
+   },
+   {
+    "number": 36,
+    "name": "Lázně Bohdaneč,aut.nádr.",
+    "codes": []
+   },
+   {
+    "number": 37,
+    "name": "Lázně Bohdaneč,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 38,
+    "name": "Lázně Bohdaneč,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 4,
+  "stops": [
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 39,
+    "name": "Polabiny,točna",
+    "codes": []
+   },
+   {
+    "number": 40,
+    "name": "Polabiny,Kosmonautů",
+    "codes": []
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 50,
+    "name": "Lexova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 42,
+    "name": "Dukla,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 5,
+  "stops": [
+   {
+    "number": 42,
+    "name": "Dukla,točna",
+    "codes": []
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 50,
+    "name": "Lexova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 46,
+    "name": "Sakařova",
+    "codes": []
+   },
+   {
+    "number": 47,
+    "name": "Holubova",
+    "codes": []
+   },
+   {
+    "number": 48,
+    "name": "Bezdíčkova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 49,
+    "name": "Židov",
+    "codes": []
+   },
+   {
+    "number": 112,
+    "name": "Dubina,garáže",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 6,
+  "stops": [
+   {
+    "number": 124,
+    "name": "Rybitví,zadní brána",
+    "codes": []
+   },
+   {
+    "number": 79,
+    "name": "Rosice,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 80,
+    "name": "Rosice,Gen.Svobody",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 81,
+    "name": "Rosice,náměstí",
+    "codes": []
+   },
+   {
+    "number": 82,
+    "name": "Rosice,sokolovna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 62,
+    "name": "Kréta",
+    "codes": []
+   },
+   {
+    "number": 149,
+    "name": "Staré Hradiště,ObÚ",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 157,
+    "name": "Staré Hradiště,Na Hledíku",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 115,
+    "name": "Ohrazenice,škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 114,
+    "name": "Trnová,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 113,
+    "name": "Polabiny,Jiřího Potůčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 66,
+    "name": "Polabiny,Okrajová",
+    "codes": []
+   },
+   {
+    "number": 64,
+    "name": "Polabiny,Sluneční",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 62,
+    "name": "Kréta",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 56,
+    "name": "Výzkumný ústav",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 55,
+    "name": "S.K.Neumanna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 53,
+    "name": "Ulice Svobody",
+    "codes": []
+   },
+   {
+    "number": 52,
+    "name": "U Kapitána",
+    "codes": []
+   },
+   {
+    "number": 54,
+    "name": "Krematorium",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 4,
+    "name": "Gorkého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 95,
+    "name": "Gorkého škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 94,
+    "name": "Dukla,KD",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 93,
+    "name": "Dukla,u náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 252,
+    "name": "Vápenka",
+    "codes": [
+     8
+    ]
+   }
+  ]
+ },
+ {
+  "number": 7,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 50,
+    "name": "Lexova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 209,
+    "name": "Kpt.Nálepky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 210,
+    "name": "Demokratické mládeže",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 4,
+    "name": "Gorkého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 181,
+    "name": "Terminál Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 30,
+    "name": "Semtín,žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 31,
+    "name": "Semtín,hl.brána",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 32,
+    "name": "Semtín,vlečka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 33,
+    "name": "Rybitví,závod",
+    "codes": []
+   },
+   {
+    "number": 34,
+    "name": "Rybitví,Uma",
+    "codes": []
+   },
+   {
+    "number": 35,
+    "name": "Rybitví,Uma točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 8,
+  "stops": [
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   },
+   {
+    "number": 221,
+    "name": "Dubina,Dubinská",
+    "codes": []
+   },
+   {
+    "number": 185,
+    "name": "Dubina,penzion",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 67,
+    "name": "Dubina,točna",
+    "codes": []
+   },
+   {
+    "number": 68,
+    "name": "Blahoutova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 70,
+    "name": "K nemocnici",
+    "codes": []
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 72,
+    "name": "Svítkov,les",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 73,
+    "name": "Svítkov,škola",
+    "codes": []
+   },
+   {
+    "number": 74,
+    "name": "Svítkov,Kostnická",
+    "codes": []
+   },
+   {
+    "number": 75,
+    "name": "Svítkov,park",
+    "codes": []
+   },
+   {
+    "number": 76,
+    "name": "Popkovice,křiž.",
+    "codes": []
+   },
+   {
+    "number": 77,
+    "name": "Popkovice,školka",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 78,
+    "name": "K Letišti",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 70,
+    "name": "K nemocnici",
+    "codes": []
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 68,
+    "name": "Blahoutova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 67,
+    "name": "Dubina,točna",
+    "codes": []
+   },
+   {
+    "number": 185,
+    "name": "Dubina,penzion",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 221,
+    "name": "Dubina,Dubinská",
+    "codes": []
+   },
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 9,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 83,
+    "name": "Zlatá štika",
+    "codes": []
+   },
+   {
+    "number": 63,
+    "name": "Na Bukovině",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 85,
+    "name": "Na Haldě",
+    "codes": []
+   },
+   {
+    "number": 84,
+    "name": "Husova",
+    "codes": []
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 89,
+    "name": "Hůrka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 90,
+    "name": "Spojil",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 91,
+    "name": "Spojil,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 212,
+    "name": "Sezemice,Počaply,Chalupy",
+    "codes": []
+   },
+   {
+    "number": 213,
+    "name": "Sezemice,zámostí",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 247,
+    "name": "Sezemice,Havlíčkova",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 10,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 93,
+    "name": "Dukla,u náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 94,
+    "name": "Dukla,KD",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 95,
+    "name": "Gorkého škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 4,
+    "name": "Gorkého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 52,
+    "name": "U Kapitána",
+    "codes": []
+   },
+   {
+    "number": 53,
+    "name": "Ulice Svobody",
+    "codes": []
+   },
+   {
+    "number": 54,
+    "name": "Krematorium",
+    "codes": []
+   },
+   {
+    "number": 26,
+    "name": "Nemošická bytovky",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 162,
+    "name": "Nemošice,škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 186,
+    "name": "Nemošice,Nábřežní",
+    "codes": []
+   },
+   {
+    "number": 176,
+    "name": "Nemošice,5.května",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 151,
+    "name": "Nemošice,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 242,
+    "name": "Ostřešany,hřiště",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 163,
+    "name": "Ostřešany,škola",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 164,
+    "name": "Ostřešany,park",
+    "codes": []
+   },
+   {
+    "number": 165,
+    "name": "Ostřešany,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 11,
+  "stops": [
+   {
+    "number": 35,
+    "name": "Rybitví,Uma točna",
+    "codes": []
+   },
+   {
+    "number": 34,
+    "name": "Rybitví,Uma",
+    "codes": []
+   },
+   {
+    "number": 33,
+    "name": "Rybitví,závod",
+    "codes": []
+   },
+   {
+    "number": 32,
+    "name": "Semtín,vlečka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 31,
+    "name": "Semtín,hl.brána",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 30,
+    "name": "Semtín,žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 39,
+    "name": "Polabiny,točna",
+    "codes": []
+   },
+   {
+    "number": 40,
+    "name": "Polabiny,Kosmonautů",
+    "codes": []
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 10,
+    "name": "Na Okrouhlíku",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 112,
+    "name": "Dubina,garáže",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 12,
+  "stops": [
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 19,
+    "name": "Štrossova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 20,
+    "name": "Nem.",
+    "codes": []
+   },
+   {
+    "number": 21,
+    "name": "Kyjevská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 22,
+    "name": "Pardubičky,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 96,
+    "name": "Průmyslová",
+    "codes": []
+   },
+   {
+    "number": 99,
+    "name": "Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 97,
+    "name": "ERA Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 98,
+    "name": "Zdravotnická škola",
+    "codes": []
+   },
+   {
+    "number": 99,
+    "name": "Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 100,
+    "name": "Černá za Bory,silo",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 134,
+    "name": "Černá za Bory,pošta",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 101,
+    "name": "Černá za Bory,Lipiny",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 102,
+    "name": "Černá za Bory,Dělnická",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 88,
+    "name": "Černá za Bory,Řempo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 103,
+    "name": "Drozdice",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 104,
+    "name": "Černá za Bory,Holandská",
+    "codes": []
+   },
+   {
+    "number": 105,
+    "name": "Černá za Bory,prodejna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 108,
+    "name": "Černá za Bory,Na Vsi",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 109,
+    "name": "Černá za Bory",
+    "codes": []
+   },
+   {
+    "number": 106,
+    "name": "Mnětice,u mostu",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 107,
+    "name": "Mnětice",
+    "codes": []
+   },
+   {
+    "number": 219,
+    "name": "Mnětice,Tuněchodská",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 215,
+    "name": "Tuněchody,kovárna",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 216,
+    "name": "Tuněchody,kostel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 241,
+    "name": "Tuněchody,cihelna",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 235,
+    "name": "Úhřetice",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 13,
+  "stops": [
+   {
+    "number": 117,
+    "name": "Ohrazenice,točna",
+    "codes": []
+   },
+   {
+    "number": 116,
+    "name": "Ohrazenice,Semtínská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 115,
+    "name": "Ohrazenice,škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 114,
+    "name": "Trnová,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 113,
+    "name": "Polabiny,Jiřího Potůčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 64,
+    "name": "Polabiny,Sluneční",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 66,
+    "name": "Polabiny,Okrajová",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 137,
+    "name": "Polabiny,Bělehradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 10,
+    "name": "Na Okrouhlíku",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 112,
+    "name": "Dubina,garáže",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 14,
+  "stops": [
+   {
+    "number": 203,
+    "name": "Staré Čívice,Průmyslová zóna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 196,
+    "name": "Staré Čívice,KYB",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 202,
+    "name": "Staré Čívice,JTEKT",
+    "codes": []
+   },
+   {
+    "number": 201,
+    "name": "Staré Čívice,Panasonic",
+    "codes": []
+   },
+   {
+    "number": 200,
+    "name": "Staré Čívice,Na Štěpnici",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 123,
+    "name": "Staré Čívice,točna MHD",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 122,
+    "name": "Staré Čívice,Ke Mlýnu",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 121,
+    "name": "Staré Čívice,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 120,
+    "name": "Staré Čívice,Přeloučská",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 119,
+    "name": "Popkovice,hostinec",
+    "codes": []
+   },
+   {
+    "number": 77,
+    "name": "Popkovice,školka",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 78,
+    "name": "K Letišti",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 75,
+    "name": "Svítkov,park",
+    "codes": []
+   },
+   {
+    "number": 74,
+    "name": "Svítkov,Kostnická",
+    "codes": []
+   },
+   {
+    "number": 73,
+    "name": "Svítkov,škola",
+    "codes": []
+   },
+   {
+    "number": 72,
+    "name": "Svítkov,les",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 199,
+    "name": "K Polabinám",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 40,
+    "name": "Polabiny,Kosmonautů",
+    "codes": []
+   },
+   {
+    "number": 39,
+    "name": "Polabiny,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 15,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 197,
+    "name": "Závodu míru",
+    "codes": []
+   },
+   {
+    "number": 198,
+    "name": "Závodu míru,sídliště",
+    "codes": []
+   },
+   {
+    "number": 199,
+    "name": "K Polabinám",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 72,
+    "name": "Svítkov,les",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 73,
+    "name": "Svítkov,škola",
+    "codes": []
+   },
+   {
+    "number": 74,
+    "name": "Svítkov,Kostnická",
+    "codes": []
+   },
+   {
+    "number": 75,
+    "name": "Svítkov,park",
+    "codes": []
+   },
+   {
+    "number": 250,
+    "name": "Svítkov,západ",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 76,
+    "name": "Popkovice,křiž.",
+    "codes": []
+   },
+   {
+    "number": 129,
+    "name": "Svítkov,stadion",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 141,
+    "name": "Srnojedy,Nové Srnojedy",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 142,
+    "name": "Srnojedy,Staré Srnojedy",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 143,
+    "name": "Lány na Důlku,Krchleby",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 144,
+    "name": "Lány na Důlku",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 145,
+    "name": "Lány na Důlku,Na Cihelně",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 146,
+    "name": "Opočínek",
+    "codes": []
+   },
+   {
+    "number": 147,
+    "name": "Opočínek,rozvodna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 16,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 148,
+    "name": "Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 194,
+    "name": "Cihelna,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 152,
+    "name": "Staré Hradiště,Fáblovka",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 158,
+    "name": "Staré Hradiště,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 169,
+    "name": "Staré Hradiště,Psinek",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 159,
+    "name": "Staré Hradiště,Brozany",
+    "codes": []
+   },
+   {
+    "number": 160,
+    "name": "Ráby,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 168,
+    "name": "Ráby,prodejna",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 156,
+    "name": "Ráby,Kunětická hora",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 182,
+    "name": "Němčice,chaloupky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 174,
+    "name": "Němčice,rybníček",
+    "codes": []
+   },
+   {
+    "number": 183,
+    "name": "Dříteč",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 17,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 181,
+    "name": "Terminál Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 115,
+    "name": "Ohrazenice,škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 116,
+    "name": "Ohrazenice,Semtínská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 195,
+    "name": "Globus parkoviště",
+    "codes": []
+   },
+   {
+    "number": 30,
+    "name": "Semtín,žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 150,
+    "name": "Doubravice",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 170,
+    "name": "Srch,Hrádek",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 171,
+    "name": "Srch,Pohránov",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 172,
+    "name": "Srch,ObÚ",
+    "codes": []
+   },
+   {
+    "number": 173,
+    "name": "Srch,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 18,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 62,
+    "name": "Kréta",
+    "codes": []
+   },
+   {
+    "number": 66,
+    "name": "Polabiny,Okrajová",
+    "codes": []
+   },
+   {
+    "number": 64,
+    "name": "Polabiny,Sluneční",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 113,
+    "name": "Polabiny,Jiřího Potůčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 114,
+    "name": "Trnová,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 30,
+    "name": "Semtín,žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 31,
+    "name": "Semtín,hl.brána",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 32,
+    "name": "Semtín,vlečka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 33,
+    "name": "Rybitví,závod",
+    "codes": []
+   },
+   {
+    "number": 125,
+    "name": "Rybitví,léčebna",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 126,
+    "name": "Rybitví,křižovatka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 130,
+    "name": "Rybitví,Stavební škola",
+    "codes": []
+   },
+   {
+    "number": 192,
+    "name": "Černá u Bohdanče,bytovky",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 193,
+    "name": "Černá u Bohdanče,obecní úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 249,
+    "name": "Černá u Bohdanče,sever",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 191,
+    "name": "Živanice,Dědek",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 190,
+    "name": "Živanice,sokolovna",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 27,
+    "name": "Živanice,odb.Nerad",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 111,
+    "name": "Živanice,Nerad",
+    "codes": [
+     8
+    ]
+   }
+  ]
+ },
+ {
+  "number": 20,
+  "stops": [
+   {
+    "number": 197,
+    "name": "Závodu míru",
+    "codes": []
+   },
+   {
+    "number": 198,
+    "name": "Závodu míru,sídliště",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 243,
+    "name": "Rokycanova",
+    "codes": []
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 199,
+    "name": "K Polabinám",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 198,
+    "name": "Závodu míru,sídliště",
+    "codes": []
+   },
+   {
+    "number": 197,
+    "name": "Závodu míru",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 23,
+  "stops": [
+   {
+    "number": 203,
+    "name": "Staré Čívice,Průmyslová zóna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 196,
+    "name": "Staré Čívice,KYB",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 202,
+    "name": "Staré Čívice,JTEKT",
+    "codes": []
+   },
+   {
+    "number": 201,
+    "name": "Staré Čívice,Panasonic",
+    "codes": []
+   },
+   {
+    "number": 200,
+    "name": "Staré Čívice,Na Štěpnici",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 121,
+    "name": "Staré Čívice,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 120,
+    "name": "Staré Čívice,Přeloučská",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 119,
+    "name": "Popkovice,hostinec",
+    "codes": []
+   },
+   {
+    "number": 78,
+    "name": "K Letišti",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 40,
+    "name": "Polabiny,Kosmonautů",
+    "codes": []
+   },
+   {
+    "number": 39,
+    "name": "Polabiny,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 24,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 78,
+    "name": "K Letišti",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 119,
+    "name": "Popkovice,hostinec",
+    "codes": []
+   },
+   {
+    "number": 188,
+    "name": "Starý Mateřov,náves",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 189,
+    "name": "Starý Mateřov,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 17,
+    "name": "Čepí,prodejna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 25,
+  "stops": [
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 112,
+    "name": "Dubina,garáže",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 10,
+    "name": "Na Okrouhlíku",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 56,
+    "name": "Výzkumný ústav",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 55,
+    "name": "S.K.Neumanna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 53,
+    "name": "Ulice Svobody",
+    "codes": []
+   },
+   {
+    "number": 52,
+    "name": "U Kapitána",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 210,
+    "name": "Demokratické mládeže",
+    "codes": []
+   },
+   {
+    "number": 209,
+    "name": "Kpt.Nálepky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 78,
+    "name": "K Letišti",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 119,
+    "name": "Popkovice,hostinec",
+    "codes": []
+   },
+   {
+    "number": 120,
+    "name": "Staré Čívice,Přeloučská",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 121,
+    "name": "Staré Čívice,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 200,
+    "name": "Staré Čívice,Na Štěpnici",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 201,
+    "name": "Staré Čívice,Panasonic",
+    "codes": []
+   },
+   {
+    "number": 202,
+    "name": "Staré Čívice,JTEKT",
+    "codes": []
+   },
+   {
+    "number": 196,
+    "name": "Staré Čívice,KYB",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 203,
+    "name": "Staré Čívice,Průmyslová zóna",
+    "codes": [
+     8
+    ]
+   }
+  ]
+ },
+ {
+  "number": 27,
+  "stops": [
+   {
+    "number": 98,
+    "name": "Zdravotnická škola",
+    "codes": []
+   },
+   {
+    "number": 99,
+    "name": "Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 96,
+    "name": "Průmyslová",
+    "codes": []
+   },
+   {
+    "number": 22,
+    "name": "Pardubičky,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 21,
+    "name": "Kyjevská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 20,
+    "name": "Nem.",
+    "codes": []
+   },
+   {
+    "number": 19,
+    "name": "Štrossova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 8,
+    "name": "U Grandu",
+    "codes": []
+   },
+   {
+    "number": 7,
+    "name": "Třída Míru",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 50,
+    "name": "Lexova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 42,
+    "name": "Dukla,točna",
+    "codes": []
+   },
+   {
+    "number": 209,
+    "name": "Kpt.Nálepky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 210,
+    "name": "Demokratické mládeže",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 4,
+    "name": "Gorkého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 7,
+    "name": "Třída Míru",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 19,
+    "name": "Štrossova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 20,
+    "name": "Nem.",
+    "codes": []
+   },
+   {
+    "number": 21,
+    "name": "Kyjevská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 22,
+    "name": "Pardubičky,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 96,
+    "name": "Průmyslová",
+    "codes": []
+   },
+   {
+    "number": 97,
+    "name": "ERA Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 98,
+    "name": "Zdravotnická škola",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 28,
+  "stops": [
+   {
+    "number": 197,
+    "name": "Závodu míru",
+    "codes": []
+   },
+   {
+    "number": 198,
+    "name": "Závodu míru,sídliště",
+    "codes": []
+   },
+   {
+    "number": 199,
+    "name": "K Polabinám",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 19,
+    "name": "Štrossova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 20,
+    "name": "Nem.",
+    "codes": []
+   },
+   {
+    "number": 21,
+    "name": "Kyjevská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 22,
+    "name": "Pardubičky,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 96,
+    "name": "Průmyslová",
+    "codes": []
+   },
+   {
+    "number": 97,
+    "name": "ERA Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 98,
+    "name": "Zdravotnická škola",
+    "codes": []
+   },
+   {
+    "number": 99,
+    "name": "Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 100,
+    "name": "Černá za Bory,silo",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 134,
+    "name": "Černá za Bory,pošta",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 220,
+    "name": "Staročernsko,střed",
+    "codes": []
+   },
+   {
+    "number": 251,
+    "name": "Staročernsko",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 104,
+    "name": "Černá za Bory,Holandská",
+    "codes": []
+   },
+   {
+    "number": 105,
+    "name": "Černá za Bory,prodejna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 108,
+    "name": "Černá za Bory,Na Vsi",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 109,
+    "name": "Černá za Bory",
+    "codes": []
+   },
+   {
+    "number": 204,
+    "name": "Žižín",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 205,
+    "name": "Hostovice",
+    "codes": []
+   },
+   {
+    "number": 235,
+    "name": "Úhřetice",
+    "codes": []
+   },
+   {
+    "number": 226,
+    "name": "Dašice,Pod Dubem",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 248,
+    "name": "Dašice,Zminný,odb.Veská",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 227,
+    "name": "Sezemice,Veská,most",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 30,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 148,
+    "name": "Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 194,
+    "name": "Cihelna,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 152,
+    "name": "Staré Hradiště,Fáblovka",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 153,
+    "name": "Fáblovka,točna",
+    "codes": []
+   },
+   {
+    "number": 158,
+    "name": "Staré Hradiště,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 149,
+    "name": "Staré Hradiště,ObÚ",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 157,
+    "name": "Staré Hradiště,Na Hledíku",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 116,
+    "name": "Ohrazenice,Semtínská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 117,
+    "name": "Ohrazenice,točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 33,
+  "stops": [
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 44,
+    "name": "Teplého",
+    "codes": []
+   },
+   {
+    "number": 45,
+    "name": "Domov mládeže",
+    "codes": []
+   },
+   {
+    "number": 5,
+    "name": "Jana Palacha",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 6,
+    "name": "17.listopadu",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 25,
+    "name": "Zimní stadion",
+    "codes": []
+   },
+   {
+    "number": 180,
+    "name": "Stavařov",
+    "codes": []
+   },
+   {
+    "number": 181,
+    "name": "Terminál Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 86,
+    "name": "Globus",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 30,
+    "name": "Semtín,žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 31,
+    "name": "Semtín,hl.brána",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 32,
+    "name": "Semtín,vlečka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 33,
+    "name": "Rybitví,závod",
+    "codes": []
+   },
+   {
+    "number": 125,
+    "name": "Rybitví,léčebna",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 126,
+    "name": "Rybitví,křižovatka",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 130,
+    "name": "Rybitví,Stavební škola",
+    "codes": []
+   },
+   {
+    "number": 34,
+    "name": "Rybitví,Uma",
+    "codes": []
+   },
+   {
+    "number": 35,
+    "name": "Rybitví,Uma točna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 88,
+  "stops": [
+   {
+    "number": 221,
+    "name": "Dubina,Dubinská",
+    "codes": []
+   },
+   {
+    "number": 185,
+    "name": "Dubina,penzion",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 67,
+    "name": "Dubina,točna",
+    "codes": []
+   },
+   {
+    "number": 68,
+    "name": "Blahoutova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 70,
+    "name": "K nemocnici",
+    "codes": []
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 187,
+    "name": "Sukova",
+    "codes": []
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 208,
+    "name": "Albert HM",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 78,
+    "name": "K Letišti",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 77,
+    "name": "Popkovice,školka",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 76,
+    "name": "Popkovice,křiž.",
+    "codes": []
+   },
+   {
+    "number": 75,
+    "name": "Svítkov,park",
+    "codes": []
+   },
+   {
+    "number": 74,
+    "name": "Svítkov,Kostnická",
+    "codes": []
+   },
+   {
+    "number": 73,
+    "name": "Svítkov,škola",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 71,
+    "name": "Nadjezd Paramo",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 70,
+    "name": "K nemocnici",
+    "codes": []
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 68,
+    "name": "Blahoutova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 67,
+    "name": "Dubina,točna",
+    "codes": []
+   },
+   {
+    "number": 185,
+    "name": "Dubina,penzion",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 221,
+    "name": "Dubina,Dubinská",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 98,
+  "stops": [
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 123,
+    "name": "Staré Čívice,točna MHD",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 122,
+    "name": "Staré Čívice,Ke Mlýnu",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 121,
+    "name": "Staré Čívice,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 120,
+    "name": "Staré Čívice,Přeloučská",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 76,
+    "name": "Popkovice,křiž.",
+    "codes": []
+   },
+   {
+    "number": 75,
+    "name": "Svítkov,park",
+    "codes": []
+   },
+   {
+    "number": 74,
+    "name": "Svítkov,Kostnická",
+    "codes": []
+   },
+   {
+    "number": 73,
+    "name": "Svítkov,škola",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 209,
+    "name": "Kpt.Nálepky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 210,
+    "name": "Demokratické mládeže",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 52,
+    "name": "U Kapitána",
+    "codes": []
+   },
+   {
+    "number": 53,
+    "name": "Ulice Svobody",
+    "codes": []
+   },
+   {
+    "number": 55,
+    "name": "S.K.Neumanna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 56,
+    "name": "Výzkumný ústav",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 62,
+    "name": "Kréta",
+    "codes": []
+   },
+   {
+    "number": 137,
+    "name": "Polabiny,Bělehradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 41,
+    "name": "Polabiny,hotel",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 181,
+    "name": "Terminál Univerzita",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 28,
+    "name": "Poděbradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 29,
+    "name": "Trnová,křiž.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 115,
+    "name": "Ohrazenice,škola",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 114,
+    "name": "Trnová,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 113,
+    "name": "Polabiny,Jiřího Potůčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 64,
+    "name": "Polabiny,Sluneční",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 62,
+    "name": "Kréta",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 57,
+    "name": "Karla IV.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 56,
+    "name": "Výzkumný ústav",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 55,
+    "name": "S.K.Neumanna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 53,
+    "name": "Ulice Svobody",
+    "codes": []
+   },
+   {
+    "number": 52,
+    "name": "U Kapitána",
+    "codes": []
+   },
+   {
+    "number": 3,
+    "name": "Zborovské nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 210,
+    "name": "Demokratické mládeže",
+    "codes": []
+   },
+   {
+    "number": 209,
+    "name": "Kpt.Nálepky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 43,
+    "name": "Dukla,náměstí",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 92,
+    "name": "Dopravní podnik",
+    "codes": []
+   },
+   {
+    "number": 118,
+    "name": "Závodiště",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 72,
+    "name": "Svítkov,les",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 73,
+    "name": "Svítkov,škola",
+    "codes": []
+   },
+   {
+    "number": 74,
+    "name": "Svítkov,Kostnická",
+    "codes": []
+   },
+   {
+    "number": 75,
+    "name": "Svítkov,park",
+    "codes": []
+   },
+   {
+    "number": 76,
+    "name": "Popkovice,křiž.",
+    "codes": []
+   },
+   {
+    "number": 120,
+    "name": "Staré Čívice,Přeloučská",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 121,
+    "name": "Staré Čívice,host.",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 122,
+    "name": "Staré Čívice,Ke Mlýnu",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 123,
+    "name": "Staré Čívice,točna MHD",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 99,
+  "stops": [
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 46,
+    "name": "Sakařova",
+    "codes": []
+   },
+   {
+    "number": 47,
+    "name": "Holubova",
+    "codes": []
+   },
+   {
+    "number": 48,
+    "name": "Bezdíčkova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 49,
+    "name": "Židov",
+    "codes": []
+   },
+   {
+    "number": 112,
+    "name": "Dubina,garáže",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 87,
+    "name": "Dubina,centrum",
+    "codes": []
+   },
+   {
+    "number": 110,
+    "name": "Dubina,sever",
+    "codes": []
+   },
+   {
+    "number": 221,
+    "name": "Dubina,Dubinská",
+    "codes": []
+   },
+   {
+    "number": 185,
+    "name": "Dubina,penzion",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 67,
+    "name": "Dubina,točna",
+    "codes": []
+   },
+   {
+    "number": 68,
+    "name": "Blahoutova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 69,
+    "name": "Na Drážce",
+    "codes": []
+   },
+   {
+    "number": 11,
+    "name": "Slovany,Dašická",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 12,
+    "name": "Slovany,Spojilská",
+    "codes": []
+   },
+   {
+    "number": 206,
+    "name": "Slovany,u přejezdu",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 13,
+    "name": "Slovany,točna",
+    "codes": []
+   },
+   {
+    "number": 224,
+    "name": "Černá za Bory,odb.žel.zast.",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 104,
+    "name": "Černá za Bory,Holandská",
+    "codes": []
+   },
+   {
+    "number": 105,
+    "name": "Černá za Bory,prodejna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 109,
+    "name": "Černá za Bory",
+    "codes": []
+   },
+   {
+    "number": 104,
+    "name": "Černá za Bory,Holandská",
+    "codes": []
+   },
+   {
+    "number": 134,
+    "name": "Černá za Bory,pošta",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 100,
+    "name": "Černá za Bory,silo",
+    "codes": [
+     1
+    ]
+   },
+   {
+    "number": 99,
+    "name": "Zámeček",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 96,
+    "name": "Průmyslová",
+    "codes": []
+   },
+   {
+    "number": 22,
+    "name": "Pardubičky,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 21,
+    "name": "Kyjevská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 20,
+    "name": "Nem.",
+    "codes": []
+   },
+   {
+    "number": 19,
+    "name": "Štrossova",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 9,
+    "name": "U Kostelíčka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 14,
+    "name": "Krajský úřad",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 58,
+    "name": "Náměstí Republiky",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 24,
+    "name": "Masarykovo nám.",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 18,
+    "name": "Palackého",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 23,
+    "name": "U Marka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 65,
+    "name": "Dukla,vozovna",
+    "codes": []
+   }
+  ]
+ },
+ {
+  "number": 902,
+  "stops": [
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 60,
+    "name": "Polabiny,Lidická",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 61,
+    "name": "Polabiny,Kpt.Bartoše",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 66,
+    "name": "Polabiny,Okrajová",
+    "codes": []
+   },
+   {
+    "number": 131,
+    "name": "Karla Šípka",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 39,
+    "name": "Polabiny,točna",
+    "codes": []
+   },
+   {
+    "number": 40,
+    "name": "Polabiny,Kosmonautů",
+    "codes": []
+   },
+   {
+    "number": 137,
+    "name": "Polabiny,Bělehradská",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 61,
+    "name": "Polabiny,Kpt.Bartoše",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 60,
+    "name": "Polabiny,Lidická",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 207,
+    "name": "Polabiny,Albert HM",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   }
+  ]
+ },
+ {
+  "number": 906,
+  "stops": [
+   {
+    "number": 124,
+    "name": "Rybitví,zadní brána",
+    "codes": []
+   },
+   {
+    "number": 79,
+    "name": "Rosice,točna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 80,
+    "name": "Rosice,Gen.Svobody",
+    "codes": [
+     1,
+     8
+    ]
+   },
+   {
+    "number": 81,
+    "name": "Rosice,náměstí",
+    "codes": []
+   },
+   {
+    "number": 82,
+    "name": "Rosice,sokolovna",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 62,
+    "name": "Kréta",
+    "codes": []
+   },
+   {
+    "number": 66,
+    "name": "Polabiny,Okrajová",
+    "codes": []
+   },
+   {
+    "number": 64,
+    "name": "Polabiny,Sluneční",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 66,
+    "name": "Polabiny,Okrajová",
+    "codes": []
+   },
+   {
+    "number": 61,
+    "name": "Polabiny,Kpt.Bartoše",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 60,
+    "name": "Polabiny,Lidická",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 207,
+    "name": "Polabiny,Albert HM",
+    "codes": [
+     8
+    ]
+   },
+   {
+    "number": 16,
+    "name": "Hlavní nádraží",
+    "codes": [
+     8
+    ]
+   }
+  ]
+ }
+]
