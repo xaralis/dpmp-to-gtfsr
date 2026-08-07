@@ -14,38 +14,38 @@ tam je, takže třeba `gtfs.progresivni-pardubice.cz`.
 
 ## Postup
 
-**1. Vytvoř tunel a zkopíruj token.**
+Celé z terminálu, bez klikání v dashboardu. Routování zůstává v repozitáři,
+takže změna hostname je dohledatelný commit, ne nezaznamenané kliknutí.
 
-V [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networks** →
-**Tunnels** → *Create a tunnel* → **Cloudflared** → pojmenuj `dpmp-gtfs`.
+**1. Vytvoř tunel a nasměruj na něj DNS** (jednou, lokálně).
 
-Na další obrazovce Cloudflare nabídne instalační příkazy — ty ignoruj, zajímá
-tě jen **token** (dlouhý řetězec za `--token`).
+```bash
+cloudflared tunnel login            # otevře prohlížeč, vyber doménu
+cloudflared tunnel create dpmp-gtfs
+cloudflared tunnel route dns dpmp-gtfs gtfs.progresivni-pardubice.cz
+```
 
-**2. Nastav veřejný hostname.**
+`create` vypíše ID tunelu a uloží credentials do
+`~/.cloudflared/<ID>.json`. `route dns` vytvoří CNAME — žádný A záznam ani
+certifikát řešit netřeba.
 
-Ve stejném průvodci, záložka *Public Hostnames* → *Add a public hostname*:
-
-| pole | hodnota |
-|---|---|
-| Subdomain | `gtfs` |
-| Domain | `progresivni-pardubice.cz` |
-| Service type | `HTTP` |
-| URL | `feed:8000` |
-
-`feed` je název služby z compose souboru; tunel a feed sdílí compose síť, takže
-se najdou podle jména.
-
-**3. Spusť to.**
+**2. Přenes to na server.**
 
 ```bash
 scp -r ~/Workspace/dpmp-to-gtfsr ubuntu@IP:/opt/dpmp-gtfs
+scp ~/.cloudflared/<ID>.json ubuntu@IP:/opt/dpmp-gtfs/docker/cloudflared/credentials.json
+```
+
+**3. Nastav a spusť.**
+
+```bash
 ssh ubuntu@IP
 cd /opt/dpmp-gtfs
 
 cat > .env <<'ENV'
 DPMP_API_KEY=sem-vloz-klic
-TUNNEL_TOKEN=sem-vloz-token-z-kroku-1
+TUNNEL_ID=sem-vloz-id-tunelu
+TUNNEL_HOSTNAME=gtfs.progresivni-pardubice.cz
 ENV
 chmod 600 .env
 
@@ -61,13 +61,13 @@ připojí a pak neobsluhuje nic, což se z logu čte špatně.
 (`online.dpmp.cz`, chunk `pages/lines-*.js`, hledej `key`). Není to tajemství,
 ale do repozitáře nepatří — jeho výměna má být restart, ne commit.
 
-Hotovo. DNS záznam vytvoří Cloudflare sám, certifikát taky.
+Hotovo. Certifikát vydá Cloudflare sám.
 
 První start prochází celý jízdní řád a routuje geometrii tras, takže než
 `/healthz` odpoví 200, počítej zhruba se **7 minutami**:
 
 ```bash
-docker compose -f docker/compose.tunnel.yaml logs -f
+docker compose --env-file .env -f docker/compose.tunnel.yaml logs -f
 ```
 
 ## Aktualizace
@@ -83,14 +83,14 @@ a nemusí se stavět znovu.
 
 ```bash
 # stav
-docker compose -f docker/compose.tunnel.yaml exec feed \
+docker compose --env-file .env -f docker/compose.tunnel.yaml exec feed \
   python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/healthz').read().decode())"
 
 # ruční přestavba jízdních řádů (jinak běží sama v noci)
-docker compose -f docker/compose.tunnel.yaml exec feed dpmp-gtfs build-static
+docker compose --env-file .env -f docker/compose.tunnel.yaml exec feed dpmp-gtfs build-static
 
 # zastávky, které přišly o obsluhu (obvykle výluka)
-docker compose -f docker/compose.tunnel.yaml logs feed | grep -i "lost all service"
+docker compose --env-file .env -f docker/compose.tunnel.yaml logs feed | grep -i "lost all service"
 ```
 
 ## HTTPS
