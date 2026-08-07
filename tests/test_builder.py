@@ -116,8 +116,9 @@ def test_pruning_drops_platforms_with_no_service() -> None:
     stops = [_station("S7"), _platform("S7P1", "S7"), _platform("S7P2", "S7")]
     times = [StopTime("t", "08:00:00", "08:00:00", "S7P1", 0, 0, 0)]
 
-    kept = {s.stop_id for s in prune_unserved_stops(stops, times)}
-    assert kept == {"S7", "S7P1"}
+    kept, unserved = prune_unserved_stops(stops, times)
+    assert {s.stop_id for s in kept} == {"S7", "S7P1"}
+    assert set(unserved) == {"S7P2"}
 
 
 def test_pruning_drops_a_station_once_all_its_platforms_go() -> None:
@@ -125,7 +126,9 @@ def test_pruning_drops_a_station_once_all_its_platforms_go() -> None:
     stops = [_station("S7"), _platform("S7P1", "S7"), _station("S8"), _platform("S8P1", "S8")]
     times = [StopTime("t", "08:00:00", "08:00:00", "S8P1", 0, 0, 0)]
 
-    assert {s.stop_id for s in prune_unserved_stops(stops, times)} == {"S8", "S8P1"}
+    kept, unserved = prune_unserved_stops(stops, times)
+    assert {s.stop_id for s in kept} == {"S8", "S8P1"}
+    assert set(unserved) == {"S7", "S7P1"}
 
 
 def test_pruning_keeps_everything_that_is_served() -> None:
@@ -134,7 +137,17 @@ def test_pruning_keeps_everything_that_is_served() -> None:
         StopTime("t", "08:00:00", "08:00:00", "S1P1", 0, 0, 0),
         StopTime("t", "09:00:00", "09:00:00", "S1P2", 1, 0, 0),
     ]
-    assert len(prune_unserved_stops(stops, times)) == 3
+    kept, unserved = prune_unserved_stops(stops, times)
+    assert len(kept) == 3
+    assert unserved == {}
+
+
+def test_dropped_stops_are_reported_not_discarded() -> None:
+    """Losing service may mean a diversion rather than a closure, so the
+    caller has to be able to see which stops went."""
+    stops = [_station("S7"), _platform("S7P1", "S7")]
+    _, unserved = prune_unserved_stops(stops, [])
+    assert set(unserved) == {"S7", "S7P1"}
 
 
 # --- ids --------------------------------------------------------------------

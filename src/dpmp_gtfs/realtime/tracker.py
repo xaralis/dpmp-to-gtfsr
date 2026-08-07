@@ -187,27 +187,14 @@ class DelayTracker:
 def project_delay(delay: Delay, stops_ahead: int) -> int:
     """Delay to predict ``stops_ahead`` stops past where it was measured.
 
-    TODO(xaralis): decide how delay should carry forward along a trip.
+    Deliberately constant: the measured delay is reported unchanged for the
+    rest of the trip.
 
-    This shapes every arrival prediction a passenger sees downstream, and
-    there is no single right answer:
-
-    * Constant -- report the measured delay unchanged for the rest of the
-      trip. Honest about what was measured, never invents recovery. But
-      timetables carry slack, so a bus 4 minutes late at the third stop is
-      often only 2 minutes late by the terminus, and constant projection keeps
-      telling people it is 4.
-
-    * Decaying -- shed some delay per remaining stop (say 10%, or a fixed
-      15s), on the grounds that padding lets vehicles catch up. Usually closer
-      to reality, but it is a model, not a measurement, and it will
-      occasionally promise a recovery that does not happen.
-
-    * Decaying with a floor -- decay but never below zero, so the feed never
-      claims a late vehicle will arrive early.
-
-    Local knowledge is the deciding factor here: how much slack DPMP actually
-    builds into Pardubice timetables. The current implementation is the
-    conservative placeholder (constant); replace it with whichever you want.
+    The alternative would be to decay it, on the theory that timetable slack
+    lets a late vehicle catch up. That is often true, but it is a model rather
+    than a measurement -- it would sometimes promise a recovery that never
+    happens, and a prediction that is confidently wrong is worse than one that
+    is conservatively stale. Holding the delay steady only ever reports
+    something that was actually observed.
     """
     return delay.seconds

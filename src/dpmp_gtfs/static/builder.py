@@ -114,6 +114,9 @@ class StopTime:
 @dataclass(slots=True)
 class Feed:
     stops: list[Stop] = field(default_factory=list)
+    unserved_stops: dict[str, str] = field(default_factory=dict)
+    """Stop id -> name for stops excluded from the feed because nothing calls
+    at them. Kept so rebuilds can spot diversions starting and ending."""
     routes: list[Route] = field(default_factory=list)
     trips: list[Trip] = field(default_factory=list)
     stop_times: list[StopTime] = field(default_factory=list)
@@ -352,13 +355,19 @@ def build_trips_and_stop_times(
     return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
 
 
-def prune_unserved_stops(stops: list[Stop], stop_times: list[StopTime]) -> list[Stop]:
-    """Drop platforms nothing calls at, and stations left with no platforms.
+def prune_unserved_stops(
+    stops: list[Stop], stop_times: list[StopTime]
+) -> tuple[list[Stop], dict[str, str]]:
+    """Split stops into those with service and those without.
 
-    DPMP's stop register keeps entries that are no longer served -- Třída Míru
-    is a pedestrian zone, and interchanges such as Hlavní nádraží list spare
+    DPMP's stop register keeps entries nothing calls at -- Třída Míru is a
+    pedestrian zone, and interchanges such as Hlavní nádraží list spare
     platforms. Publishing them would put stops on the map that no vehicle ever
     reaches, which is worse than omitting them.
+
+    The dropped ones are returned rather than discarded: losing service is not
+    always permanent. A diversion takes stops out temporarily, so the caller
+    compares this set across rebuilds (see :mod:`dpmp_gtfs.static.watch`).
     """
     served = {st.stop_id for st in stop_times}
     platforms = [s for s in stops if s.location_type == 0 and s.stop_id in served]
@@ -367,10 +376,15 @@ def prune_unserved_stops(stops: list[Stop], stop_times: list[StopTime]) -> list[
     kept = [s for s in stops if s.location_type == 1 and s.stop_id in live_parents]
     kept.extend(platforms)
 
-    dropped = len(stops) - len(kept)
-    if dropped:
-        logger.info("dropped %d stops with no scheduled service", dropped)
-    return sorted(kept, key=lambda s: (s.parent_station or s.stop_id, s.location_type, s.stop_id))
+    kept_ids = {s.stop_id for s in kept}
+    unserved = {s.stop_id: s.stop_name for s in stops if s.stop_id not in kept_ids}
+    if unserved:
+        logger.info("%d stops have no scheduled service", len(unserved))
+
+    ordered = sorted(
+        kept, key=lambda s: (s.parent_station or s.stop_id, s.location_type, s.stop_id)
+    )
+    return ordered, unserved
 
 
 def build_feed(
@@ -386,9 +400,11 @@ def build_feed(
     """
     start = start_date or dt.date.today()
     trips, stop_times, services = build_trips_and_stop_times(timetable)
+    stops, unserved = prune_unserved_stops(build_stops(timetable), stop_times)
 
     feed = Feed(
-        stops=prune_unserved_stops(build_stops(timetable), stop_times),
+        stops=stops,
+        unserved_stops=unserved,
         routes=build_routes(timetable),
         trips=trips,
         stop_times=stop_times,

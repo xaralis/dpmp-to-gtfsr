@@ -15,6 +15,9 @@ from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.config import settings
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references
 from dpmp_gtfs.static.crawler import crawl
+from dpmp_gtfs.static.watch import UnservedStops, report
+from dpmp_gtfs.static.watch import load as load_unserved
+from dpmp_gtfs.static.watch import save as save_unserved
 from dpmp_gtfs.static.writer import write_zip
 
 app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
@@ -55,7 +58,15 @@ def build_static(
             )
             raise typer.Exit(1)
 
-        write_zip(feed, dest or settings.gtfs_zip_path)
+        destination = dest or settings.gtfs_zip_path
+        write_zip(feed, destination)
+
+        # Losing service is not always permanent, so compare against the last
+        # build: a stop that newly drops out usually means a diversion.
+        state_path = destination.parent / "unserved-stops.json"
+        current = UnservedStops(dt.datetime.now(dt.UTC), feed.unserved_stops)
+        report(current.compare(load_unserved(state_path)))
+        save_unserved(state_path, current)
 
     asyncio.run(run())
 
