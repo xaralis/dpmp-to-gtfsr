@@ -1,0 +1,42 @@
+# Deployment onto a host that already terminates TLS for something else.
+#
+# The box running orchestrator.varecha.work already has an nginx holding ports
+# 80 and 443 plus a certbot renewal loop, so this service must not publish
+# ports of its own. It joins a shared Docker network instead and that nginx
+# proxies to it by container name.
+#
+# Usage:
+#   docker network create shared          # once, on the host
+#   docker compose -f compose.behind-proxy.yaml up -d
+#
+# See deploy-lightsail.md for the nginx and certbot side.
+
+services:
+  feed:
+    image: ${FEED_IMAGE:-dpmp-to-gtfsr:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dpmp-gtfs
+    restart: unless-stopped
+    environment:
+      # Public in the sense that DPMP's own web app ships it in its JS bundle,
+      # but still out of the image so rotating it is a restart, not a rebuild.
+      DPMP_API_KEY: ${DPMP_API_KEY:?set DPMP_API_KEY in .env}
+      DPMP_DATA_DIR: /data
+    volumes:
+      - feed-data:/data
+    networks:
+      - shared
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  feed-data:
+
+networks:
+  shared:
+    external: true

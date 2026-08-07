@@ -1,5 +1,96 @@
 # Nasazení na AWS Lightsail
 
+## Vedle už běžící služby (varecha.work)
+
+Pokud na instanci **už běží orchestrator**, platí tenhle zkrácený postup. Ten
+si drží nginx na portech 80/443 a certbot renewal smyčku, takže tahle služba
+nesmí publikovat vlastní porty — připojí se na sdílenou Docker síť a nginx na
+ni bude proxovat podle jména kontejneru.
+
+Předpokládá se `IP` = `pulumi stack output public_ip` ve `~/Workspace/orchestrator/infra`.
+
+**1. DNS.** V Porkbunu přidej A záznam `gtfs.varecha.work` → stejná IP.
+
+**2. Sdílená síť a soubory.**
+
+```bash
+ssh ubuntu@IP 'docker network create shared 2>/dev/null; mkdir -p /opt/dpmp-gtfs'
+scp docker/compose.behind-proxy.yaml ubuntu@IP:/opt/dpmp-gtfs/
+scp docker/nginx-gtfs.conf ubuntu@IP:/opt/orchestrator/nginx/gtfs.conf
+ssh ubuntu@IP 'echo "DPMP_API_KEY=3e86570d-56a1-4ec1-8012-c1a9f98d18cc" > /opt/dpmp-gtfs/.env'
+```
+
+**3. Připoj nginx orchestratoru na sdílenou síť.** V
+`/opt/orchestrator/docker-compose.prod.yml` přidej ke službě `nginx`:
+
+```yaml
+    networks:
+      - default
+      - shared
+    volumes:
+      # ...ke stávajícím:
+      - ./nginx/gtfs.conf:/etc/nginx/conf.d/gtfs.conf:ro
+```
+
+a na konec souboru:
+
+```yaml
+networks:
+  shared:
+    external: true
+```
+
+**4. Certifikát.** Musí se vydat dřív, než nginx načte `gtfs.conf` — jinak
+spadne na chybějícím souboru s certifikátem. Proto se konfigurace dočasně
+odloží stranou:
+
+```bash
+ssh ubuntu@IP "cd /opt/orchestrator && mv nginx/gtfs.conf nginx/gtfs.conf.off && \
+  docker compose -f docker-compose.prod.yml restart nginx && \
+  docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certbot \
+    certonly --webroot -w /var/www/certbot -d gtfs.varecha.work \
+    --non-interactive --agree-tos -m filip.varecha@gmail.com"
+```
+
+**5. Spusť feed a zapni nginx blok.**
+
+```bash
+ssh ubuntu@IP "cd /opt/dpmp-gtfs && docker compose -f compose.behind-proxy.yaml up -d --build"
+ssh ubuntu@IP "cd /opt/orchestrator && mv nginx/gtfs.conf.off nginx/gtfs.conf && \
+  docker compose -f docker-compose.prod.yml up -d nginx"
+```
+
+První start staví feed od nuly včetně geometrie tras — než odpoví
+`healthz: 200`, počítej zhruba s **7 minutami**. Průběh:
+
+```bash
+ssh ubuntu@IP 'cd /opt/dpmp-gtfs && docker compose -f compose.behind-proxy.yaml logs -f'
+```
+
+Pak je na <https://gtfs.varecha.work> a certifikát se obnovuje stejnou smyčkou
+jako u orchestratoru — nic dalšího nastavovat netřeba.
+
+### Aktualizace
+
+```bash
+ssh ubuntu@IP "cd /opt/dpmp-gtfs && git -C /opt/dpmp-gtfs/src pull && \
+  docker compose -f compose.behind-proxy.yaml up -d --build"
+```
+
+Volume `feed-data` přežije, takže restart trvá sekundy, ne minuty.
+
+### Cloudflare doména progpce
+
+Šla by taky — stačí CNAME na `gtfs.varecha.work`. Ale doména na Lightsailu už
+má hotovou TLS smyčku, takže vlastní doména je jednodušší a bez další
+závislosti. Pokud by to jednou mělo jít přes Cloudflare v proxy režimu, jen
+nenastavuj agresivní cache na `/gtfs-rt.pb`: patnáctisekundový feed držený
+hodinu je horší než žádný.
+
+---
+
+## Od nuly na čistou instanci
+
 ## Proč instance, a ne Container Service
 
 Lightsail Container Service nemá persistentní disk. Bez něj by se při každém
