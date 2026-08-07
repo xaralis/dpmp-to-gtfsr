@@ -1,50 +1,161 @@
 {% extends "base.html" %}
 {% block title %}Mapa pokrytí – dpmp-to-gtfsr{% endblock %}
+{% block main_class %}wide{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="/static/vendor/leaflet.css">
 <style>
-  .map-wrap { margin: 1.5rem 0; }
+  .map-wrap { margin: 1.25rem 0 0; }
   #map {
-    height: min(70vh, 640px); width: 100%;
-    border: 1px solid var(--line); border-radius: 6px;
-    background: var(--card);
+    height: min(72vh, 760px); width: 100%;
+    border: 1px solid var(--border); background: var(--surface-2);
   }
-  /* The basemap is light; keep it that way in dark mode rather than
-     inverting tiles, which makes labels unreadable. */
-  .leaflet-container { font: inherit; background: #e8e6e1; }
-  .legend {
-    display: flex; flex-wrap: wrap; gap: 1rem 1.4rem;
-    margin: .75rem 0 0; font-size: .875rem; color: var(--muted);
+  /* A properly designed dark basemap (CARTO Dark Matter) rather than a CSS
+     filter over light tiles: inverting tiles turns place labels into
+     unreadable mush, and the brand's lime and teal were made for dark
+     backgrounds anyway. */
+  .leaflet-container { font-family: var(--font-sans); background: var(--coal); }
+  /* Dark Matter is tuned for maps that carry their own data, so at city zoom
+     the street grid all but disappears. Lifting the tiles brings roads and
+     labels back without swapping to a light basemap. */
+  .leaflet-tile-pane { filter: brightness(1.75) contrast(1.08) saturate(1.15); }
+  .leaflet-bar a, .leaflet-control-layers { border-radius: 0 !important; }
+  .leaflet-bar a {
+    background: var(--surface-2); color: var(--linen); border-bottom-color: var(--border-2);
   }
-  .legend span { display: inline-flex; align-items: center; gap: .4rem; }
-  .swatch { width: 1.1rem; height: 3px; border-radius: 2px; display: inline-block; }
+  .leaflet-bar a:hover { background: var(--surface-3); color: var(--lime); }
+  .leaflet-control-layers {
+    background: var(--surface-2); color: var(--linen); border: 1px solid var(--border-2);
+  }
+  .leaflet-control-attribution {
+    background: rgba(10,10,10,.75) !important; color: var(--text-muted) !important;
+  }
+  .leaflet-control-attribution a { color: var(--text-secondary) !important; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: var(--surface-2); color: var(--linen); border-radius: 0;
+    border: 1px solid var(--border-2);
+  }
+  .leaflet-popup-content-wrapper a { color: var(--lime); }
+  .leaflet-popup-close-button { color: var(--text-muted) !important; }
+
+  /* --- line picker --- */
+  .lines { margin: 1.5rem 0 .5rem; }
+  .lines h2 {
+    font-family: var(--font-mono); font-size: .6875rem; font-weight: 500;
+    text-transform: uppercase; letter-spacing: var(--tracking-label);
+    color: var(--text-muted); margin: 0 0 .6rem;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .chip {
+    font-family: var(--font-mono); font-size: .8125rem; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    min-width: 2.75rem; padding: .35rem .55rem;
+    border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-secondary);
+    cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  }
+  .chip:hover { border-color: var(--lime); color: var(--linen); }
+  .chip:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; }
+  .chip[aria-pressed="true"] {
+    background: var(--lime); border-color: var(--lime); color: var(--coal);
+  }
+  .chip .kind { display: block; height: 2px; margin-top: .3rem; }
+  .chip[aria-pressed="true"] .kind { background: rgba(10,10,10,.55) !important; }
+  .chip.all { min-width: auto; letter-spacing: var(--tracking-label); text-transform: uppercase;
+              font-size: .6875rem; }
+
+  /* --- detail + status --- */
+  .detail {
+    margin: .9rem 0 0; padding: .75rem 1rem;
+    border: 1px solid var(--border); border-left: 2px solid var(--lime);
+    background: var(--surface-2); font-size: .9375rem; min-height: 1.3em;
+  }
+  .detail .muted { color: var(--text-muted); }
+  .detail-line { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: .9rem 1.5rem;
+            margin: .85rem 0 0; font-size: .8125rem; color: var(--text-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: .45rem; }
+  .swatch { width: 1.1rem; height: 3px; display: inline-block; }
   .dot { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; }
-  #map-status { font-size: .875rem; color: var(--muted); margin-top: .6rem; min-height: 1.4em; }
-  .popup-title { font-weight: 600; }
-  .popup-meta { color: #555; font-size: .85em; }
+  #map-status {
+    font-family: var(--font-mono); font-size: .75rem; color: var(--text-muted);
+    margin-top: .6rem; min-height: 1.3em;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  }
+  #map-status .sep { color: var(--border-2); }
+  #map-status .fresh { color: var(--text-secondary); }
+  #map-status .stale { color: var(--warning); }
+  /* The countdown is the one number that changes every second, so it gets to
+     look like it: boxed, in brand lime, with fixed-width digits so the line
+     does not twitch as it counts down. */
+  .countdown {
+    margin-left: auto; padding: .2rem .5rem;
+    border: 1px solid var(--lime); color: var(--lime);
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .countdown.refreshing { background: var(--lime); color: var(--coal); }
+  .countdown.stale { border-color: var(--warning); color: var(--warning); background: none; }
+  .pulse {
+    width: .5rem; height: .5rem; border-radius: 50%; background: var(--lime);
+    display: inline-block; flex: none; animation: pulse 2s ease-in-out infinite;
+  }
+  .pulse.stale { background: var(--warning); animation: none; }
+  .pulse.dead { background: var(--error); animation: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none } }
+  .popup-title { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
+  .popup-meta { color: var(--text-muted); font-size: .85em; }
+
+  /* Vehicles are labelled with their line number: a plain dot tells you a bus
+     is there, not which one, and "which line is that" is the first thing
+     anyone asks of a live map. */
+  .veh {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    line-height: 18px; text-align: center;
+    min-width: 20px; height: 20px; padding: 0 3px;
+    border: 1px solid var(--coal); color: var(--coal);
+    box-shadow: 0 1px 4px rgba(0,0,0,.6);
+    white-space: nowrap;
+  }
+  .veh.bus { background: var(--warning); }
+  .veh.trolley { background: var(--teal); }
+  .veh.picked { background: var(--lime); outline: 2px solid rgba(198,244,50,.35); }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1>Co feed pokrývá</h1>
 <p class="lede">
-  Trasy a zastávky ze statického feedu, plus vozidla z realtime feedu.
-  Kreslí se přímo z toho, co služba vydává — takže když je něco špatně tady, je to špatně i ve feedu.
+  Trasy a zastávky ze statického feedu, vozidla z realtime feedu. Kreslí se přímo z toho,
+  co služba vydává — takže co je špatně tady, je špatně i ve feedu.
 </p>
+
+<div class="lines">
+  <h2>Linky</h2>
+  <div class="chips" id="chips" role="group" aria-label="Výběr linky">
+    <button type="button" class="chip all" id="chip-all" aria-pressed="true">Vše</button>
+  </div>
+</div>
+
+<div class="detail" id="detail"><span class="muted">Vyber linku pro zvýraznění.</span></div>
 
 <div class="map-wrap">
   <div id="map"></div>
   <div class="legend">
-    <span><i class="swatch" style="background:#1f6f4a"></i> trolejbus</span>
-    <span><i class="swatch" style="background:#6b7a8f"></i> autobus</span>
-    <span><i class="dot" style="background:#fff;border:2px solid #444"></i> zastávka</span>
-    <span><i class="dot" style="background:#d64525;width:.8rem;height:.8rem"></i> vozidlo</span>
+    <span><i class="swatch" style="background:#2ad4c5"></i> trolejbus</span>
+    <span><i class="swatch" style="background:#8b93a3"></i> autobus</span>
+    <span><i class="swatch" style="background:#c6f432"></i> vybraná linka</span>
+    <span><i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i> zastávka</span>
+    <span><i class="veh bus" style="display:inline-block">6</i> vozidlo s číslem linky</span>
   </div>
-  <div id="map-status">Načítám…</div>
+  <div id="map-status" aria-live="polite">Načítám…</div>
+  <p style="font-size:.8125rem;color:var(--text-muted);margin:.6rem 0 0">
+    Rolování posouvá stránku; přiblížit jde gestem, tlačítky nebo dvojklikem.
+  </p>
 </div>
 
-<p>
+<p style="margin-top:1.5rem">
   Podklad © <a href="https://www.openstreetmap.org/copyright">přispěvatelé OpenStreetMap</a>.
   Data z <a href="/gtfs.zip">gtfs.zip</a> a <a href="/gtfs-rt.json">gtfs-rt.json</a>.
 </p>
@@ -57,20 +168,56 @@
   "use strict";
 
   var REFRESH_MS = {{ (settings.realtime_interval * 1000) | int }};
-  var TROLLEY = "#1f6f4a", BUS = "#6b7a8f", VEHICLE = "#d64525";
 
-  var map = L.map("map", { scrollWheelZoom: false }).setView([50.0343, 15.7812], 12);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  // Brand colours straight from the palette -- on a dark basemap they need no
+  // adjustment, which is what they were designed for.
+  // Vehicle colours live in CSS (.veh.bus / .trolley / .picked); these are
+  // only the ones Leaflet needs for polylines.
+  var TROLLEY = "#2ad4c5", BUS = "#8b93a3", PICKED = "#c6f432";
+
+  // scrollWheelZoom stays off so plain scrolling moves the page rather than
+  // trapping it in the map. Pinch still has to work, though: a trackpad pinch
+  // arrives as a wheel event with ctrlKey set, which the disabled handler
+  // would otherwise swallow. touchZoom (two fingers on a touchscreen) is
+  // Leaflet's default and is untouched.
+  // zoomSnap below 1 lets a pinch land between zoom levels instead of jumping
+  // a whole one at a time.
+  var map = L.map("map", { scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.5 })
+    .setView([50.0343, 15.7812], 12);
+
+  document.getElementById("map").addEventListener("wheel", function (e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    var around = map.mouseEventToContainerPoint(e);
+    // deltaY is finer-grained on a trackpad than a wheel; scale it down so a
+    // pinch feels continuous instead of jumping whole zoom levels.
+    map.setZoomAround(around, map.getZoom() - e.deltaY * 0.01);
+  }, { passive: false });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    subdomains: "abcd",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+      '&copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
   var routeLayer = L.layerGroup().addTo(map);
   var stopLayer = L.layerGroup().addTo(map);
   var vehicleLayer = L.layerGroup().addTo(map);
-  var status = document.getElementById("map-status");
 
-  function say(text) { status.textContent = text; }
+  var statusEl = document.getElementById("map-status");
+  var detailEl = document.getElementById("detail");
+  var chipsEl = document.getElementById("chips");
+
+  // route number -> { polylines, bounds, name, trolleybus }
+  var lines = {};
+  var selected = null;
+  var allBounds = null;
+  var counts = { routes: 0, stops: 0 };
+  var lastVehicles = [];
+  var feedTime = null;
+  var failure = null;
+  var nextRefreshAt = 0;
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
@@ -78,34 +225,94 @@
     });
   }
 
-  // --- static coverage ------------------------------------------------------
+  // --- styling --------------------------------------------------------------
 
-  var counts = { routes: 0, stops: 0 };
+  function restyle() {
+    Object.keys(lines).forEach(function (number) {
+      var line = lines[number];
+      var isPicked = selected === number;
+      var dimmed = selected !== null && !isPicked;
+      line.polylines.forEach(function (p) {
+        p.setStyle({
+          color: isPicked ? PICKED : (line.trolleybus ? TROLLEY : BUS),
+          weight: isPicked ? 5 : 2.5,
+          // Dimmed rather than hidden: the selected line reads better against
+          // the rest of the network than floating on an empty map.
+          opacity: isPicked ? 0.95 : (dimmed ? 0.12 : 0.55)
+        });
+        if (isPicked) p.bringToFront();
+      });
+    });
+
+    Array.prototype.forEach.call(chipsEl.querySelectorAll(".chip[data-line]"), function (chip) {
+      chip.setAttribute("aria-pressed", String(chip.dataset.line === selected));
+    });
+    document.getElementById("chip-all").setAttribute("aria-pressed", String(selected === null));
+  }
+
+  function select(number) {
+    selected = (selected === number) ? null : number;
+    restyle();
+    describe();
+    renderVehicles(lastVehicles);
+    paintStatus();
+
+    var target = selected ? lines[selected].bounds : allBounds;
+    if (target && target.isValid()) map.fitBounds(target, { padding: [24, 24] });
+  }
+
+  function describe() {
+    if (selected === null) {
+      detailEl.innerHTML = '<span class="muted">Vyber linku pro zvýraznění. ' +
+        counts.routes + " tras, " + counts.stops + " zastávek.</span>";
+      return;
+    }
+    var line = lines[selected];
+    var running = lastVehicles.filter(function (v) { return v.line === selected; }).length;
+    detailEl.innerHTML =
+      '<span class="detail-line">Linka ' + escapeHtml(selected) + "</span> — " +
+      escapeHtml(line.name || "") +
+      '<br><span class="muted">' + (line.trolleybus ? "trolejbus" : "autobus") +
+      " · " + line.polylines.length + " tras · " +
+      (running === 1 ? "1 vůz právě jede" : running + " vozů právě jede") + "</span>";
+  }
+
+  // --- static coverage ------------------------------------------------------
 
   fetch("/coverage.geojson").then(function (r) {
     if (!r.ok) throw new Error("feed není hotový (" + r.status + ")");
     return r.json();
   }).then(function (geo) {
-    var bounds = [];
+    var everything = [];
 
     geo.features.forEach(function (f) {
       var p = f.properties;
+
       if (p.kind === "route") {
         counts.routes++;
         var latlngs = f.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
-        L.polyline(latlngs, {
-          color: p.trolleybus ? TROLLEY : BUS,
-          weight: 2.5, opacity: 0.55
-        }).bindPopup(
-          '<div class="popup-title">Linka ' + escapeHtml(p.route) + "</div>" +
-          '<div class="popup-meta">' + escapeHtml(p.name) + "<br>" +
-          (p.trolleybus ? "trolejbus" : "autobus") + "</div>"
-        ).addTo(routeLayer);
-        bounds = bounds.concat(latlngs);
+        var number = String(p.route);
+
+        if (!lines[number]) {
+          lines[number] = {
+            polylines: [], bounds: L.latLngBounds([]),
+            name: p.name, trolleybus: p.trolleybus
+          };
+        }
+        var line = lines[number];
+        var poly = L.polyline(latlngs, { weight: 2.5, opacity: 0.55 })
+          .on("click", function () { select(number); })
+          .addTo(routeLayer);
+
+        line.polylines.push(poly);
+        line.bounds.extend(poly.getBounds());
+        everything = everything.concat(latlngs);
+
       } else if (p.kind === "stop") {
         counts.stops++;
         L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
-          radius: 3.5, color: "#444", weight: 1.5, fillColor: "#fff", fillOpacity: 1
+          radius: 3.5, color: "#0a0a0a", weight: 1.5,
+          fillColor: "#f5f5f0", fillOpacity: 0.9
         }).bindPopup(
           '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
           '<div class="popup-meta">' + escapeHtml(p.stop_id) +
@@ -114,51 +321,156 @@
       }
     });
 
-    if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [20, 20] });
+    allBounds = L.latLngBounds(everything);
+    if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [20, 20] });
+
+    buildChips();
+    restyle();
+    describe();
 
     L.control.layers(null, {
       "Trasy": routeLayer, "Zastávky": stopLayer, "Vozidla": vehicleLayer
-    }, { collapsed: false }).addTo(map);
+    }, { collapsed: true }).addTo(map);
 
     refreshVehicles();
     setInterval(refreshVehicles, REFRESH_MS);
+    // Ticks the age display between fetches, so a stalled feed shows its
+    // age climbing rather than freezing on a stale number.
+    setInterval(paintStatus, 1000);
   }).catch(function (err) {
-    say("Trasy se nepodařilo načíst: " + err.message);
+    statusEl.textContent = "Trasy se nepodařilo načíst: " + err.message;
   });
+
+  function buildChips() {
+    // Numeric sort, so 2 comes before 10 and the night lines land at the end.
+    Object.keys(lines).sort(function (a, b) { return Number(a) - Number(b); })
+      .forEach(function (number) {
+        var line = lines[number];
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.dataset.line = number;
+        chip.setAttribute("aria-pressed", "false");
+        chip.title = line.name || ("Linka " + number);
+        chip.innerHTML = escapeHtml(number) +
+          '<i class="kind" style="background:' + (line.trolleybus ? TROLLEY : BUS) + '"></i>';
+        chip.addEventListener("click", function () { select(number); });
+        chipsEl.appendChild(chip);
+      });
+
+    document.getElementById("chip-all").addEventListener("click", function () {
+      selected = null;
+      restyle();
+      describe();
+      renderVehicles(lastVehicles);
+      paintStatus();
+      if (allBounds && allBounds.isValid()) map.fitBounds(allBounds, { padding: [20, 20] });
+    });
+  }
 
   // --- live vehicles --------------------------------------------------------
 
+  function renderVehicles(vehicles) {
+    vehicleLayer.clearLayers();
+    var shown = 0;
+
+    vehicles.forEach(function (v) {
+      if (selected !== null && v.line !== selected) return;
+      shown++;
+
+      var line = lines[v.line];
+      var kind = selected === v.line
+        ? "picked"
+        : (line && line.trolleybus ? "trolley" : "bus");
+
+      L.marker([v.lat, v.lon], {
+        icon: L.divIcon({
+          className: "",
+          html: '<div class="veh ' + kind + '">' + escapeHtml(v.line) + "</div>",
+          iconSize: null,
+          iconAnchor: [10, 10]
+        }),
+        // Above stops and lines, so a vehicle is never hidden behind them.
+        zIndexOffset: 1000
+      }).bindPopup(
+        '<div class="popup-title">Linka ' + escapeHtml(v.line) + "</div>" +
+        '<div class="popup-meta">vůz ' + escapeHtml(v.id) +
+        (v.stop ? "<br>směřuje na " + escapeHtml(v.stop) : "") + "</div>"
+      ).addTo(vehicleLayer);
+    });
+
+    return shown;
+  }
+
   function refreshVehicles() {
+    nextRefreshAt = Date.now() + REFRESH_MS;
     fetch("/gtfs-rt.json").then(function (r) {
       if (!r.ok) throw new Error("realtime feed není hotový");
       return r.json();
     }).then(function (feed) {
-      vehicleLayer.clearLayers();
-      var shown = 0;
-
-      (feed.entity || []).forEach(function (e) {
+      lastVehicles = (feed.entity || []).filter(function (e) {
+        return e.vehicle && e.vehicle.position;
+      }).map(function (e) {
         var v = e.vehicle;
-        if (!v || !v.position) return;
-        shown++;
-
-        var route = (v.trip && v.trip.route_id ? v.trip.route_id : "").replace(/^L/, "");
-        L.circleMarker([v.position.latitude, v.position.longitude], {
-          radius: 5, color: "#fff", weight: 1.5,
-          fillColor: VEHICLE, fillOpacity: 0.95
-        }).bindPopup(
-          '<div class="popup-title">Linka ' + escapeHtml(route) + "</div>" +
-          '<div class="popup-meta">vůz ' + escapeHtml(v.vehicle ? v.vehicle.id : "?") +
-          (v.stop_id ? "<br>směřuje na " + escapeHtml(v.stop_id) : "") + "</div>"
-        ).addTo(vehicleLayer);
+        return {
+          line: (v.trip && v.trip.route_id ? v.trip.route_id : "").replace(/^L/, ""),
+          id: v.vehicle ? v.vehicle.id : "?",
+          stop: v.stop_id || "",
+          lat: v.position.latitude,
+          lon: v.position.longitude
+        };
       });
 
-      var when = new Date().toLocaleTimeString("cs-CZ");
-      say(counts.routes + " tras · " + counts.stops + " zastávek · " +
-          shown + " vozidel (" + when + ")");
+      // The feed's own header timestamp, not the moment this page drew it:
+      // what matters is how old the data is, and the two differ whenever the
+      // upstream stalls.
+      var stamp = feed.header && feed.header.timestamp;
+      feedTime = stamp ? new Date(Number(stamp) * 1000) : new Date();
+      failure = null;
+
+      renderVehicles(lastVehicles);
+      describe();
+      paintStatus();
     }).catch(function (err) {
-      say(counts.routes + " tras · " + counts.stops + " zastávek · " +
-          "vozidla nedostupná: " + err.message);
+      failure = err.message;
+      paintStatus();
     });
+  }
+
+  // --- status line ----------------------------------------------------------
+
+  function paintStatus() {
+    var shown = lastVehicles.filter(function (v) {
+      return selected === null || v.line === selected;
+    }).length;
+
+    if (failure) {
+      statusEl.innerHTML = '<i class="pulse dead"></i><span class="stale">' +
+        escapeHtml("vozidla nedostupná: " + failure) + "</span>";
+      return;
+    }
+    if (!feedTime) return;
+
+    var age = Math.max(0, Math.round((Date.now() - feedTime.getTime()) / 1000));
+    // Two refresh intervals without an update means something is wrong
+    // upstream; say so rather than showing a quietly ageing number.
+    var stale = age > (REFRESH_MS / 1000) * 2;
+
+    var left = Math.max(0, Math.ceil((nextRefreshAt - Date.now()) / 1000));
+
+    statusEl.innerHTML =
+      '<i class="pulse' + (stale ? " stale" : "") + '"></i>' +
+      '<span>' + counts.routes + " tras</span>" +
+      '<span class="sep">·</span><span>' + counts.stops + " zastávek</span>" +
+      '<span class="sep">·</span><span>' +
+      (selected !== null
+        ? shown + " z " + lastVehicles.length + " vozidel na lince " + escapeHtml(selected)
+        : shown + " vozidel") +
+      "</span>" +
+      '<span class="sep">·</span>' +
+      '<span class="' + (stale ? "stale" : "fresh") + '">data stará ' + age + " s</span>" +
+      '<span class="countdown' + (stale ? " stale" : (left === 0 ? " refreshing" : "")) + '">' +
+      (left === 0 ? "obnovuji…" : "další za " + left + " s") + "</span>";
   }
 })();
 </script>

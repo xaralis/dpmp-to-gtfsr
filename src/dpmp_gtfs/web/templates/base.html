@@ -6,58 +6,128 @@
 <title>{% block title %}dpmp-to-gtfsr{% endblock %}</title>
 <link rel="icon" href="/static/favicon.png" type="image/png">
 <style>
-  :root {
-    --bg: #fbfbf9;
-    --fg: #1a1a17;
-    --muted: #6b6b63;
-    --line: #e0dfd8;
-    --accent: #1f6f4a;
-    --warn: #a8541b;
-    --card: #fff;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #16171a; --fg: #e8e8e4; --muted: #9a9a92;
-      --line: #2c2e33; --accent: #58c493; --warn: #e2a06a; --card: #1d1f23;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 2.5rem 1.25rem 4rem;
-    background: var(--bg); color: var(--fg);
-    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  main { max-width: 46rem; margin: 0 auto; }
-  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 .3rem; letter-spacing: -.01em; }
-  h2 { font-size: 1.15rem; margin: 2.5rem 0 .75rem; letter-spacing: -.005em; }
-  h3 { font-size: .95rem; margin: 1.5rem 0 .4rem; }
-  p, li { color: var(--fg); }
-  .lede { color: var(--muted); margin: 0 0 2rem; font-size: 1.05rem; }
-  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
-  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .875em; }
-  code { background: var(--card); border: 1px solid var(--line); border-radius: 3px; padding: .1em .35em; }
-  pre { background: var(--card); border: 1px solid var(--line); border-radius: 6px;
-        padding: .85rem 1rem; overflow-x: auto; }
-  pre code { background: none; border: 0; padding: 0; }
-  nav { margin-bottom: 2rem; font-size: .9rem; }
-  nav a { margin-right: 1.1rem; }
-  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; font-size: .925rem; }
-  th, td { text-align: left; padding: .5rem .65rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-weight: 600; color: var(--muted); font-size: .8rem; text-transform: uppercase;
-       letter-spacing: .04em; }
-  .wrap { overflow-x: auto; }
-  .note {
-    border-left: 3px solid var(--warn); background: var(--card);
-    padding: .75rem 1rem; margin: 1.5rem 0; border-radius: 0 4px 4px 0;
-  }
-  .note strong { color: var(--warn); }
-  footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
-           color: var(--muted); font-size: .85rem; }
+/* Progresivní Pardubice brand tokens. Fonts are self-hosted so the pages
+   work on a locked-down network and leak nothing to a third party. */
+@font-face {
+  font-family: "Geist"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/static/fonts/geist-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "Geist"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/static/fonts/geist-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+:root {
+  --coal: #0a0a0a;
+  --linen: #f5f5f0;
+  --lime: #c6f432;
+  --teal: #2ad4c5;
+  --surface-2: #0e0e0e;
+  --surface-3: #111111;
+  --border: #222222;
+  --border-2: #2a2a2a;
+  --text-muted: #9a9a95;
+  --text-secondary: #cccac1;
+  --warning: #f4b332;
+  --error: #f43232;
+
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --tracking-label: 0.15em;
+  --tracking-tight: -0.02em;
+  --tracking-tighter: -0.03em;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; padding: 2.5rem 1.25rem 4rem;
+  background: var(--coal); color: var(--linen);
+  font-family: var(--font-sans); font-size: 1rem; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+main { max-width: 46rem; margin: 0 auto; }
+/* Pages whose content is inherently wide (the map) opt out of the reading
+   column, which is sized for prose rather than geography. */
+main.wide { max-width: 78rem; }
+
+/* The brand uses square corners everywhere; nothing here rounds. */
+h1, h2, h3 { font-family: var(--font-mono); font-weight: 700; }
+h1 { font-size: 2.5rem; line-height: 1.08; margin: 0 0 .5rem;
+     letter-spacing: var(--tracking-tighter); }
+h2 { font-size: 1.375rem; margin: 2.75rem 0 .75rem; letter-spacing: var(--tracking-tight); }
+h3 { font-size: 1rem; margin: 1.75rem 0 .4rem; letter-spacing: var(--tracking-tight); }
+
+.lede { color: var(--text-secondary); margin: 0 0 2rem; font-size: 1.125rem; }
+
+a { color: var(--lime); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--teal); }
+
+code, pre { font-family: var(--font-mono); font-size: .8125rem; }
+code { background: var(--surface-3); border: 1px solid var(--border);
+       padding: .1em .35em; color: var(--text-secondary); }
+pre { background: var(--surface-2); border: 1px solid var(--border);
+      padding: .9rem 1rem; overflow-x: auto; }
+pre code { background: none; border: 0; padding: 0; }
+
+nav { margin-bottom: 2.5rem; font-family: var(--font-mono); font-size: .75rem;
+      text-transform: uppercase; letter-spacing: var(--tracking-label); }
+nav a { margin-right: 1.4rem; color: var(--text-muted); text-decoration: none; }
+nav a:hover { color: var(--lime); }
+
+table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; font-size: .9375rem; }
+th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border);
+         vertical-align: top; }
+th { font-family: var(--font-mono); font-weight: 500; color: var(--text-muted);
+     font-size: .6875rem; text-transform: uppercase; letter-spacing: var(--tracking-label); }
+
+.wrap { overflow-x: auto; }
+
+.note { border-left: 2px solid var(--warning); background: var(--surface-2);
+        padding: .85rem 1.1rem; margin: 1.75rem 0; }
+.note strong { color: var(--warning); }
+
+footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+         color: var(--text-muted); font-size: .8125rem; }
 </style>
 {% block head %}{% endblock %}
 </head>
 <body>
-<main>
+<main class="{% block main_class %}{% endblock %}">
   <nav>
     <a href="/">Přehled</a><a href="/map">Mapa</a><a href="/docs">Dokumentace</a><a href="/healthz">Stav</a>
   </nav>
