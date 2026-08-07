@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,15 +12,18 @@ from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from google.protobuf.json_format import MessageToDict
 
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
 
+from .coverage import build_coverage
 from .scheduler import Scheduler
 
-TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+HERE = Path(__file__).parent
+TEMPLATES = Jinja2Templates(directory=str(HERE / "templates"))
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -45,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.scheduler = scheduler
     app.state.settings = config
+    app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
 
     # -- feeds ---------------------------------------------------------------
 
@@ -93,6 +98,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return JSONResponse({"detail": "realtime feed is not ready yet"}, status_code=503)
         return JSONResponse(MessageToDict(message, preserving_proto_field_name=True))
 
+    @app.get("/coverage.geojson", tags=["feeds"])
+    def coverage(request: Request) -> Response:
+        """Routes and stops as GeoJSON, for the map page.
+
+        Cached against the feed on disk: rebuilding this on every page load
+        would re-read and re-simplify 114,000 points for no reason.
+        """
+        path = config.gtfs_zip_path
+        if not path.exists():
+            return JSONResponse({"detail": "static feed is not built yet"}, status_code=503)
+
+        stamp = str(path.stat().st_mtime_ns)
+        cached = getattr(app.state, "coverage_cache", None)
+        if cached is None or cached[0] != stamp:
+            payload = json.dumps(build_coverage(path)).encode()
+            app.state.coverage_cache = (stamp, payload)
+        else:
+            payload = cached[1]
+
+        etag = f'"{hashlib.sha256(payload).hexdigest()[:32]}"'
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers={"ETag": etag})
+
+        return Response(
+            payload,
+            media_type="application/geo+json",
+            headers={"ETag": etag, "Cache-Control": "public, max-age=3600"},
+        )
+
     # -- status --------------------------------------------------------------
 
     def _status() -> dict[str, Any]:
@@ -137,6 +171,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return TEMPLATES.TemplateResponse(
             request=request,
             name="docs.html",
+            context={"status": _status(), "settings": config},
+        )
+
+    @app.get("/map", response_class=HTMLResponse, include_in_schema=False)
+    def coverage_map(request: Request) -> Response:
+        return TEMPLATES.TemplateResponse(
+            request=request,
+            name="map.html",
             context={"status": _status(), "settings": config},
         )
 

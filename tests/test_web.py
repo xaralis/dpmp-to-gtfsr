@@ -164,6 +164,38 @@ async def test_openapi_explorer_moved_aside(client: httpx.AsyncClient) -> None:
     assert (await client.get("/api-explorer")).status_code == 200
 
 
+async def test_map_page_renders(client: httpx.AsyncClient) -> None:
+    response = await client.get("/map")
+    assert response.status_code == 200
+    assert "/static/vendor/leaflet.js" in response.text
+
+
+async def test_leaflet_is_served_locally(client: httpx.AsyncClient) -> None:
+    """Vendored rather than pulled from a CDN, so the page works on a locked
+    down network and does not leak visitors to a third party."""
+    response = await client.get("/static/vendor/leaflet.js")
+    assert response.status_code == 200
+    assert "Leaflet" in response.text[:200]
+
+
+async def test_coverage_is_503_before_the_feed_exists(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/coverage.geojson")).status_code == 503
+
+
+async def test_coverage_is_cached_between_requests(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """Re-simplifying 114,000 points on every page load would be wasteful."""
+    _write_minimal_zip(tmp_path / "gtfs.zip")
+
+    first = await client.get("/coverage.geojson")
+    assert first.status_code == 200
+    assert first.headers["content-type"] == "application/geo+json"
+
+    second = await client.get("/coverage.geojson", headers={"If-None-Match": first.headers["etag"]})
+    assert second.status_code == 304
+
+
 # --- feed version -----------------------------------------------------------
 
 

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Mapa pokrytí – dpmp-to-gtfsr{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/vendor/leaflet.css">
+<style>
+  .map-wrap { margin: 1.5rem 0; }
+  #map {
+    height: min(70vh, 640px); width: 100%;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--card);
+  }
+  /* The basemap is light; keep it that way in dark mode rather than
+     inverting tiles, which makes labels unreadable. */
+  .leaflet-container { font: inherit; background: #e8e6e1; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 1rem 1.4rem;
+    margin: .75rem 0 0; font-size: .875rem; color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: .4rem; }
+  .swatch { width: 1.1rem; height: 3px; border-radius: 2px; display: inline-block; }
+  .dot { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; }
+  #map-status { font-size: .875rem; color: var(--muted); margin-top: .6rem; min-height: 1.4em; }
+  .popup-title { font-weight: 600; }
+  .popup-meta { color: #555; font-size: .85em; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Co feed pokrývá</h1>
+<p class="lede">
+  Trasy a zastávky ze statického feedu, plus vozidla z realtime feedu.
+  Kreslí se přímo z toho, co služba vydává — takže když je něco špatně tady, je to špatně i ve feedu.
+</p>
+
+<div class="map-wrap">
+  <div id="map"></div>
+  <div class="legend">
+    <span><i class="swatch" style="background:#1f6f4a"></i> trolejbus</span>
+    <span><i class="swatch" style="background:#6b7a8f"></i> autobus</span>
+    <span><i class="dot" style="background:#fff;border:2px solid #444"></i> zastávka</span>
+    <span><i class="dot" style="background:#d64525;width:.8rem;height:.8rem"></i> vozidlo</span>
+  </div>
+  <div id="map-status">Načítám…</div>
+</div>
+
+<p>
+  Podklad © <a href="https://www.openstreetmap.org/copyright">přispěvatelé OpenStreetMap</a>.
+  Data z <a href="/gtfs.zip">gtfs.zip</a> a <a href="/gtfs-rt.json">gtfs-rt.json</a>.
+</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/vendor/leaflet.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var REFRESH_MS = {{ (settings.realtime_interval * 1000) | int }};
+  var TROLLEY = "#1f6f4a", BUS = "#6b7a8f", VEHICLE = "#d64525";
+
+  var map = L.map("map", { scrollWheelZoom: false }).setView([50.0343, 15.7812], 12);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  var routeLayer = L.layerGroup().addTo(map);
+  var stopLayer = L.layerGroup().addTo(map);
+  var vehicleLayer = L.layerGroup().addTo(map);
+  var status = document.getElementById("map-status");
+
+  function say(text) { status.textContent = text; }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // --- static coverage ------------------------------------------------------
+
+  var counts = { routes: 0, stops: 0 };
+
+  fetch("/coverage.geojson").then(function (r) {
+    if (!r.ok) throw new Error("feed není hotový (" + r.status + ")");
+    return r.json();
+  }).then(function (geo) {
+    var bounds = [];
+
+    geo.features.forEach(function (f) {
+      var p = f.properties;
+      if (p.kind === "route") {
+        counts.routes++;
+        var latlngs = f.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+        L.polyline(latlngs, {
+          color: p.trolleybus ? TROLLEY : BUS,
+          weight: 2.5, opacity: 0.55
+        }).bindPopup(
+          '<div class="popup-title">Linka ' + escapeHtml(p.route) + "</div>" +
+          '<div class="popup-meta">' + escapeHtml(p.name) + "<br>" +
+          (p.trolleybus ? "trolejbus" : "autobus") + "</div>"
+        ).addTo(routeLayer);
+        bounds = bounds.concat(latlngs);
+      } else if (p.kind === "stop") {
+        counts.stops++;
+        L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
+          radius: 3.5, color: "#444", weight: 1.5, fillColor: "#fff", fillOpacity: 1
+        }).bindPopup(
+          '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
+          '<div class="popup-meta">' + escapeHtml(p.stop_id) +
+          (p.step_free ? " · bezbariérová" : "") + "</div>"
+        ).addTo(stopLayer);
+      }
+    });
+
+    if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [20, 20] });
+
+    L.control.layers(null, {
+      "Trasy": routeLayer, "Zastávky": stopLayer, "Vozidla": vehicleLayer
+    }, { collapsed: false }).addTo(map);
+
+    refreshVehicles();
+    setInterval(refreshVehicles, REFRESH_MS);
+  }).catch(function (err) {
+    say("Trasy se nepodařilo načíst: " + err.message);
+  });
+
+  // --- live vehicles --------------------------------------------------------
+
+  function refreshVehicles() {
+    fetch("/gtfs-rt.json").then(function (r) {
+      if (!r.ok) throw new Error("realtime feed není hotový");
+      return r.json();
+    }).then(function (feed) {
+      vehicleLayer.clearLayers();
+      var shown = 0;
+
+      (feed.entity || []).forEach(function (e) {
+        var v = e.vehicle;
+        if (!v || !v.position) return;
+        shown++;
+
+        var route = (v.trip && v.trip.route_id ? v.trip.route_id : "").replace(/^L/, "");
+        L.circleMarker([v.position.latitude, v.position.longitude], {
+          radius: 5, color: "#fff", weight: 1.5,
+          fillColor: VEHICLE, fillOpacity: 0.95
+        }).bindPopup(
+          '<div class="popup-title">Linka ' + escapeHtml(route) + "</div>" +
+          '<div class="popup-meta">vůz ' + escapeHtml(v.vehicle ? v.vehicle.id : "?") +
+          (v.stop_id ? "<br>směřuje na " + escapeHtml(v.stop_id) : "") + "</div>"
+        ).addTo(vehicleLayer);
+      });
+
+      var when = new Date().toLocaleTimeString("cs-CZ");
+      say(counts.routes + " tras · " + counts.stops + " zastávek · " +
+          shown + " vozidel (" + when + ")");
+    }).catch(function (err) {
+      say(counts.routes + " tras · " + counts.stops + " zastávek · " +
+          "vozidla nedostupná: " + err.message);
+    });
+  }
+})();
+</script>
+{% endblock %}

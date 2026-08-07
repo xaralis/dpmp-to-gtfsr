@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}dpmp-to-gtfsr{% endblock %}</title>
+<link rel="icon" href="/static/favicon.png" type="image/png">
 <style>
   :root {
     --bg: #fbfbf9;
@@ -53,10 +54,13 @@
   footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
            color: var(--muted); font-size: .85rem; }
 </style>
+{% block head %}{% endblock %}
 </head>
 <body>
 <main>
-  <nav><a href="/">Přehled</a><a href="/docs">Dokumentace</a><a href="/healthz">Stav</a></nav>
+  <nav>
+    <a href="/">Přehled</a><a href="/map">Mapa</a><a href="/docs">Dokumentace</a><a href="/healthz">Stav</a>
+  </nav>
   {% block content %}{% endblock %}
   <footer>
     <p>
@@ -67,5 +71,6 @@
     </p>
   </footer>
 </main>
+{% block scripts %}{% endblock %}
 </body>
 </html>
