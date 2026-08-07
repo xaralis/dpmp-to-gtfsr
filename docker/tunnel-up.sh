@@ -36,6 +36,23 @@ CRED_ID=$(python3 -c "import json;print(json.load(open('$CREDS'))['TunnelID'])" 
 
 chmod 600 .env "$CREDS" 2>/dev/null || true
 
+# The cloudflared image runs as nonroot (65532), so a file owned by the
+# deploying user and mode 600 is unreadable to it -- the container starts
+# fine and then loops on "permission denied". Hand the file to that uid and
+# keep it 600, so it stays readable by exactly one account.
+CLOUDFLARED_UID=65532
+if [[ "$(stat -c '%u' "$CREDS" 2>/dev/null || stat -f '%u' "$CREDS")" != "$CLOUDFLARED_UID" ]]; then
+    if chown "$CLOUDFLARED_UID:$CLOUDFLARED_UID" "$CREDS" 2>/dev/null; then
+        ok "credentials handed to uid $CLOUDFLARED_UID"
+    elif sudo -n chown "$CLOUDFLARED_UID:$CLOUDFLARED_UID" "$CREDS" 2>/dev/null; then
+        ok "credentials handed to uid $CLOUDFLARED_UID (via sudo)"
+    else
+        fail "Cannot change owner of $CREDS. Run:
+    sudo chown $CLOUDFLARED_UID:$CLOUDFLARED_UID $CREDS
+  Without it cloudflared cannot read the file and will loop on 'permission denied'."
+    fi
+fi
+
 # The cloudflared image is distroless, so substitution happens here.
 sed -e "s|\${TUNNEL_ID}|$TUNNEL_ID|g" \
     -e "s|\${TUNNEL_HOSTNAME}|$TUNNEL_HOSTNAME|g" \
