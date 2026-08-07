@@ -21,3 +21,7 @@ gtfs.zip
 .DS_Store
 .vscode/
 .idea/
+
+# Cloudflare Tunnel credentials — per-deployment, never committed
+docker/cloudflared/credentials.json
+docker/cloudflared/config.yml

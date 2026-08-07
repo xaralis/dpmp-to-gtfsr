@@ -51,9 +51,14 @@ services:
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    command: --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
+    volumes:
+      # Generated from config.template.yml by `make tunnel-config` (or the sed
+      # in deploy-tunnel.md). Substitution happens on the host because the
+      # cloudflared image is distroless -- it has no shell to do it itself.
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      # Written by `cloudflared tunnel create`. Read-only, never in git.
+      - ./cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
     depends_on:
       - feed
     logging:

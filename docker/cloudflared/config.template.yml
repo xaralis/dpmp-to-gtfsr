@@ -1,0 +1,29 @@
+# Cloudflare Tunnel ingress rules.
+#
+# This is a locally-managed tunnel: routing lives here, in the repo, rather
+# than in the Cloudflare dashboard. That keeps the deployment reviewable and
+# reproducible -- `git log` shows when a hostname changed and why, which a
+# dashboard cannot.
+#
+# TUNNEL_ID and TUNNEL_HOSTNAME are substituted on the host into
+# config.yml (gitignored) before starting the stack -- the cloudflared image
+# is distroless and has no shell to do it itself. See deploy-tunnel.md.
+
+tunnel: ${TUNNEL_ID}
+credentials-file: /etc/cloudflared/credentials.json
+
+# Cloudflare terminates TLS at the edge, so the hop to the app is plain HTTP
+# over the compose network -- it never leaves the host.
+ingress:
+  - hostname: ${TUNNEL_HOSTNAME}
+    service: http://feed:8000
+    originRequest:
+      # A cold start crawls the whole timetable and routes every shape; the
+      # default 30s connect timeout would give up long before the app answers.
+      connectTimeout: 30s
+      # The static feed is ~1.7 MB and builds can briefly occupy the loop.
+      noHappyEyeballs: true
+
+  # Cloudflare requires a catch-all. Anything not matched above is refused
+  # rather than quietly forwarded somewhere unintended.
+  - service: http_status:404
