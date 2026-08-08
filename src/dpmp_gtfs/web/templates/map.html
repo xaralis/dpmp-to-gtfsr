@@ -83,6 +83,8 @@
             margin: .85rem 0 0; font-size: .8125rem; color: var(--text-muted); }
   .legend span { display: inline-flex; align-items: center; gap: .45rem; }
   .legend .kind { display: inline-block; width: 8px; height: 8px; margin: 0; flex: none; }
+  /* <i> defaults to italic, which on a numeric marker reads as a typo. */
+  .legend .veh { display: inline-block; flex: none; font-style: normal; box-shadow: none; }
   .swatch { width: 1.1rem; height: 3px; display: inline-block; }
   .dot { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; }
   /* Overlaid on the map rather than sitting under it: this is the one part of
@@ -185,10 +187,10 @@
 </div>
 
 <div class="legend">
-  {# One entry per mode. The same square/circle marks routes and vehicles
-     alike, so a separate "vehicle" row said nothing the shape had not. #}
-  <span><i class="kind trolley" style="background:#2ad4c5"></i> trolejbus</span>
-  <span><i class="kind bus" style="background:#8b93a3"></i> autobus</span>
+  {# The actual vehicle marker, not an abstract swatch: it is what people are
+     matching against on the map, and the square/circle carries the mode. #}
+  <span><i class="veh trolley">3</i> trolejbus</span>
+  <span><i class="veh bus">6</i> autobus</span>
   <span><i class="swatch" style="background:#c6f432"></i> vybraná linka</span>
   {# Both dots mean the same thing; lime just marks the ones on the selected
      line, which the map makes obvious in context. #}
