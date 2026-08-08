@@ -93,7 +93,11 @@ class DelayTracker:
 
     def _measure(self, bus: Bus, trip: ScheduledTrip) -> Delay | None:
         assert bus.last_station is not None
-        position = trip.index_of_station(bus.last_station)
+        # Where the vehicle is now settles which call at last_station this is.
+        # current_stop_number carries a platform and so is unambiguous even on
+        # a trip that serves the same station on the way out and the way back.
+        here = trip.locate(bus.current_stop, bus.current_station)
+        position = trip.index_of_station(bus.last_station, before=here)
         if position is None:
             logger.debug(
                 "vehicle %s reports stop %s which is not on trip %s",

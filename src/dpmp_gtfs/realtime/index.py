@@ -174,17 +174,27 @@ class ScheduledTrip:
     line: str = ""
     """``route_short_name``, the number painted on the vehicle."""
 
-    def index_of_station(self, station: int) -> int | None:
+    def index_of_station(self, station: int, before: int | None = None) -> int | None:
         """Position of a station within this trip, if it calls there.
 
-        A station can legitimately appear twice on a circular trip; the first
-        match is returned, which is the conservative reading when a vehicle has
-        only just reached it.
+        Out-and-back trips serve the same station twice -- 234 of 2,728 trips
+        do, and line 8 visits twelve stations twice -- so "which call is this"
+        has to be answered, not guessed. ``last_stop_number`` carries no
+        platform to tell them apart, but the vehicle's current position does,
+        so ``before`` narrows it to the most recent call the vehicle can
+        actually have made.
+
+        Without that this returned the first call every time, and a vehicle on
+        its return leg was reported against a schedule from the outward one:
+        an hour of delay that never happened.
         """
-        for i, stop in enumerate(self.stops):
-            if stop.station == station:
-                return i
-        return None
+        matches = [i for i, stop in enumerate(self.stops) if stop.station == station]
+        if not matches:
+            return None
+        if before is None:
+            return matches[0]
+        earlier = [i for i in matches if i < before]
+        return earlier[-1] if earlier else matches[0]
 
     def locate(self, stop_id: str | None, station: int | None) -> int | None:
         """Where along this trip a vehicle reporting that stop currently is.

@@ -228,3 +228,123 @@ def test_recorded_snapshots_show_vehicles_moving_between_stops() -> None:
                 transitions += 1
 
     assert transitions > 50, f"only {transitions} transitions in the recording"
+
+
+# --- trips that serve a station twice ----------------------------------------
+
+
+def _out_and_back() -> ScheduledTrip:
+    """A trip shaped like line 8: out to the centre and back, so twelve of its
+    stations are served on both legs. 234 of 2,728 trips look like this."""
+    return ScheduledTrip(
+        trip_id="L8C691",
+        route_id="L8",
+        stops=(
+            ScheduledStop("S221P2", 221, 0, 19 * 3600 + 47 * 60, "Dubina,Dubinská"),
+            ScheduledStop("S67P2", 67, 1, 19 * 3600 + 49 * 60, "Dubina,točna"),
+            ScheduledStop("S16P3", 16, 2, 20 * 3600 + 4 * 60, "Hlavní nádraží"),
+            ScheduledStop("S16P2", 16, 3, 20 * 3600 + 22 * 60, "Hlavní nádraží"),
+            ScheduledStop("S67P1", 67, 4, 20 * 3600 + 36 * 60, "Dubina,točna"),
+            ScheduledStop("S185P1", 185, 5, 20 * 3600 + 37 * 60, "Dubina,penzion"),
+        ),
+    )
+
+
+def test_the_return_leg_is_measured_against_the_return_schedule() -> None:
+    """Regression: a vehicle on its way back was measured against the outward
+    call at the same station, reporting 49 minutes of delay that never
+    happened. last_stop_number carries no platform to tell the two apart, so
+    the vehicle's current position has to settle it.
+    """
+    trip = _out_and_back()
+    index = StaticIndex({trip.trip_id: trip})
+    tracker = DelayTracker(index)
+
+    # First sighting: on the return leg, approaching Dubina,točna.
+    tracker.observe(
+        [
+            _bus(
+                vid="120",
+                line_name="8",
+                connection_no=691,
+                current_stop_number="6701",
+                last_stop_number="16",
+                state_dtime="2026-08-08 18:30:00",
+            )
+        ]
+    )
+    # Now it has served Dubina,točna and is approaching Dubina,penzion.
+    tracker.observe(
+        [
+            _bus(
+                vid="120",
+                line_name="8",
+                connection_no=691,
+                current_stop_number="18501",
+                last_stop_number="67",
+                state_dtime="2026-08-08 18:38:48",
+            )
+        ]
+    )  # 20:38:48 local
+
+    delay = tracker.delay_for(
+        _bus(
+            vid="120",
+            line_name="8",
+            connection_no=691,
+            current_stop_number="18501",
+            last_stop_number="67",
+            state_dtime="2026-08-08 18:38:48",
+        ),
+        dt.datetime(2026, 8, 8, 18, 39, tzinfo=dt.UTC),
+    )
+    assert delay is not None and delay.measured
+    assert delay.seconds == 168, "20:38:48 against a 20:36 call is 2m48s, not 49m48s"
+    assert delay.at_stop == "S67P1"
+
+
+def test_the_outward_leg_still_uses_the_outward_schedule() -> None:
+    """The fix must not simply always pick the last call."""
+    trip = _out_and_back()
+    index = StaticIndex({trip.trip_id: trip})
+    tracker = DelayTracker(index)
+
+    tracker.observe(
+        [
+            _bus(
+                vid="7",
+                line_name="8",
+                connection_no=691,
+                current_stop_number="22102",
+                last_stop_number="0",
+                state_dtime="2026-08-08 17:47:00",
+            )
+        ]
+    )
+    tracker.observe(
+        [
+            _bus(
+                vid="7",
+                line_name="8",
+                connection_no=691,
+                current_stop_number="1603",
+                last_stop_number="67",
+                state_dtime="2026-08-08 17:50:00",
+            )
+        ]
+    )  # 19:50 local
+
+    delay = tracker.delay_for(
+        _bus(
+            vid="7",
+            line_name="8",
+            connection_no=691,
+            current_stop_number="1603",
+            last_stop_number="67",
+            state_dtime="2026-08-08 17:50:00",
+        ),
+        dt.datetime(2026, 8, 8, 17, 51, tzinfo=dt.UTC),
+    )
+    assert delay is not None and delay.measured
+    assert delay.seconds == 60, "19:50 against the 19:49 outward call is one minute"
+    assert delay.at_stop == "S67P2"
