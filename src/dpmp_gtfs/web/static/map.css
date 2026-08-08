@@ -164,14 +164,16 @@
   .veh-pop .est { font-size: .72rem; color: var(--text-muted); }
 
   /* Departure board in a stop popup. */
-  .dep-pop { min-width: 248px; max-width: 300px; }
+  .dep-pop { min-width: 268px; max-width: 340px; }
   .dep-board { margin: .45rem 0 0; display: grid;
-               grid-template-columns: auto auto 1fr; gap: .2rem .55rem;
+               grid-template-columns: auto auto minmax(0, 1fr); gap: .2rem .5rem;
                font-size: .8rem; align-items: baseline; }
   .dep-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
               color: var(--linen); }
   .dep-time.shifted { color: var(--warning); }
-  .dep-line { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
+  .dep-line { font-family: var(--font-mono); font-weight: 700; color: var(--lime);
+              white-space: nowrap; }
+  .dep-plat { color: var(--text-muted); font-weight: 500; }
   /* Only the destination truncates. The delay note after it is the shortest
      part of the row and the one worth reading, so clipping that instead was
      exactly backwards. */
@@ -187,15 +189,21 @@
 
      The bearing comes from the server, because the upstream's gps_course is
      null on every vehicle ever recorded. */
-  .veh-arrow {
+  /* Hidden until the map is zoomed in far enough for it to mean something;
+     see HEADING_MIN_ZOOM. */
+  .veh-arrow { display: none; }
+  #map.show-headings .veh-arrow {
+    display: block;
     position: absolute; left: 50%; top: 50%;
-    width: 32px; height: 32px; margin: -16px 0 0 -16px;
-    transform-origin: 50% 50%; pointer-events: none;
+    width: 46px; height: 46px; margin: -23px 0 0 -23px;
+    transform-origin: 50% 50%; pointer-events: none; z-index: 1;
   }
-  .veh-arrow::before {
-    content: ""; position: absolute; left: 50%; top: -4px; margin-left: -6px;
-    border-left: 6px solid transparent; border-right: 6px solid transparent;
-    border-bottom: 10px solid var(--linen);
-    /* Reads against lime route lines and dark tiles alike. */
-    filter: drop-shadow(0 0 1.5px rgba(10,10,10,.95));
+  #map.show-headings .veh-arrow::before {
+    content: ""; position: absolute; left: 50%; top: -2px; margin-left: -8px;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-bottom: 13px solid var(--linen);
+    /* An outline as well as a shadow: the arrow crosses lime route lines, pale
+       tiles and the dark background, and a shadow alone vanishes on the first
+       of those. */
+    filter: drop-shadow(0 0 1px rgba(10,10,10,1)) drop-shadow(0 0 2px rgba(10,10,10,.9));
   }

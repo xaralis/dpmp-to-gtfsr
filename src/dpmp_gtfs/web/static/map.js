@@ -5,7 +5,8 @@
 (function () {
   "use strict";
 
-  var REFRESH_MS = Number(document.getElementById("map").dataset.refreshMs) || 15000;
+  var mapEl = document.getElementById("map");
+  var REFRESH_MS = Number(mapEl.dataset.refreshMs) || 15000;
 
   // Brand colours straight from the palette -- on a dark basemap they need no
   // adjustment, which is what they were designed for.
@@ -43,7 +44,7 @@
   // here. touchZoom (two fingers on a touchscreen) is Leaflet's own default
   // and is untouched.
   (function () {
-    var el = document.getElementById("map");
+    var el = mapEl;
 
     el.addEventListener("wheel", function (e) {
       if (!e.ctrlKey && !e.metaKey) return;
@@ -80,6 +81,10 @@
   // Platforms of the selected line only: all 390 at once would bury the map.
   var platformLayer = L.layerGroup().addTo(map);
 
+  // Below this the whole network is in view, vehicles are a few pixels apart
+  // and an arrow on each is noise rather than information.
+  var HEADING_MIN_ZOOM = 14;
+
   var statusEl = document.getElementById("map-status");
   var detailEl = document.getElementById("detail");
   var chipsEl = document.getElementById("chips");
@@ -102,6 +107,13 @@
   }
 
   // --- styling --------------------------------------------------------------
+
+  map.on("zoomend", syncHeadings);
+  syncHeadings();
+
+  function syncHeadings() {
+    mapEl.classList.toggle("show-headings", map.getZoom() >= HEADING_MIN_ZOOM);
+  }
 
   function restyle() {
     Object.keys(lines).forEach(function (number) {
@@ -152,7 +164,7 @@
       });
   }
 
-  function departureRows(payload) {
+  function departureRows(payload, showPlatform) {
     var deps = payload.departures || [];
     if (!deps.length) return '<div class="dep-none">Dnes odsud už nic nejede.</div>';
 
@@ -163,7 +175,10 @@
       var mins = Math.round(d.in_seconds / 60);
       return '<span class="dep-time' + (shifted ? " shifted" : "") + '">' +
                escapeHtml(d.expected) + "</span>" +
-             '<span class="dep-line">' + escapeHtml(d.line) + "</span>" +
+             '<span class="dep-line">' + escapeHtml(d.line) +
+               (showPlatform && d.platform
+                 ? '<span class="dep-plat">/' + escapeHtml(d.platform) + "</span>" : "") +
+             "</span>" +
              '<span class="dep-to">' +
                '<span class="dep-name">' + escapeHtml(d.headsign) + "</span>" +
                '<span class="dep-in">· ' + (mins < 1 ? "teď" : mins + " min") + "</span>" +
@@ -173,14 +188,20 @@
   }
 
   function loadDepartures(p, popup) {
+    var id = p.stop_id || p.id;
+    // A station board merges platforms, so it has to say which one each
+    // departure leaves from; a platform board obviously does not.
+    var isStation = id.indexOf("P") === -1;
+    var meta = p.meta ? p.meta
+             : "nástupiště " + escapeHtml(p.platform) + " · " + escapeHtml(id);
     var head = '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
-               '<div class="popup-meta">nástupiště ' + escapeHtml(p.platform) +
-               " · " + escapeHtml(p.stop_id || p.id) + "</div>";
+               '<div class="popup-meta">' + meta + "</div>";
 
-    fetch("/departures/" + encodeURIComponent(p.stop_id || p.id) + ".json")
+    fetch("/departures/" + encodeURIComponent(id) + ".json")
       .then(function (r) { if (!r.ok) throw new Error("nedostupné"); return r.json(); })
       .then(function (payload) {
-        popup.setContent('<div class="dep-pop">' + head + departureRows(payload) + "</div>");
+        popup.setContent(
+          '<div class="dep-pop">' + head + departureRows(payload, isStation) + "</div>");
       })
       .catch(function () {
         popup.setContent('<div class="dep-pop">' + head +
@@ -257,14 +278,22 @@
 
       } else if (p.kind === "stop") {
         counts.stops++;
+        // Stations carry a board too, merged across their platforms. Until a
+        // line is picked they are the only thing on the map to click, so a
+        // board that answered only for platforms answered for nothing.
+        var station = {
+          stop_id: p.stop_id, name: p.name,
+          meta: escapeHtml(p.stop_id) + (p.step_free ? " · bezbariérová" : "")
+        };
         L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
           radius: 3.5, color: "#0a0a0a", weight: 1.5,
           fillColor: "#f5f5f0", fillOpacity: 0.9
         }).bindPopup(
           '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
-          '<div class="popup-meta">' + escapeHtml(p.stop_id) +
-          (p.step_free ? " · bezbariérová" : "") + "</div>"
-        ).addTo(stopLayer);
+          '<div class="popup-meta">' + station.meta + "</div>" +
+          '<div class="dep-none">Načítám odjezdy…</div>'
+        ).on("popupopen", function (e) { loadDepartures(station, e.popup); })
+         .addTo(stopLayer);
       }
     });
 

@@ -16,9 +16,16 @@ from dpmp_gtfs.archive import read_tables
 
 logger = logging.getLogger(__name__)
 
-# Roughly ten metres at this latitude. Enough to strip redundant vertices from
-# a straight road without visibly moving the line at city zoom levels.
-SIMPLIFY_TOLERANCE_DEGREES = 0.0001
+# About 5.6 m at this latitude. Chosen by measurement, not feel: at the
+# previous 0.0001 (11 m) the drawn line strayed the full tolerance from the
+# road, which is ~38 px at zoom 19. Worse, a terminus is served by many
+# near-identical shapes -- 24 of them at Staré Čívice -- and simplifying each
+# independently made them stray in *different* directions, splaying what should
+# overlap into a visible fan.
+#
+# Halving it costs 27% of the payload (436 -> 555 kB, 11.2k -> 16.3k points)
+# and halves the divergence. Finer still climbs steeply: 1.1 m would be 990 kB.
+SIMPLIFY_TOLERANCE_DEGREES = 0.00005
 
 LonLat = tuple[float, float]
 """A position, longitude first -- what GeoJSON requires, and the reverse of

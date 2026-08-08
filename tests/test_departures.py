@@ -172,3 +172,35 @@ def test_a_service_outside_its_validity_window_does_not_run() -> None:
 def test_a_feed_without_calendar_data_still_shows_a_board() -> None:
     """Degrading to "show everything" beats degrading to "show nothing"."""
     assert ServiceCalendar().runs_on("anything", dt.date(2026, 8, 11)) is True
+
+
+# --- station boards ----------------------------------------------------------
+
+
+def test_a_station_board_merges_its_platforms() -> None:
+    """Until a line is picked, stations are the only thing on the map to click,
+    so a board that answered only for platforms answered for nothing."""
+    there = _trip("L3C1", "wd", 11 * 3600)
+    back = ScheduledTrip(
+        trip_id="L3C2",
+        route_id="L3",
+        stops=(
+            ScheduledStop("S1P2", 1, 0, 11 * 3600 + 120, "U Marka", (50.03, 15.77)),
+            ScheduledStop("S9P1", 9, 1, 11 * 3600 + 400, "Jinam", (50.05, 15.75)),
+        ),
+        service_id="wd",
+        headsign="Jinam",
+        line="3",
+    )
+    index = _index(there, back)
+
+    assert [d.trip_id for d in build_departures("S1P1", index, [], WEEKDAY)] == ["L3C1"]
+    assert [d.trip_id for d in build_departures("S1P2", index, [], WEEKDAY)] == ["L3C2"]
+    assert [d.trip_id for d in build_departures("S1", index, [], WEEKDAY)] == ["L3C1", "L3C2"]
+
+
+def test_a_station_board_says_which_platform_each_departure_leaves_from() -> None:
+    index = _index(_trip("L3C1", "wd", 11 * 3600))
+    board = build_departures("S1", index, [], WEEKDAY)
+    assert board[0].stop_id == "S1P1"
+    assert board[0].platform == "1"

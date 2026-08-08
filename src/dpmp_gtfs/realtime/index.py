@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dpmp_gtfs.archive import read_tables
-from dpmp_gtfs.ids import trip_id
+from dpmp_gtfs.ids import station_id, trip_id
 from dpmp_gtfs.timeutil import DAY, PRAGUE
 
 
@@ -25,16 +25,28 @@ class StaticIndex:
 
         # Departures per stop, in timetable order. Built once: a stop board
         # would otherwise scan all 45,000 stop times on every request.
-        self._by_stop: dict[str, list[tuple[int, str]]] = {}
+        #
+        # Filed under the platform *and* its parent station. A passenger
+        # standing at an interchange wants everything leaving from it, and the
+        # map offers the station as the only thing to click until a line is
+        # picked -- so a board that only answered for platforms answered for
+        # nothing most of the time.
+        self._by_stop: dict[str, list[tuple[int, str, ScheduledStop]]] = {}
         for trip in trips.values():
             for stop in trip.stops[:-1]:  # nobody departs from the last stop
-                self._by_stop.setdefault(stop.stop_id, []).append((stop.seconds, trip.trip_id))
+                entry = (stop.seconds, trip.trip_id, stop)
+                self._by_stop.setdefault(stop.stop_id, []).append(entry)
+                self._by_stop.setdefault(station_id(stop.station), []).append(entry)
         for board in self._by_stop.values():
-            board.sort()
+            board.sort(key=lambda e: (e[0], e[1]))
 
-        self._stop_names = {
-            stop.stop_id: stop.name for trip in trips.values() for stop in trip.stops
-        }
+        # Under the station id as well, so a station board can be titled. The
+        # platforms of a station all carry its name, so either is fine.
+        self._stop_names: dict[str, str] = {}
+        for trip in trips.values():
+            for stop in trip.stops:
+                self._stop_names[stop.stop_id] = stop.name
+                self._stop_names.setdefault(station_id(stop.station), stop.name)
 
     def __len__(self) -> int:
         return len(self._by_trip_id)
@@ -56,11 +68,14 @@ class StaticIndex:
 
     def departures(
         self, stop_id: str, now: dt.datetime, limit: int = 8
-    ) -> list[tuple[dt.datetime, ScheduledTrip, int]]:
+    ) -> list[tuple[dt.datetime, ScheduledTrip, ScheduledStop]]:
         """The next scheduled departures from one stop, soonest first.
 
-        Returns the absolute local departure time, the trip, and its scheduled
-        seconds into the service day.
+        Accepts either a platform (``S23P2``) or a whole station (``S23``);
+        a station board merges every platform under it.
+
+        Returns the absolute local departure time, the trip, and the stop it
+        leaves from -- which is not necessarily the one that was asked for.
 
         Two service days are considered, not one. A trip written 24:30 belongs
         to yesterday's service day but departs after midnight tonight, so a
@@ -72,14 +87,14 @@ class StaticIndex:
             return []
 
         local = now.astimezone(PRAGUE)
-        found: list[tuple[dt.datetime, ScheduledTrip, int]] = []
+        found: list[tuple[dt.datetime, ScheduledTrip, ScheduledStop]] = []
 
         for days_back in (1, 0):
             service_day = local.date() - dt.timedelta(days=days_back)
             midnight = dt.datetime.combine(service_day, dt.time(), tzinfo=PRAGUE)
             elapsed = (local - midnight).total_seconds()
 
-            for seconds, tid in board:
+            for seconds, tid, stop in board:
                 if seconds < elapsed:
                     continue
                 if seconds - elapsed > DAY:
@@ -87,7 +102,7 @@ class StaticIndex:
                 trip = self._by_trip_id[tid]
                 if not self._calendar.runs_on(trip.service_id, service_day):
                     continue
-                found.append((midnight + dt.timedelta(seconds=seconds), trip, seconds))
+                found.append((midnight + dt.timedelta(seconds=seconds), trip, stop))
 
         found.sort(key=lambda d: d[0])
         return found[:limit]

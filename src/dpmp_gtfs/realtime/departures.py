@@ -39,7 +39,10 @@ class Departure:
     as "on time"."""
     delay_measured: bool
     """False when the delay is the countdown-derived lower bound."""
-    at_platform: str
+    stop_id: str
+    """The platform this departure actually leaves from, which is not what was
+    asked for when the board is for a whole station."""
+    platform: str
 
 
 def build_departures(
@@ -56,7 +59,7 @@ def build_departures(
     live = {v.trip_id: v for v in vehicles if v.delay_seconds is not None}
 
     board: list[Departure] = []
-    for when, trip, seconds in index.departures(stop_id, now, limit):
+    for when, trip, stop in index.departures(stop_id, now, limit):
         vehicle = live.get(trip.trip_id)
         delay = vehicle.delay_seconds if vehicle else None
         expected = when + dt.timedelta(seconds=delay or 0)
@@ -66,12 +69,13 @@ def build_departures(
                 line=trip.line,
                 trip_id=trip.trip_id,
                 headsign=trip.headsign,
-                scheduled=format_clock(seconds),
+                scheduled=format_clock(stop.seconds),
                 expected=expected.astimezone(PRAGUE).strftime("%H:%M"),
                 in_seconds=max(0, int((expected - now).total_seconds())),
                 delay_seconds=delay,
                 delay_measured=bool(vehicle and vehicle.delay_measured),
-                at_platform=stop_id,
+                stop_id=stop.stop_id,
+                platform=stop.stop_id.partition("P")[2],
             )
         )
 
