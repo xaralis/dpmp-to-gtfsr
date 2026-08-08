@@ -11,8 +11,12 @@ services:
       dockerfile: docker/Dockerfile
     image: dpmp-to-gtfsr:latest
     restart: unless-stopped
+    # Loopback by default: on a host with a reverse proxy the port has no
+    # business being reachable from outside, and on a host without one the
+    # proxy is the thing to add, not an open port. Override with FEED_BIND
+    # when a different address or port is needed.
     ports:
-      - "8000:8000"
+      - "${FEED_BIND:-127.0.0.1:8000}:8000"
     environment:
       # The public web app ships this key in its JS bundle, so it is not a
       # secret -- but it stays out of the image so rotating it is a restart,
