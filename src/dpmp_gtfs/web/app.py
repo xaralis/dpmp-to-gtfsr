@@ -18,6 +18,7 @@ from google.protobuf.json_format import MessageToDict
 
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
+from dpmp_gtfs.realtime.view import as_payload
 
 from .coverage import build_coverage
 from .scheduler import Scheduler
@@ -125,6 +126,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             payload,
             media_type="application/geo+json",
             headers={"ETag": etag, "Cache-Control": "public, max-age=3600"},
+        )
+
+    @app.get("/vehicles.json", tags=["feeds"])
+    def vehicles() -> JSONResponse:
+        """Live vehicles with their surrounding stops and delay, resolved.
+
+        GTFS-Realtime carries stop ids and expects the consumer to hold the
+        timetable; this is the same data with those ids already turned into
+        names and times, for anything that wants to show a vehicle to a person.
+        Not a standard format -- use /gtfs-rt.pb for that.
+        """
+        state = scheduler.state
+        if state.realtime_built_at is None:
+            return JSONResponse({"detail": "realtime feed is not ready yet"}, status_code=503)
+        return JSONResponse(
+            as_payload(state.vehicles, state.realtime_built_at),
+            headers={"Cache-Control": f"public, max-age={int(config.realtime_interval)}"},
         )
 
     # -- status --------------------------------------------------------------

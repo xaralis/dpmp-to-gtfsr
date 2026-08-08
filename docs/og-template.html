@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: "Geist"; font-weight: 100 900;
+    src: url("http://localhost:8086/static/fonts/geist-latin-wght-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Geist"; font-weight: 100 900;
+    src: url("http://localhost:8086/static/fonts/geist-latin-ext-wght-normal.woff2") format("woff2");
+    unicode-range: U+0100-024F;
+  }
+  @font-face {
+    font-family: "JetBrains Mono"; font-weight: 700;
+    src: url("http://localhost:8086/static/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "JetBrains Mono"; font-weight: 700;
+    src: url("http://localhost:8086/static/fonts/jetbrains-mono-latin-ext-700-normal.woff2") format("woff2");
+    unicode-range: U+0100-024F;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 630px; background: #0a0a0a; color: #f5f5f0;
+    font-family: "Geist", sans-serif; position: relative; overflow: hidden;
+  }
+  .route {
+    position: absolute; inset: 0;
+    /* A stylised route line running behind the text, echoing the favicon. */
+  }
+  .content { position: absolute; left: 72px; top: 96px; right: 72px; }
+  h1 {
+    font-family: "JetBrains Mono", monospace; font-weight: 700;
+    font-size: 76px; line-height: 1.02; letter-spacing: -0.03em; color: #f5f5f0;
+  }
+  h1 em { font-style: normal; color: #c6f432; }
+  p { font-size: 27px; line-height: 1.45; color: #cccac1; margin-top: 28px; max-width: 720px; }
+  .chips { position: absolute; left: 72px; bottom: 92px; display: flex; gap: 10px; }
+  .chip {
+    font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 19px;
+    padding: 9px 14px; border: 1px solid #2a2a2a; background: #0e0e0e; color: #cccac1;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .chip i { width: 9px; height: 9px; display: block; }
+  .chip.t i { background: #2ad4c5; }
+  .chip.b i { background: #8b93a3; border-radius: 50%; }
+  .chip.on { background: #c6f432; border-color: #c6f432; color: #0a0a0a; }
+  .chip.on i { background: rgba(10,10,10,.6); }
+  .foot {
+    position: absolute; left: 72px; bottom: 44px;
+    font-family: "JetBrains Mono", monospace; font-size: 17px;
+    color: #9a9a95; letter-spacing: .04em;
+  }
+  .badge {
+    position: absolute; right: 72px; top: 96px;
+    font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 15px;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: #0a0a0a; background: #c6f432; padding: 10px 16px;
+  }
+</style>
+</head>
+<body>
+<svg class="route" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <path d="M-40 470 H250 A70 70 0 0 0 320 400 V250 H620 A70 70 0 0 1 690 320 V470 H1240"
+        fill="none" stroke="#c6f432" stroke-width="10" opacity=".18"/>
+  <path d="M-40 560 H420 A60 60 0 0 0 480 500 V395 H1240"
+        fill="none" stroke="#2ad4c5" stroke-width="8" opacity=".14"/>
+  <circle cx="320" cy="250" r="11" fill="#2ad4c5" opacity=".5"/>
+  <circle cx="690" cy="470" r="11" fill="#c6f432" opacity=".5"/>
+  <circle cx="480" cy="395" r="9" fill="#f5f5f0" opacity=".35"/>
+</svg>
+
+<div class="badge">GTFS + Realtime</div>
+
+<div class="content">
+  <h1>Pardubická MHD<br>v <em>otevřených datech</em></h1>
+  <p>Jízdní řády a živé polohy vozů dopravního podniku ve standardech GTFS a GTFS&nbsp;Realtime.</p>
+</div>
+
+<div class="chips">
+  <div class="chip on"><i></i>2</div>
+  <div class="chip t"><i></i>13</div>
+  <div class="chip b"><i></i>6</div>
+  <div class="chip b"><i></i>88</div>
+  <div class="chip t"><i></i>27</div>
+</div>
+
+<div class="foot">2 728 spojů · 594 zastávek · 31 linek</div>
+</body>
+</html>

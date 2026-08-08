@@ -23,6 +23,13 @@
     <td>Totéž pro ladění. Nepoužívat v provozu, formát není stabilní.</td>
   </tr>
   <tr>
+    <td><code>GET /vehicles.json</code></td><td><code>application/json</code></td>
+    <td>{{ settings.realtime_interval | int }} s</td>
+    <td>Vozidla s vyřešenými názvy zastávek a zpožděním. Není to standard —
+        pro ten je tu <code>/gtfs-rt.pb</code> — ale ušetří konzumentovi držet
+        celý jízdní řád jen kvůli zobrazení jedné polohy.</td>
+  </tr>
+  <tr>
     <td><code>GET /healthz</code></td><td><code>application/json</code></td><td>—</td>
     <td>Stáří feedů a poslední chyba. Vrací 503, když jsou data zastaralá.</td>
   </tr>

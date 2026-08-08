@@ -58,8 +58,15 @@
   .chip[aria-pressed="true"] {
     background: var(--lime); border-color: var(--lime); color: var(--coal);
   }
-  .chip .kind { display: block; height: 2px; margin-top: .3rem; }
-  .chip[aria-pressed="true"] .kind { background: rgba(10,10,10,.55) !important; }
+  /* Mode is carried by shape as well as colour: square for trolleybuses
+     (fixed to the wires), round for buses. Colour alone excludes anyone with
+     a colour vision deficiency, and teal against grey is exactly the pair
+     that goes first. */
+  .chip .kind {
+    display: block; width: 7px; height: 7px; margin: .32rem auto 0;
+  }
+  .kind.bus { border-radius: 50%; }
+  .chip[aria-pressed="true"] .kind { background: rgba(10,10,10,.6) !important; }
   .chip.all { min-width: auto; letter-spacing: var(--tracking-label); text-transform: uppercase;
               font-size: .6875rem; }
 
@@ -75,6 +82,7 @@
   .legend { display: flex; flex-wrap: wrap; gap: .9rem 1.5rem;
             margin: .85rem 0 0; font-size: .8125rem; color: var(--text-muted); }
   .legend span { display: inline-flex; align-items: center; gap: .45rem; }
+  .legend .kind { display: inline-block; width: 8px; height: 8px; margin: 0; flex: none; }
   .swatch { width: 1.1rem; height: 3px; display: inline-block; }
   .dot { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; }
   #map-status {
@@ -118,9 +126,33 @@
     box-shadow: 0 1px 4px rgba(0,0,0,.6);
     white-space: nowrap;
   }
-  .veh.bus { background: var(--warning); }
+  /* Same shape language as the chips: buses are rounded, trolleybuses are
+     square, so mode survives on a small marker without relying on colour. */
+  .veh.bus { background: var(--warning); border-radius: 10px; }
   .veh.trolley { background: var(--teal); }
   .veh.picked { background: var(--lime); outline: 2px solid rgba(198,244,50,.35); }
+
+  /* Stop labels for the selected line. Rendered as markers rather than
+     tooltips so they stay put while panning and can be read at a glance. */
+  .stop-label {
+    font-family: var(--font-sans); font-size: 10.5px; line-height: 1.25;
+    color: var(--linen); background: rgba(10,10,10,.82);
+    border: 1px solid var(--border-2); padding: 1px 4px;
+    white-space: nowrap; transform: translate(9px, -9px);
+    pointer-events: none;
+  }
+
+  /* Vehicle popup: a small table of where it has been and where it is going. */
+  .veh-pop { min-width: 190px; }
+  .veh-pop dl { margin: .4rem 0 0; display: grid; grid-template-columns: auto 1fr;
+                gap: .15rem .6rem; font-size: .8rem; }
+  .veh-pop dt { color: var(--text-muted); }
+  .veh-pop dd { margin: 0; }
+  .veh-pop .late { color: var(--warning); font-weight: 700; }
+  .veh-pop .early { color: var(--teal); font-weight: 700; }
+  .veh-pop .ontime { color: var(--lime); font-weight: 700; }
+  .veh-pop .unknown { color: var(--text-muted); }
+  .veh-pop .est { font-size: .72rem; color: var(--text-muted); }
 </style>
 {% endblock %}
 
@@ -143,11 +175,12 @@
 <div class="map-wrap">
   <div id="map"></div>
   <div class="legend">
-    <span><i class="swatch" style="background:#2ad4c5"></i> trolejbus</span>
-    <span><i class="swatch" style="background:#8b93a3"></i> autobus</span>
+    <span><i class="kind trolley" style="background:#2ad4c5"></i> trolejbus</span>
+    <span><i class="kind bus" style="background:#8b93a3"></i> autobus</span>
     <span><i class="swatch" style="background:#c6f432"></i> vybraná linka</span>
     <span><i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i> zastávka</span>
-    <span><i class="veh bus" style="display:inline-block">6</i> vozidlo s číslem linky</span>
+    <span><i class="veh bus" style="display:inline-block">6</i> vozidlo</span>
+    <span><i class="dot" style="background:#c6f432"></i> zastávka vybrané linky</span>
   </div>
   <div id="map-status" aria-live="polite">Načítám…</div>
   <p style="font-size:.8125rem;color:var(--text-muted);margin:.6rem 0 0">
@@ -157,7 +190,7 @@
 
 <p style="margin-top:1.5rem">
   Podklad © <a href="https://www.openstreetmap.org/copyright">přispěvatelé OpenStreetMap</a>.
-  Data z <a href="/gtfs.zip">gtfs.zip</a> a <a href="/gtfs-rt.json">gtfs-rt.json</a>.
+  Data z <a href="/gtfs.zip">gtfs.zip</a> a <a href="/vehicles.json">vehicles.json</a>.
 </p>
 {% endblock %}
 
@@ -204,6 +237,8 @@
   var routeLayer = L.layerGroup().addTo(map);
   var stopLayer = L.layerGroup().addTo(map);
   var vehicleLayer = L.layerGroup().addTo(map);
+  // Platforms of the selected line only: all 390 at once would bury the map.
+  var platformLayer = L.layerGroup().addTo(map);
 
   var statusEl = document.getElementById("map-status");
   var detailEl = document.getElementById("detail");
@@ -215,6 +250,7 @@
   var allBounds = null;
   var counts = { routes: 0, stops: 0 };
   var lastVehicles = [];
+  var platforms = [];   // every platform, with the lines that call there
   var feedTime = null;
   var failure = null;
   var nextRefreshAt = 0;
@@ -250,10 +286,37 @@
     document.getElementById("chip-all").setAttribute("aria-pressed", String(selected === null));
   }
 
+  function renderPlatforms() {
+    platformLayer.clearLayers();
+    if (selected === null) return;
+
+    platforms.filter(function (p) { return p.lines.indexOf(selected) !== -1; })
+      .forEach(function (p) {
+        L.circleMarker([p.lat, p.lon], {
+          radius: 4, color: "#0a0a0a", weight: 1.5,
+          fillColor: "#c6f432", fillOpacity: 1
+        }).bindPopup(
+          '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
+          '<div class="popup-meta">nástupiště ' + escapeHtml(p.platform) +
+          " · " + escapeHtml(p.stop_id || p.id) + "<br>linky: " +
+          escapeHtml(p.lines.join(", ")) + "</div>"
+        ).addTo(platformLayer);
+
+        L.marker([p.lat, p.lon], {
+          icon: L.divIcon({
+            className: "", iconSize: null,
+            html: '<div class="stop-label">' + escapeHtml(p.name) + "</div>"
+          }),
+          interactive: false
+        }).addTo(platformLayer);
+      });
+  }
+
   function select(number) {
     selected = (selected === number) ? null : number;
     restyle();
     describe();
+    renderPlatforms();
     renderVehicles(lastVehicles);
     paintStatus();
 
@@ -308,6 +371,12 @@
         line.bounds.extend(poly.getBounds());
         everything = everything.concat(latlngs);
 
+      } else if (p.kind === "platform") {
+        platforms.push({
+          id: p.stop_id, name: p.name, platform: p.platform, lines: p.lines || [],
+          lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0]
+        });
+
       } else if (p.kind === "stop") {
         counts.stops++;
         L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
@@ -329,7 +398,8 @@
     describe();
 
     L.control.layers(null, {
-      "Trasy": routeLayer, "Zastávky": stopLayer, "Vozidla": vehicleLayer
+      "Trasy": routeLayer, "Zastávky": stopLayer,
+      "Zastávky linky": platformLayer, "Vozidla": vehicleLayer
     }, { collapsed: true }).addTo(map);
 
     refreshVehicles();
@@ -353,7 +423,8 @@
         chip.setAttribute("aria-pressed", "false");
         chip.title = line.name || ("Linka " + number);
         chip.innerHTML = escapeHtml(number) +
-          '<i class="kind" style="background:' + (line.trolleybus ? TROLLEY : BUS) + '"></i>';
+          '<i class="kind ' + (line.trolleybus ? "trolley" : "bus") + '" style="background:' +
+          (line.trolleybus ? TROLLEY : BUS) + '"></i>';
         chip.addEventListener("click", function () { select(number); });
         chipsEl.appendChild(chip);
       });
@@ -362,6 +433,7 @@
       selected = null;
       restyle();
       describe();
+      renderPlatforms();
       renderVehicles(lastVehicles);
       paintStatus();
       if (allBounds && allBounds.isValid()) map.fitBounds(allBounds, { padding: [20, 20] });
@@ -369,6 +441,41 @@
   }
 
   // --- live vehicles --------------------------------------------------------
+
+  function delayHtml(v) {
+    if (v.delay_seconds === null || v.delay_seconds === undefined) {
+      return '<span class="unknown">zatím neznámé</span>' +
+             '<div class="est">vůz ještě nevyjel</div>';
+    }
+    var d = v.delay_seconds;
+    var mins = Math.floor(Math.abs(d) / 60), secs = Math.abs(d) % 60;
+    var text = mins ? mins + " min " + secs + " s" : secs + " s";
+    var cls = d > 45 ? "late" : (d < -45 ? "early" : "ontime");
+    var label = d > 45 ? ("+" + text) : (d < -45 ? ("−" + text) : "jede načas");
+    // A measured value comes from watching the vehicle pass a stop; the
+    // fallback only ever proves lateness, never punctuality.
+    var note = v.delay_measured ? "" : '<div class="est">odhad, dolní mez</div>';
+    return '<span class="' + cls + '">' + escapeHtml(label) + "</span>" + note;
+  }
+
+  function vehiclePopup(v) {
+    function row(label, stop) {
+      if (!stop) return "";
+      return "<dt>" + label + "</dt><dd>" + escapeHtml(stop.name) +
+             ' <span class="est">' + escapeHtml(stop.scheduled) + "</span></dd>";
+    }
+    return '<div class="veh-pop">' +
+      '<div class="popup-title">Linka ' + escapeHtml(v.line) + " → " +
+      escapeHtml(v.destination) + "</div>" +
+      "<dl>" +
+      row("předchozí", v.previous_stop) +
+      row("následující", v.next_stop) +
+      "<dt>zpoždění</dt><dd>" + delayHtml(v) + "</dd>" +
+      "<dt>vůz</dt><dd>" + escapeHtml(v.vehicle_id) +
+      (v.stop_index !== null ? ' <span class="est">' + (v.stop_index + 1) + "/" +
+        v.stops_total + " zast.</span>" : "") + "</dd>" +
+      "</dl></div>";
+  }
 
   function renderVehicles(vehicles) {
     vehicleLayer.clearLayers();
@@ -378,12 +485,9 @@
       if (selected !== null && v.line !== selected) return;
       shown++;
 
-      var line = lines[v.line];
-      var kind = selected === v.line
-        ? "picked"
-        : (line && line.trolleybus ? "trolley" : "bus");
+      var kind = selected === v.line ? "picked" : (v.trolleybus ? "trolley" : "bus");
 
-      L.marker([v.lat, v.lon], {
+      L.marker([v.latitude, v.longitude], {
         icon: L.divIcon({
           className: "",
           html: '<div class="veh ' + kind + '">' + escapeHtml(v.line) + "</div>",
@@ -392,11 +496,7 @@
         }),
         // Above stops and lines, so a vehicle is never hidden behind them.
         zIndexOffset: 1000
-      }).bindPopup(
-        '<div class="popup-title">Linka ' + escapeHtml(v.line) + "</div>" +
-        '<div class="popup-meta">vůz ' + escapeHtml(v.id) +
-        (v.stop ? "<br>směřuje na " + escapeHtml(v.stop) : "") + "</div>"
-      ).addTo(vehicleLayer);
+      }).bindPopup(vehiclePopup(v)).addTo(vehicleLayer);
     });
 
     return shown;
@@ -404,28 +504,15 @@
 
   function refreshVehicles() {
     nextRefreshAt = Date.now() + REFRESH_MS;
-    fetch("/gtfs-rt.json").then(function (r) {
+    // /vehicles.json is the same data as the protobuf feed, but with stop ids
+    // already resolved to names and times by the server. Doing that join here
+    // would mean shipping the timetable to the browser.
+    fetch("/vehicles.json").then(function (r) {
       if (!r.ok) throw new Error("realtime feed není hotový");
       return r.json();
-    }).then(function (feed) {
-      lastVehicles = (feed.entity || []).filter(function (e) {
-        return e.vehicle && e.vehicle.position;
-      }).map(function (e) {
-        var v = e.vehicle;
-        return {
-          line: (v.trip && v.trip.route_id ? v.trip.route_id : "").replace(/^L/, ""),
-          id: v.vehicle ? v.vehicle.id : "?",
-          stop: v.stop_id || "",
-          lat: v.position.latitude,
-          lon: v.position.longitude
-        };
-      });
-
-      // The feed's own header timestamp, not the moment this page drew it:
-      // what matters is how old the data is, and the two differ whenever the
-      // upstream stalls.
-      var stamp = feed.header && feed.header.timestamp;
-      feedTime = stamp ? new Date(Number(stamp) * 1000) : new Date();
+    }).then(function (payload) {
+      lastVehicles = payload.vehicles || [];
+      feedTime = payload.built_at ? new Date(payload.built_at) : new Date();
       failure = null;
 
       renderVehicles(lastVehicles);

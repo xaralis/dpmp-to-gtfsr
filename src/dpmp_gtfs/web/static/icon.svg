@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="dpmp-to-gtfsr">
+  <!-- A route with two stops: legible at 16px, where a drawn vehicle would
+       collapse into a smudge. Brand coal and lime, square corners. -->
+  <rect width="64" height="64" fill="#0a0a0a"/>
+  <path d="M14 44 H30 A6 6 0 0 0 36 38 V20 H50"
+        fill="none" stroke="#c6f432" stroke-width="7"
+        stroke-linecap="square" stroke-linejoin="miter"/>
+  <circle cx="14" cy="44" r="7" fill="#2ad4c5"/>
+  <circle cx="50" cy="20" r="7" fill="#f5f5f0"/>
+</svg>

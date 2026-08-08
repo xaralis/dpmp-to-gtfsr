@@ -23,6 +23,7 @@ from dpmp_gtfs.config import Settings
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import StaticIndex
 from dpmp_gtfs.realtime.tracker import DelayTracker
+from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.watch import UnservedStops
@@ -43,6 +44,10 @@ class FeedState:
     realtime_built_at: dt.datetime | None = None
     realtime_error: str | None = None
     vehicle_count: int = 0
+    vehicles: list[VehicleView] = field(default_factory=list)
+    """Live vehicles joined against the timetable, ready to display. Built
+    once per refresh rather than per request -- every consumer wants the same
+    answer, and the join is not free."""
 
     static_version: str | None = None
     static_built_at: dt.datetime | None = None
@@ -211,7 +216,9 @@ class Scheduler:
         buses = await api.buses()
         self._tracker.observe(buses)
         message = build_feed_message(buses, self.state.index, self._tracker)
+        vehicles = build_vehicle_views(buses, self.state.index, self._tracker)
 
+        self.state.vehicles = vehicles
         self.state.realtime_message = message
         self.state.realtime = message.SerializeToString()
         self.state.realtime_built_at = dt.datetime.now(dt.UTC)

@@ -25,6 +25,10 @@ class ScheduledStop:
     seconds: int
     """Scheduled time as seconds from the start of the service day. May exceed
     86400 for trips that cross midnight."""
+    name: str = ""
+    """Human-readable stop name. Carried here so callers that need to *show* a
+    vehicle's position -- rather than just reference it -- do not have to reopen
+    the feed to turn an id into something a passenger recognises."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,10 +73,16 @@ class StaticIndex:
         with zipfile.ZipFile(path) as zf:
 
             def rows(name: str) -> list[dict[str, str]]:
-                with zf.open(name) as fh:
-                    return list(csv.DictReader(io.TextIOWrapper(fh, "utf8")))
+                # stops.txt only supplies display names; a feed without it is
+                # still perfectly usable for matching realtime to trips.
+                try:
+                    with zf.open(name) as fh:
+                        return list(csv.DictReader(io.TextIOWrapper(fh, "utf8")))
+                except KeyError:
+                    return []
 
             routes_by_trip = {r["trip_id"]: r["route_id"] for r in rows("trips.txt")}
+            names = {r["stop_id"]: r["stop_name"] for r in rows("stops.txt")}
 
             collected: dict[str, list[ScheduledStop]] = {}
             for row in rows("stop_times.txt"):
@@ -82,6 +92,7 @@ class StaticIndex:
                         station=_station_of(row["stop_id"]),
                         sequence=int(row["stop_sequence"]),
                         seconds=_parse_gtfs_time(row["departure_time"]),
+                        name=names.get(row["stop_id"], ""),
                     )
                 )
 

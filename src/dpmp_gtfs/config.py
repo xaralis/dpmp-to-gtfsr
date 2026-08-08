@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     static_rebuild_hour: int = 3
     """Local hour at which the static feed is rebuilt."""
 
+    public_url: str = ""
+    """Public base URL, e.g. https://gtfs.example.cz.
+
+    Only needed for absolute URLs in social preview tags; everything else on
+    the site is relative and works without it. Left empty, those tags are
+    omitted rather than emitted pointing at localhost."""
+
     # --- shapes -------------------------------------------------------------
     shapes_enabled: bool = True
     """Route trip geometry against OpenStreetMap.

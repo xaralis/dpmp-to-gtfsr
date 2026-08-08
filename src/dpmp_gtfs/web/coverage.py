@@ -100,7 +100,19 @@ def build_coverage(path: Path) -> dict[str, Any]:
                 )
             )
 
-        stops = [s for s in rows("stops.txt") if s["location_type"] == "1"]
+        all_stops = rows("stops.txt")
+        stops = [s for s in all_stops if s["location_type"] == "1"]
+        platforms = {s["stop_id"]: s for s in all_stops if s["location_type"] == "0"}
+
+        # Which lines call at each platform. Emitted once per platform with a
+        # list of lines, not once per line: interchanges are served by a dozen
+        # routes each, and repeating them tripled the payload for nothing.
+        trip_routes = {t["trip_id"]: t["route_id"] for t in rows("trips.txt")}
+        platform_routes: dict[str, set[str]] = {}
+        for row in rows("stop_times.txt"):
+            route_id = trip_routes.get(row["trip_id"])
+            if route_id:
+                platform_routes.setdefault(row["stop_id"], set()).add(route_id)
 
     features: list[dict[str, Any]] = []
     raw_total = simplified_total = 0
@@ -126,6 +138,33 @@ def build_coverage(path: Path) -> dict[str, Any]:
                     "route": route.get("route_short_name", ""),
                     "name": route.get("route_long_name", ""),
                     "trolleybus": route.get("route_type") == "11",
+                },
+            }
+        )
+
+    for stop_ref, serving in sorted(platform_routes.items()):
+        platform = platforms.get(stop_ref)
+        if platform is None:
+            continue
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        float(platform["stop_lon"]),
+                        float(platform["stop_lat"]),
+                    ],
+                },
+                "properties": {
+                    "kind": "platform",
+                    "stop_id": stop_ref,
+                    "name": platform["stop_name"],
+                    "platform": platform.get("platform_code", ""),
+                    "lines": sorted(
+                        (routes.get(r, {}).get("route_short_name", "") for r in serving),
+                        key=lambda n: (len(n), n),
+                    ),
                 },
             }
         )
