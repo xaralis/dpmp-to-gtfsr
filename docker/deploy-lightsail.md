@@ -41,18 +41,18 @@ git clone https://github.com/xaralis/dpmp-to-gtfsr.git
 cd dpmp-to-gtfsr
 ```
 
-Klíč do `.env` vedle `compose.yaml`:
+Klíč do `.env` **v kořeni repozitáře** (ne do `docker/`):
 
 ```bash
-echo 'DPMP_API_KEY=...' > docker/.env
+echo 'DPMP_API_KEY=...' > .env
 ```
 
 Klíč je ten, který veřejná aplikace DPMP posílá ze svého JS bundlu. Není to
 tajemství, ale do gitu nepatří — jeho výměna má být restart, ne commit.
 
 ```bash
-docker compose -f docker/compose.yaml up -d
-docker compose -f docker/compose.yaml logs -f
+docker compose --env-file .env -f docker/compose.yaml up -d
+docker compose --env-file .env -f docker/compose.yaml logs -f
 ```
 
 První start staví feed od nuly, počítej s ~3 minutami do prvního `healthz: 200`.
@@ -99,10 +99,10 @@ neuhostí a limit subrequestů by neunesl crawl jízdního řádu.
 curl -s localhost:8000/healthz | jq
 
 # ruční přestavba jízdních řádů (jinak běží sama v noci)
-docker compose -f docker/compose.yaml exec feed dpmp-gtfs build-static
+docker compose --env-file .env -f docker/compose.yaml exec feed dpmp-gtfs build-static
 
 # aktualizace
-git pull && docker compose -f docker/compose.yaml up -d --build
+git pull && docker compose --env-file .env -f docker/compose.yaml up -d --build
 ```
 
 `/healthz` vrací 503, jakmile je realtime feed starší než dvě minuty — hodí se
@@ -112,7 +112,7 @@ Za sledování stojí i varování v logu o zastávkách, které přišly o obsl
 obvykle znamenají začátek nebo konec výluky.
 
 ```bash
-docker compose -f docker/compose.yaml logs | grep -i "lost all service"
+docker compose --env-file .env -f docker/compose.yaml logs | grep -i "lost all service"
 ```
 
 ## Zálohy

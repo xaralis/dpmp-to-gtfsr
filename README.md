@@ -28,12 +28,46 @@ přes HTTP.
 
 Homepage se stavem služby je na `/`, dokumentace feedů na `/docs`.
 
-## Provoz
+## Spuštění
+
+Konfigurace je v `.env` **v kořeni repozitáře** — tam ho hledá jak služba
+samotná, tak všechny příkazy níž. Povinná je jediná proměnná:
 
 ```bash
-echo 'DPMP_API_KEY=...' > docker/.env
-docker compose -f docker/compose.yaml up -d
+echo 'DPMP_API_KEY=...' > .env
 ```
+
+Klíč je ten, který veřejná aplikace DPMP posílá ze svého JS bundlu
+(`online.dpmp.cz`, chunk `pages/lines-*.js`). Není to tajemství, ale do
+repozitáře nepatří — jeho výměna má být restart, ne commit.
+
+### Bez Dockeru
+
+```bash
+uv sync
+uv run dpmp-gtfs build-static    # jednou, ~7 min (jízdní řády + geometrie)
+uv run dpmp-gtfs serve           # http://localhost:8000
+```
+
+`build-static` je volitelný: `serve` si feed postaví sám, když v `data/`
+žádný nenajde. Předem je to ale příjemnější — jinak služba prvních sedm minut
+neodpovídá, protože uvicorn otevře port až po dokončení startu.
+
+Další příkazy:
+
+```bash
+uv run dpmp-gtfs --help
+uv run dpmp-gtfs serve --port 9000 --reload
+```
+
+### S Dockerem
+
+```bash
+docker compose --env-file .env -f docker/compose.yaml up -d
+```
+
+`--env-file .env` není volitelné: bez něj by compose hledal `docker/.env`,
+tedy jiný soubor než ten, ze kterého čte `dpmp-gtfs serve`.
 
 První start postaví feed od nuly (~7 min včetně geometrie tras), další starty
 ho načtou z volume (~5 s).
@@ -44,10 +78,9 @@ Nasazení na veřejnou adresu:
   Žádné porty, žádný nginx, žádný certbot, žádný zásah do toho, co tam je.
 - **[Vlastní instance](docker/deploy-lightsail.md)** — když má služba stroj pro sebe.
 
-Konfigurace přes proměnné prostředí s prefixem `DPMP_`, viz
-[`config.py`](src/dpmp_gtfs/config.py). Povinná je jediná — `DPMP_API_KEY`.
-Klíč není tajemství, veřejná aplikace DPMP ho má napevno ve svém JS bundlu, ale v repozitáři
-přesto není, aby jeho výměna neznamenala změnu kódu.
+Všechny volby jdou nastavit proměnnými s prefixem `DPMP_` — interval obnovy,
+hodina noční přestavby, vypnutí geometrie tras a další, viz
+[`config.py`](src/dpmp_gtfs/config.py).
 
 ## Vývoj
 
