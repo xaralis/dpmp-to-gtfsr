@@ -19,9 +19,8 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from dpmp_gtfs.api.models import Bus
-from dpmp_gtfs.ids import stop_id
-from dpmp_gtfs.static.builder import TROLLEYBUS_LINES
 from dpmp_gtfs.timeutil import PRAGUE, format_clock
+from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
 from .index import ScheduledStop, StaticIndex
 from .tracker import DelayTracker
@@ -82,8 +81,7 @@ def build_vehicle_views(
 
         # ``current_stop_number`` is the stop being approached, so its index is
         # also the boundary: everything before it has been served.
-        current = stop_id(bus.current_station, bus.current_platform)
-        position = trip.locate(current, bus.current_station)
+        position = trip.locate(bus.current_stop, bus.current_station)
         previous = trip.stops[position - 1] if position is not None and position > 0 else None
         upcoming = (
             trip.stops[position] if position is not None and position < len(trip.stops) else None

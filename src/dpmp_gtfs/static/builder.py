@@ -21,25 +21,20 @@ from dpmp_gtfs.types import (
     Timetable,
     Trip,
 )
-
-from .calendar import (
+from dpmp_gtfs.upstream import (
     LOW_FLOOR,
+    STATION_COORDINATES,
+    STATION_NAMES,
     STEP_FREE_STOP,
     STOP_ON_REQUEST,
-    calendar_exceptions,
-    service_from_codes,
+    TROLLEYBUS_LINES,
+    unused_overrides,
 )
-from .overrides import STATION_COORDINATES, STATION_NAMES, unused_overrides
+
+from .calendar import calendar_exceptions, service_from_codes
 from .shapes import ShapeCache, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
-
-# DPMP runs trolleybuses on these lines and buses on the rest. The split comes
-# from the CIS registry, where the trolleybus lines (655001-655033) are
-# published in the separate "draha/mestske" archive. It is baked in as a
-# constant rather than fetched: it changes at most once every few years, and a
-# 52 MB download to learn thirteen numbers is a poor trade.
-TROLLEYBUS_LINES = frozenset({1, 2, 3, 4, 5, 7, 11, 12, 13, 17, 27, 30, 33})
 
 ROUTE_TYPE_BUS = 3
 ROUTE_TYPE_TROLLEYBUS = 11
@@ -94,9 +89,8 @@ def build_stops(timetable: Timetable) -> list[Stop]:
     actual service; the parent exists so that consumers can group them and so
     that transfers between platforms are understood.
 
-    Platforms the API omits are backfilled -- see
-    :mod:`dpmp_gtfs.static.overrides` for why that is necessary and where the
-    coordinates come from.
+    Platforms the API omits are backfilled -- see :mod:`dpmp_gtfs.upstream`
+    for why that is necessary and where the coordinates come from.
     """
     stops: list[Stop] = []
     used = used_platforms(timetable)

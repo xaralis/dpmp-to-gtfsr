@@ -5,13 +5,12 @@ from dpmp_gtfs.ids import stop_id, trip_id
 from dpmp_gtfs.static.builder import (
     ROUTE_TYPE_BUS,
     ROUTE_TYPE_TROLLEYBUS,
-    TROLLEYBUS_LINES,
-    Stop,
-    StopTime,
-    format_gtfs_time,
     prune_unserved_stops,
     stop_seconds,
 )
+from dpmp_gtfs.timeutil import format_gtfs_time
+from dpmp_gtfs.types import Stop, StopTime
+from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
 
 def _stop(departure: str, *, number: int = 1, platform: int = 1, index: int = 0) -> ConnectionStop:

@@ -6,7 +6,6 @@ import logging
 from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api.models import Bus
-from dpmp_gtfs.ids import stop_id
 from dpmp_gtfs.timeutil import format_gtfs_time, service_day_date
 
 from .index import ScheduledTrip, StaticIndex
@@ -78,7 +77,7 @@ def build_feed_message(
 
         # Where the vehicle is along this trip, resolved once and used by both
         # the position and the predictions so they cannot disagree.
-        current = stop_id(bus.current_station, bus.current_platform)
+        current = bus.current_stop
         position_now = trip.locate(current, bus.current_station)
 
         # --- vehicle position ---
@@ -91,7 +90,7 @@ def build_feed_message(
             vehicle=vehicle_descriptor,
             position=position,
             timestamp=reported_at,
-            stop_id=current,
+            stop_id=current or "",
             current_status=rt.VehiclePosition.IN_TRANSIT_TO,
         )
         if position_now is not None:

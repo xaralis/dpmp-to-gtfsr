@@ -187,3 +187,28 @@ def test_a_trip_running_past_midnight_reports_the_day_it_started() -> None:
     positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
     assert positions[0].trip.start_date == "20260808"
     assert positions[0].trip.start_time == "23:58:00"
+
+
+def test_one_malformed_vehicle_does_not_discard_the_snapshot() -> None:
+    """Regression: ``int(line_name)`` raised out of the middle of the loop.
+
+    Nothing guarantees the upstream's numeric fields hold numbers. A single
+    vehicle with a lettered line took all fifty others down with it, and since
+    the scheduler keeps the last good feed on failure, the realtime feed then
+    stayed frozen for as long as that vehicle was reported.
+    """
+    index = _index()
+    good = _bus(vid="1")
+    lettered = _bus(vid="2", line_name="X1")
+    garbled = _bus(vid="3", current_stop_number="n/a")
+
+    msg = build_feed_message([good, lettered, garbled], index, DelayTracker(index), NOW)
+
+    # The good vehicle is published; the one with an unusable line is skipped.
+    assert [e.vehicle.vehicle.id for e in msg.entity if e.HasField("vehicle")] == ["1", "3"]
+
+
+def test_a_malformed_vehicle_does_not_break_the_tracker_either() -> None:
+    index = _index()
+    tracker = DelayTracker(index)
+    assert tracker.observe([_bus(vid="2", line_name="X1")]) == 0

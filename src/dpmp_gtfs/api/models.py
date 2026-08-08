@@ -16,6 +16,9 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field, field_validator
 
+from dpmp_gtfs.ids import stop_id
+from dpmp_gtfs.upstream import whole_number
+
 # --- shared field types -----------------------------------------------------
 
 _HHMM = re.compile(r"^(\d{2})(\d{2})$")
@@ -183,18 +186,35 @@ class Bus(BaseModel):
         """
         return v.replace(tzinfo=dt.UTC) if v.tzinfo is None else v.astimezone(dt.UTC)
 
-    @property
-    def line(self) -> int:
-        return int(self.line_name)
+    # These four are ``None`` when the upstream sends something that is not a
+    # number. Nothing guarantees it will not -- see :mod:`dpmp_gtfs.upstream`.
 
     @property
-    def current_station(self) -> int:
+    def line(self) -> int | None:
+        return whole_number(self.line_name)
+
+    @property
+    def current_station(self) -> int | None:
         """Station number decoded from ``station * 100 + platform``."""
-        return int(self.current_stop_number) // 100
+        n = whole_number(self.current_stop_number)
+        return None if n is None else n // 100
 
     @property
-    def current_platform(self) -> int:
-        return int(self.current_stop_number) % 100
+    def current_platform(self) -> int | None:
+        n = whole_number(self.current_stop_number)
+        return None if n is None else n % 100
+
+    @property
+    def current_stop(self) -> str | None:
+        """The stop id the vehicle is approaching.
+
+        Both consumers wanted station and platform only to spell this out, so
+        it is spelled out once here instead.
+        """
+        station, platform = self.current_station, self.current_platform
+        if station is None or platform is None:
+            return None
+        return stop_id(station, platform)
 
     @property
     def last_station(self) -> int | None:
@@ -203,8 +223,7 @@ class Bus(BaseModel):
         Unlike ``current_stop_number`` this is a bare station number, and the
         upstream uses ``"0"`` to mean "none yet".
         """
-        n = int(self.last_stop_number)
-        return n or None
+        return whole_number(self.last_stop_number) or None
 
     @property
     def countdown(self) -> dt.timedelta | None:

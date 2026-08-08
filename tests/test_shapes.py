@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from dpmp_gtfs.exceptions import RoutingError
-from dpmp_gtfs.static.builder import Stop, StopTime, apply_shapes, stop_sequences
+from dpmp_gtfs.static.builder import apply_shapes, stop_sequences
 from dpmp_gtfs.static.shapes import (
     ShapeCache,
     assemble_shape,
@@ -11,7 +11,7 @@ from dpmp_gtfs.static.shapes import (
     decode_polyline6,
     shape_id_for,
 )
-from dpmp_gtfs.types import Shape
+from dpmp_gtfs.types import Shape, Stop, StopTime, Trip
 
 # Real Valhalla output, recorded from a bus-costed route along line 1:
 # Hlavní nádraží -> Náměstí Republiky -> Zimní stadion.
@@ -230,7 +230,6 @@ def test_opposite_directions_are_separate_sequences() -> None:
 
 
 def test_apply_shapes_sets_ids_and_distances() -> None:
-    from dpmp_gtfs.static.builder import Trip
 
     shape = Shape("shp_x", ((50.0, 15.0), (50.01, 15.01)), (0.0, 800.0), (0.0, 800.0))
     trips = [Trip("L1", "wd", "t1", "x", 0, 1)]
@@ -245,7 +244,6 @@ def test_apply_shapes_sets_ids_and_distances() -> None:
 def test_a_trip_without_geometry_keeps_empty_fields() -> None:
     """GTFS permits trips with no shape, so an unroutable one is left alone
     rather than dropped."""
-    from dpmp_gtfs.static.builder import Trip
 
     trips = [Trip("L1", "wd", "t1", "x", 0, 1)]
     times = [_time("t1", "S1P1", 0)]

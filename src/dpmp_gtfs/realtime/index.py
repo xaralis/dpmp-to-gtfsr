@@ -45,7 +45,7 @@ class ScheduledTrip:
                 return i
         return None
 
-    def locate(self, stop_id: str, station: int) -> int | None:
+    def locate(self, stop_id: str | None, station: int | None) -> int | None:
         """Where along this trip a vehicle reporting that stop currently is.
 
         Platform first, then the station it belongs to. The fallback is not
@@ -57,7 +57,7 @@ class ScheduledTrip:
         for i, stop in enumerate(self.stops):
             if stop.stop_id == stop_id:
                 return i
-        return self.index_of_station(station)
+        return None if station is None else self.index_of_station(station)
 
 
 class StaticIndex:
@@ -69,7 +69,15 @@ class StaticIndex:
     def __len__(self) -> int:
         return len(self._by_trip_id)
 
-    def lookup(self, line: int, connection: int) -> ScheduledTrip | None:
+    def lookup(self, line: int | None, connection: int) -> ScheduledTrip | None:
+        """The trip a vehicle is running, if it is one this feed knows.
+
+        ``line`` is ``None`` for a vehicle whose line number the upstream sent
+        as something other than a number; there is nothing to look up, and the
+        caller already skips a vehicle it cannot place.
+        """
+        if line is None:
+            return None
         return self._by_trip_id.get(trip_id(line, connection))
 
     @classmethod
