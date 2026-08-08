@@ -185,12 +185,17 @@
 </div>
 
 <div class="legend">
+  {# One entry per mode. The same square/circle marks routes and vehicles
+     alike, so a separate "vehicle" row said nothing the shape had not. #}
   <span><i class="kind trolley" style="background:#2ad4c5"></i> trolejbus</span>
   <span><i class="kind bus" style="background:#8b93a3"></i> autobus</span>
   <span><i class="swatch" style="background:#c6f432"></i> vybraná linka</span>
-  <span><i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i> zastávka</span>
-  <span><i class="veh bus" style="display:inline-block">6</i> vozidlo</span>
-  <span><i class="dot" style="background:#c6f432"></i> zastávka vybrané linky</span>
+  {# Both dots mean the same thing; lime just marks the ones on the selected
+     line, which the map makes obvious in context. #}
+  <span>
+    <i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i>
+    <i class="dot" style="background:#c6f432"></i> zastávka
+  </span>
 </div>
 
 <p style="margin-top:1.5rem">
