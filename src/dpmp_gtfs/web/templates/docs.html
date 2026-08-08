@@ -79,17 +79,27 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
   na nedělní provoz přes <code>calendar_dates.txt</code>, včetně pohyblivých Velikonoc.
 </p>
 
-<h3>Geometrie tras</h3>
+<h3>Geometrie tras — odhad</h3>
 <p>
-  Zdrojové API geometrii nemá, takže <code>shapes.txt</code> vzniká zroutováním posloupnosti
-  zastávek přes <a href="https://valhalla.github.io/valhalla/">Valhallu</a> nad daty
-  OpenStreetMap, autobusovým profilem. Spoje sdílejí trasy — 2 728 spojů se scvrkne na
-  218 různých posloupností — takže shape má každý spoj.
+  <strong>Tvar trasy mezi zastávkami není údaj dopravního podniku.</strong> Zastávky, časy
+  a spoje pocházejí přímo z jeho API, ale geometrii jízdy po ulicích nikdo nepublikuje
+  v podobě, ze které by šel <code>shapes.txt</code> sestavit — dopočítává se proto
+  zroutováním posloupnosti zastávek přes
+  <a href="https://valhalla.github.io/valhalla/">Valhallu</a> nad daty OpenStreetMap,
+  autobusovým profilem.
 </p>
 <p>
-  <code>shape_dist_traveled</code> je v <strong>metrech</strong> a je vyplněné jak
-  v <code>shapes.txt</code>, tak v <code>stop_times.txt</code>. Zastávky leží od trasy
-  v mediánu 6,6 m, nejvíc 10 m.
+  Spoje sdílejí trasy — 2 728 spojů se scvrkne na 218 různých posloupností — takže shape
+  má každý spoj. <code>shape_dist_traveled</code> je v <strong>metrech</strong> a je
+  vyplněné jak v <code>shapes.txt</code>, tak v <code>stop_times.txt</code>. Zastávky leží
+  od trasy v mediánu 6,6 m, nejvíc 10 m.
+</p>
+<p>
+  Data od zdroje se získat nepodařilo: API sice endpoint s geometrií má, ale vrací jednu
+  reprezentativní trasu na linku, ne na spoj, a varianty linek se od ní liší i o kilometry.
+  Praktický dopad pro konzumenta: routování může zvolit jinou, byť průjezdnou ulici, a pár
+  desítek takových míst je známo. Měření a podrobnosti v
+  <a href="https://github.com/xaralis/dpmp-to-gtfsr/blob/main/docs/upstream-api.md">docs/upstream-api.md</a>.
 </p>
 
 <h3>Co ve feedu není</h3>
