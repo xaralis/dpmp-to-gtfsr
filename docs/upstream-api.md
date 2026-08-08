@@ -80,6 +80,26 @@ Důvod je v tom, čím `route` je: **přehledová trasa linky**, jedna na linku.
 Naše tvary jsou per sekvence zastávek, a linky mají varianty (zkrácené obraty,
 jiné větve), které se od té jedné reprezentativní trasy liší i o kilometry.
 
+I když se porovnají jen sekvence, kde geometrie DPMP sedí nejlíp (98 z 218 do
+50 m), Valhalla je pořád blíž: nejhorší odchylka od zastávky medián 9 m proti
+19 m, a DPMP nevyhraje ani jednou.
+
+Per-spoj geometrii nemá ani jejich vlastní aplikace: `route` ignoruje
+`number`, `direction` i `connection` a vrací pořád stejnou polyline, a
+`connectionRoute`, `routeDetail` ani `shape` neexistují. Červená trasa u
+„Detail spoje" na jejich mapě je celá linka, ne ta konkrétní jízda.
+
+**Známá mez tohohle měření:** metrika „vzdálenost od zastávek" neodhalí případ,
+kdy Valhalla vede jinou, ale legální ulicí — objede blok nebo použije silnici,
+kudy linka reálně nejede. Takových míst se našlo řádově pár desítek (největší
+rozdíly 300–500 m na linkách 15, 33, 25, 18, 3, 12), ale nikdo je neprošel
+proti skutečnému vedení linek. Kdyby někdy někdo chtěl, tohle je místo, kde
+začít.
+
+Zatím se to nechává být: `shapes.txt` je v GTFS volitelný a slouží hlavně
+kreslení, kdežto to, na čem feedu záleží — zastávky, časy, spoje — pochází z
+API přímo a žádné routování v tom nefiguruje.
+
 Endpoint je tedy užitečný na kreslení přehledu linky, ne na `shapes.txt`.
 
 ### `busConnectionDetail`
