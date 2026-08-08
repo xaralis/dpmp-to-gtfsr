@@ -57,10 +57,30 @@ směry, takže neodpovídá žádné konkrétní sekvenci zastávek: u linky 1 (
 ani u linky 8 (41 stanic) se netrefí ani jeden spoj. Většina spojů je ale
 podmnožinou — 189 z 206 u linky 1, 120 ze 120 u linky 8.
 
-Pro `shapes.txt` by se tedy musela sekvence zastávek na tuhle polyline napasovat
-a vyříznout příslušný úsek. Dnes se místo toho routuje přes Valhallu nad OSM
-(viz [`shapes.py`](../src/dpmp_gtfs/static/shapes.py)); geometrie od
-provozovatele by byla přesnější a odpadla by závislost na komunitním routeru.
+#### Na `shapes.txt` se to nehodí — změřeno
+
+Nabízí se sekvenci zastávek na tuhle polyline napasovat a vyříznout úsek, a tím
+nahradit routování přes Valhallu. **Vyzkoušeno a zamítnuto.**
+
+Napasování funguje překvapivě dobře: když se zkusí obě orientace polyline
+(101 z 218 sekvencí sedí na obrácenou), dostane se 73 % sekvencí do 100 m,
+medián nejhoršího přichycení je 54 m.
+
+Rozhodující je ale jiná otázka: **která geometrie vede blíž zastávkám, které má
+obsloužit?** To se dá změřit objektivně, bez ohledu na to, které se komu líbí.
+
+| | |
+|---|---|
+| Valhalla blíž | **200** z 218 sekvencí |
+| DPMP blíž | **0** |
+| shoda do 5 m | 18 |
+
+Valhalla míjí své zastávky o 8–11 m, geometrie DPMP o stovky metrů až 5,9 km.
+Důvod je v tom, čím `route` je: **přehledová trasa linky**, jedna na linku.
+Naše tvary jsou per sekvence zastávek, a linky mají varianty (zkrácené obraty,
+jiné větve), které se od té jedné reprezentativní trasy liší i o kilometry.
+
+Endpoint je tedy užitečný na kreslení přehledu linky, ne na `shapes.txt`.
 
 ### `busConnectionDetail`
 
