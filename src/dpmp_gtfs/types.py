@@ -11,12 +11,17 @@ from dataclasses import dataclass, field
 
 from dpmp_gtfs.api.models import Code, ConnectionDetail, ConnectionSummary, Line, Station
 
-type Point = tuple[float, float]
-"""Latitude, longitude. GeoJSON reverses this; nothing else here does."""
+type LatLon = tuple[float, float]
+"""A position, latitude first -- the order the feed and the API both use.
+
+Named for its order on purpose. GeoJSON wants the reverse (see
+:data:`dpmp_gtfs.web.coverage.LonLat`), the two are the same type to a type
+checker, and swapping them puts Pardubice in the Indian Ocean without any
+error at all."""
 
 type StopSequence = tuple[str, ...]
-"""Stop ids in travel order. Identifies a shape: every trip calling at the
-same stops in the same order shares one."""
+"""Stop ids in travel order. Identifies a :class:`TripGeometry`: every trip
+calling at the same stops in the same order shares one."""
 
 
 # --- timetable --------------------------------------------------------------
@@ -42,12 +47,19 @@ class Timetable:
 
 
 @dataclass(frozen=True, slots=True)
-class Shape:
-    """One routed line, shared by every trip with the same stop sequence."""
+class TripGeometry:
+    """The routed path trips follow, shared by every trip calling at the same
+    stops in the same order.
+
+    Not called ``Shape``: that is the GTFS file name, not a description, and it
+    says nothing next to shapely's geometry types. Not ``TripLine`` either --
+    ``Line`` already means a transit line here, so it would read as the line a
+    trip runs on rather than the path it takes."""
 
     shape_id: str
-    points: tuple[Point, ...]
-    """Latitude/longitude along the road."""
+    """Kept spelled the GTFS way, since it is written out as ``shape_id``."""
+    points: tuple[LatLon, ...]
+    """The path along the road."""
     point_distances: tuple[float, ...]
     """Cumulative metres at each point."""
     stop_distances: tuple[float, ...]
@@ -166,7 +178,7 @@ class Feed:
     """A complete static feed, ready to serialise."""
 
     stops: list[Stop] = field(default_factory=list)
-    shapes: list[Shape] = field(default_factory=list)
+    shapes: list[TripGeometry] = field(default_factory=list)
     unserved_stops: dict[str, str] = field(default_factory=dict)
     """Stop id -> name for stops excluded because nothing calls at them. Kept
     so rebuilds can spot diversions starting and ending."""

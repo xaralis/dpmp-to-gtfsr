@@ -11,15 +11,15 @@ from dpmp_gtfs.ids import route_id, station_id, stop_id, trip_id
 from dpmp_gtfs.timeutil import DAY, format_gtfs_time
 from dpmp_gtfs.types import (
     Feed,
-    Point,
+    LatLon,
     Route,
     Service,
-    Shape,
     Stop,
     StopSequence,
     StopTime,
     Timetable,
     Trip,
+    TripGeometry,
 )
 from dpmp_gtfs.upstream import (
     LOW_FLOOR,
@@ -325,7 +325,7 @@ def prune_unserved_stops(
 
 def stop_sequences(
     stop_times: list[StopTime], stops: list[Stop]
-) -> dict[StopSequence, list[Point]]:
+) -> dict[StopSequence, list[LatLon]]:
     """Distinct stop sequences and their coordinates.
 
     Trips overwhelmingly share routes: 2,728 trips collapse to roughly 220
@@ -337,7 +337,7 @@ def stop_sequences(
     for st in stop_times:
         by_trip.setdefault(st.trip_id, []).append((st.stop_sequence, st.stop_id))
 
-    sequences: dict[StopSequence, list[Point]] = {}
+    sequences: dict[StopSequence, list[LatLon]] = {}
     for entries in by_trip.values():
         sequence = tuple(stop_id for _, stop_id in sorted(entries))
         if len(sequence) < 2 or any(s not in position for s in sequence):
@@ -350,7 +350,7 @@ def stop_sequences(
 def apply_shapes(
     trips: list[Trip],
     stop_times: list[StopTime],
-    shapes: dict[StopSequence, Shape],
+    shapes: dict[StopSequence, TripGeometry],
 ) -> tuple[list[Trip], list[StopTime]]:
     """Attach shape ids and distances to trips that have routed geometry."""
     by_trip: dict[str, list[StopTime]] = {}

@@ -32,7 +32,7 @@ import httpx
 import polyline
 
 from dpmp_gtfs.exceptions import RoutingError
-from dpmp_gtfs.types import Point, Shape, StopSequence
+from dpmp_gtfs.types import LatLon, StopSequence, TripGeometry
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class ValhallaRouter:
         self.timeout = timeout
         self.delay = delay
 
-    def get_route_geometry(self, coordinates: list[Point]) -> tuple[list[str], list[float]]:
+    def get_route_geometry(self, coordinates: list[LatLon]) -> tuple[list[str], list[float]]:
         """Route through every coordinate in order.
 
         Returns each leg's encoded geometry and its length in metres. Legs map
@@ -170,7 +170,7 @@ class ShapeCache:
         self.path.write_text(json.dumps(self._entries, sort_keys=True), encoding="utf8")
 
 
-def _step_lengths(points: list[Point]) -> list[float]:
+def _step_lengths(points: list[LatLon]) -> list[float]:
     """Straight-line distance between consecutive points, in metres.
 
     An equirectangular approximation is plenty at city scale, and it avoids a
@@ -188,7 +188,7 @@ def _step_lengths(points: list[Point]) -> list[float]:
     return steps
 
 
-def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Shape:
+def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> TripGeometry:
     """Stitch routed legs into one shape with cumulative distances.
 
     Each leg spans one gap between stops, so stop distances are just the
@@ -200,13 +200,13 @@ def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Shap
     hundred metres of road that is well inside the precision anything uses
     ``shape_dist_traveled`` for.
     """
-    points: list[Point] = []
+    points: list[LatLon] = []
     point_distances: list[float] = []
     stop_distances: list[float] = [0.0]
 
     for index, (encoded, leg_length) in enumerate(zip(legs, lengths, strict=True)):
         # Valhalla encodes at six decimal places rather than the usual five.
-        leg_points: list[Point] = polyline.decode(encoded, precision=6)
+        leg_points: list[LatLon] = polyline.decode(encoded, precision=6)
         if len(leg_points) < 2:
             raise RoutingError(f"leg {index} of {shape_id} has no usable geometry")
 
@@ -241,7 +241,7 @@ def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Shap
             point_distances[-1] = end_distance
         stop_distances.append(end_distance)
 
-    return Shape(
+    return TripGeometry(
         shape_id=shape_id,
         points=tuple(points),
         point_distances=tuple(point_distances),
@@ -250,17 +250,17 @@ def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Shap
 
 
 def build_shapes(
-    sequences: dict[StopSequence, list[Point]],
+    sequences: dict[StopSequence, list[LatLon]],
     cache: ShapeCache,
     router: ValhallaRouter | None = None,
-) -> dict[StopSequence, Shape]:
+) -> dict[StopSequence, TripGeometry]:
     """Route every stop sequence, reusing cached geometry where possible.
 
     Sequences that cannot be routed are simply left out; their trips end up
     without a ``shape_id``, which GTFS permits.
     """
     router = router or ValhallaRouter()
-    shapes: dict[StopSequence, Shape] = {}
+    shapes: dict[StopSequence, TripGeometry] = {}
     keys = {seq: shape_id_for(seq) for seq in sequences}
 
     if missing := [seq for seq in sequences if cache.get(keys[seq]) is None]:

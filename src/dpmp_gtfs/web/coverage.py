@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 # a straight road without visibly moving the line at city zoom levels.
 SIMPLIFY_TOLERANCE_DEGREES = 0.0001
 
-Coordinate = tuple[float, float]
-"""Longitude, latitude -- GeoJSON order, which is the reverse of every other
-file in the feed."""
+LonLat = tuple[float, float]
+"""A position, longitude first -- what GeoJSON requires, and the reverse of
+:data:`dpmp_gtfs.types.LatLon` used everywhere else. Both names say their order
+because nothing else will: they are the same type, and getting it wrong fails
+silently."""
 
 
-def route_line(coordinates: list[Coordinate], tolerance: float) -> LineString | None:
+def route_line(coordinates: list[LonLat], tolerance: float) -> LineString | None:
     """One route's drawable geometry, or ``None`` when there is nothing to draw.
 
     Simplification is Ramer-Douglas-Peucker, left to shapely. It was hand-written

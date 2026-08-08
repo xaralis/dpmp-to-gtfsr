@@ -11,7 +11,7 @@ from dpmp_gtfs.static.shapes import (
     build_shapes,
     shape_id_for,
 )
-from dpmp_gtfs.types import Shape, Stop, StopTime, Trip
+from dpmp_gtfs.types import Stop, StopTime, Trip, TripGeometry
 
 # Real Valhalla output, recorded from a bus-costed route along line 1:
 # Hlavní nádraží -> Náměstí Republiky -> Zimní stadion.
@@ -80,7 +80,7 @@ def test_decode_polyline_of_empty_string() -> None:
 # --- assembly ---------------------------------------------------------------
 
 
-def _shape(legs: list[str], lengths: list[float]) -> Shape:
+def _shape(legs: list[str], lengths: list[float]) -> TripGeometry:
     return assemble_shape("shp_test", legs, lengths)
 
 
@@ -231,7 +231,7 @@ def test_opposite_directions_are_separate_sequences() -> None:
 
 def test_apply_shapes_sets_ids_and_distances() -> None:
 
-    shape = Shape("shp_x", ((50.0, 15.0), (50.01, 15.01)), (0.0, 800.0), (0.0, 800.0))
+    shape = TripGeometry("shp_x", ((50.0, 15.0), (50.01, 15.01)), (0.0, 800.0), (0.0, 800.0))
     trips = [Trip("L1", "wd", "t1", "x", 0, 1)]
     times = [_time("t1", "S1P1", 0), _time("t1", "S2P1", 1)]
 
