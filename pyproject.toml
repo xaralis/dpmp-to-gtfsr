@@ -17,6 +17,7 @@ dependencies = [
     "gtfs-realtime-bindings>=2.2",
     "typer>=0.19",
     "holidays>=0.102",
+    "shapely>=2.1.2",
 ]
 
 [project.scripts]
@@ -30,6 +31,7 @@ dev = [
     "ruff>=0.14",
     "mypy>=1.18",
     "types-protobuf>=7.34.1.20260518",
+    "types-shapely>=2.1.0.20260728",
 ]
 
 [build-system]

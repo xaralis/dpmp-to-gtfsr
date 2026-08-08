@@ -25,3 +25,6 @@ gtfs.zip
 # Cloudflare Tunnel credentials — per-deployment, never committed
 docker/cloudflared/credentials.json
 docker/cloudflared/config.yml
+
+# Editor/tool config
+.claude/

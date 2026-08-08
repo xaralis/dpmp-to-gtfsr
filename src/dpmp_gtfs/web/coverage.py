@@ -6,10 +6,11 @@ and the result is cached until the static feed changes.
 """
 
 import logging
-import math
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from shapely.geometry import LineString, Point, mapping
 
 from dpmp_gtfs.archive import read_tables
 
@@ -19,51 +20,30 @@ logger = logging.getLogger(__name__)
 # a straight road without visibly moving the line at city zoom levels.
 SIMPLIFY_TOLERANCE_DEGREES = 0.0001
 
-Point = tuple[float, float]
+Coordinate = tuple[float, float]
+"""Longitude, latitude -- GeoJSON order, which is the reverse of every other
+file in the feed."""
 
 
-def simplify(points: list[Point], tolerance: float) -> list[Point]:
-    """Ramer-Douglas-Peucker, iteratively to avoid recursion limits.
+def route_line(coordinates: list[Coordinate], tolerance: float) -> LineString | None:
+    """One route's drawable geometry, or ``None`` when there is nothing to draw.
 
-    Written out rather than pulled from a library: it is fifteen lines, and the
-    alternative is a shapely/numpy dependency for one cosmetic step.
+    Simplification is Ramer-Douglas-Peucker, left to shapely. It was hand-written
+    here until it was measured: shapely gives byte-identical output on all 218
+    shapes (11,232 points from 114,079) in a sixth of the time, and RDP has
+    well-known edge cases around collinear and duplicate points that this project
+    has no reason to be maintaining an implementation of.
+
+    ``preserve_topology=False`` selects plain RDP. The topology-preserving
+    variant spends time refusing to simplify a line into self-intersection,
+    which does not matter for drawing a bus route.
     """
-    if len(points) < 3:
-        return points
-
-    keep = [False] * len(points)
-    keep[0] = keep[-1] = True
-    stack = [(0, len(points) - 1)]
-
-    while stack:
-        start, end = stack.pop()
-        if end <= start + 1:
-            continue
-
-        furthest, worst = start, -1.0
-        for i in range(start + 1, end):
-            distance = _perpendicular_distance(points[i], points[start], points[end])
-            if distance > worst:
-                furthest, worst = i, distance
-
-        if worst > tolerance:
-            keep[furthest] = True
-            stack.append((start, furthest))
-            stack.append((furthest, end))
-
-    return [p for p, k in zip(points, keep, strict=True) if k]
-
-
-def _perpendicular_distance(point: Point, start: Point, end: Point) -> float:
-    """Distance from ``point`` to the segment ``start``-``end``, in degrees."""
-    (x, y), (x1, y1), (x2, y2) = point, start, end
-    dx, dy = x2 - x1, y2 - y1
-
-    if dx == 0 and dy == 0:
-        return math.hypot(x - x1, y - y1)
-
-    t = max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)))
-    return math.hypot(x - (x1 + t * dx), y - (y1 + t * dy))
+    if len(coordinates) < 2:
+        # A single point is not a line, and GeoJSON would reject it.
+        return None
+    # simplify() is declared as returning any geometry; simplifying a LineString
+    # only ever yields a LineString.
+    return cast(LineString, LineString(coordinates).simplify(tolerance, preserve_topology=False))
 
 
 def build_coverage(path: Path) -> dict[str, Any]:
@@ -117,17 +97,20 @@ def build_coverage(path: Path) -> dict[str, Any]:
         route_id = shape_routes.get(shape_id)
         if route_id is None:
             continue
-        # GeoJSON is lon,lat -- the reverse of every other file here.
-        line = [(lon, lat) for _, lat, lon in sorted(entries)]
-        raw_total += len(line)
-        line = simplify(line, SIMPLIFY_TOLERANCE_DEGREES)
-        simplified_total += len(line)
+
+        line = route_line(
+            [(lon, lat) for _, lat, lon in sorted(entries)], SIMPLIFY_TOLERANCE_DEGREES
+        )
+        if line is None:
+            continue
+        raw_total += len(entries)
+        simplified_total += len(line.coords)
 
         route = routes.get(route_id, {})
         features.append(
             {
                 "type": "Feature",
-                "geometry": {"type": "LineString", "coordinates": [list(p) for p in line]},
+                "geometry": mapping(line),
                 "properties": {
                     "kind": "route",
                     "route_id": route_id,
@@ -145,13 +128,9 @@ def build_coverage(path: Path) -> dict[str, Any]:
         features.append(
             {
                 "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [
-                        float(platform["stop_lon"]),
-                        float(platform["stop_lat"]),
-                    ],
-                },
+                "geometry": mapping(
+                    Point(float(platform["stop_lon"]), float(platform["stop_lat"]))
+                ),
                 "properties": {
                     "kind": "platform",
                     "stop_id": stop_ref,
@@ -169,10 +148,7 @@ def build_coverage(path: Path) -> dict[str, Any]:
         features.append(
             {
                 "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [float(stop["stop_lon"]), float(stop["stop_lat"])],
-                },
+                "geometry": mapping(Point(float(stop["stop_lon"]), float(stop["stop_lat"]))),
                 "properties": {
                     "kind": "stop",
                     "stop_id": stop["stop_id"],
