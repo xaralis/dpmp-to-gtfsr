@@ -27,57 +27,11 @@ from dpmp_gtfs.realtime.tracker import DelayTracker
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.watch import load_unserved, state_path
+from dpmp_gtfs.static.service_watch import load_unserved, state_path
 from dpmp_gtfs.static.writer import write_feed
 from dpmp_gtfs.timeutil import PRAGUE
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class FeedState:
-    """What the service currently has to serve, and how healthy it is."""
-
-    realtime: bytes = b""
-    realtime_message: rt.FeedMessage | None = None
-    realtime_built_at: dt.datetime | None = None
-    realtime_error: str | None = None
-    vehicle_count: int = 0
-    vehicles: list[VehicleView] = field(default_factory=list)
-    """Live vehicles joined against the timetable, ready to display. Built
-    once per refresh rather than per request -- every consumer wants the same
-    answer, and the join is not free."""
-
-    static_version: str | None = None
-    static_built_at: dt.datetime | None = None
-    static_error: str | None = None
-    trip_count: int = 0
-    unserved_stops: dict[str, str] = field(default_factory=dict)
-
-    index: StaticIndex | None = None
-
-    def age(self, moment: dt.datetime | None = None) -> float | None:
-        """Seconds since the realtime feed was last rebuilt."""
-        if self.realtime_built_at is None:
-            return None
-        now = moment or dt.datetime.now(dt.UTC)
-        return (now - self.realtime_built_at).total_seconds()
-
-    @property
-    def healthy(self) -> bool:
-        """Whether the service is currently serving trustworthy data.
-
-        Deliberately strict about staleness: a realtime feed several minutes
-        old is worse than an honest failure, because consumers will present it
-        as current.
-
-        Health depends on having a usable static feed, not on having built one
-        in this process -- a feed loaded from disk at startup is just as valid,
-        and requiring otherwise would report an unhealthy service for the whole
-        first day.
-        """
-        age = self.age()
-        return self.index is not None and age is not None and age < 120
 
 
 class Scheduler:
@@ -229,6 +183,52 @@ class Scheduler:
                     logger.warning("realtime refresh failed: %r", exc)
                     self.state.realtime_error = repr(exc)
                 await asyncio.sleep(self.settings.realtime_interval)
+
+
+@dataclass(slots=True)
+class FeedState:
+    """What the service currently has to serve, and how healthy it is."""
+
+    realtime: bytes = b""
+    realtime_message: rt.FeedMessage | None = None
+    realtime_built_at: dt.datetime | None = None
+    realtime_error: str | None = None
+    vehicle_count: int = 0
+    vehicles: list[VehicleView] = field(default_factory=list)
+    """Live vehicles joined against the timetable, ready to display. Built
+    once per refresh rather than per request -- every consumer wants the same
+    answer, and the join is not free."""
+
+    static_version: str | None = None
+    static_built_at: dt.datetime | None = None
+    static_error: str | None = None
+    trip_count: int = 0
+    unserved_stops: dict[str, str] = field(default_factory=dict)
+
+    index: StaticIndex | None = None
+
+    def age(self, moment: dt.datetime | None = None) -> float | None:
+        """Seconds since the realtime feed was last rebuilt."""
+        if self.realtime_built_at is None:
+            return None
+        now = moment or dt.datetime.now(dt.UTC)
+        return (now - self.realtime_built_at).total_seconds()
+
+    @property
+    def healthy(self) -> bool:
+        """Whether the service is currently serving trustworthy data.
+
+        Deliberately strict about staleness: a realtime feed several minutes
+        old is worse than an honest failure, because consumers will present it
+        as current.
+
+        Health depends on having a usable static feed, not on having built one
+        in this process -- a feed loaded from disk at startup is just as valid,
+        and requiring otherwise would report an unhealthy service for the whole
+        first day.
+        """
+        age = self.age()
+        return self.index is not None and age is not None and age < 120
 
 
 def read_feed_version(path: Path) -> str | None:

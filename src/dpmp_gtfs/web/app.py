@@ -25,22 +25,6 @@ HERE = Path(__file__).parent
 TEMPLATES = Jinja2Templates(directory=str(HERE / "templates"))
 
 
-def _etag(payload: bytes) -> str:
-    return f'"{hashlib.sha256(payload).hexdigest()[:32]}"'
-
-
-def _not_modified(request: Request, etag: str) -> Response | None:
-    """A 304 when the client already holds this exact body.
-
-    Both feed routes need this, and they need to agree on the tag format --
-    a client holding an old-format tag would otherwise be served stale
-    responses by one route and fresh ones by the other.
-    """
-    if request.headers.get("if-none-match") == etag:
-        return Response(status_code=304, headers={"ETag": etag})
-    return None
-
-
 def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or default_settings
     scheduler = Scheduler(config)
@@ -215,6 +199,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     return app
+
+
+def _etag(payload: bytes) -> str:
+    return f'"{hashlib.sha256(payload).hexdigest()[:32]}"'
+
+
+def _not_modified(request: Request, etag: str) -> Response | None:
+    """A 304 when the client already holds this exact body.
+
+    Both feed routes need this, and they need to agree on the tag format --
+    a client holding an old-format tag would otherwise be served stale
+    responses by one route and fresh ones by the other.
+    """
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    return None
 
 
 app = create_app()

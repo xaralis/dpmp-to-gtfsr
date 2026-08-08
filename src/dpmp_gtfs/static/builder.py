@@ -44,42 +44,73 @@ REGULAR = 0
 COORDINATE_WITH_DRIVER = 3
 
 
-def stop_seconds(stops: list[ConnectionStop]) -> list[int]:
-    """Seconds-from-service-day-start for each stop, unwrapped across midnight.
+def build_feed(
+    timetable: Timetable,
+    start_date: dt.date | None = None,
+    validity_days: int = 365,
+) -> Feed:
+    """Assemble a complete feed.
 
-    Only three trips in the network need this (line 3 trips 322/324 at
-    23:55->00:23, and line 98 trip 9 at 23:58->00:52), but getting it wrong
-    turns them into trips that run backwards in time.
+    The API publishes no validity window, so one is synthesised. A daily
+    rebuild keeps rolling it forward; if the service ever stops rebuilding, the
+    feed expires rather than silently claiming to be current forever.
     """
-    out: list[int] = []
-    offset = 0
-    previous: int | None = None
+    start = start_date or dt.date.today()
+    trips, stop_times, services = build_trips_and_stop_times(timetable)
+    stops, unserved = prune_unserved_stops(build_stops(timetable), stop_times)
 
-    for stop in stops:
-        t = stop.time
-        raw = t.hour * 3600 + t.minute * 60 + t.second
-        if previous is not None and raw < previous:
-            offset += DAY
-        previous = raw
-        out.append(raw + offset)
+    feed = Feed(
+        stops=stops,
+        unserved_stops=unserved,
+        routes=build_routes(timetable),
+        trips=trips,
+        stop_times=stop_times,
+        services=services,
+        start_date=start,
+        end_date=start + dt.timedelta(days=validity_days),
+    )
+    feed.calendar_exceptions = list(
+        calendar_exceptions(feed.services, feed.start_date, feed.end_date)
+    )
+    logger.info(
+        "built feed: %d stops, %d routes, %d trips, %d stop times, %d services, %d shapes",
+        len(feed.stops),
+        len(feed.routes),
+        len(feed.trips),
+        len(feed.stop_times),
+        len(feed.services),
+        len(feed.shapes),
+    )
+    return feed
 
-    return out
 
+def with_shapes(feed: Feed, cache_path: Path, router: ValhallaRouter | None = None) -> Feed:
+    """Route geometry for a built feed and attach it.
 
-# --- building ---------------------------------------------------------------
-
-
-def used_platforms(timetable: Timetable) -> dict[int, set[int]]:
-    """``{station: {platform, ...}}`` as actually referenced by timetables.
-
-    The authority on which platforms exist is the timetable, not
-    ``/api/stations`` -- the latter is missing several that trips call at.
+    Separate from :func:`build_feed` because routing reaches the network and
+    can fail: a feed without geometry is still a good feed, so this returns
+    the original unchanged rather than raising.
     """
-    used: dict[int, set[int]] = {}
-    for detail in timetable.details.values():
-        for stop in detail.stops:
-            used.setdefault(stop.number, set()).add(stop.platform)
-    return used
+    sequences = stop_sequences(feed.stop_times, feed.stops)
+    if not sequences:
+        return feed
+
+    shapes = build_shapes(sequences, ShapeCache(cache_path), router)
+    if not shapes:
+        logger.warning("no geometry available; publishing the feed without shapes.txt")
+        return feed
+
+    trips, stop_times = apply_shapes(feed.trips, feed.stop_times, shapes)
+    attached = {trip.shape_id for trip in trips if trip.shape_id}
+    used = sorted((s for s in shapes.values() if s.shape_id in attached), key=lambda s: s.shape_id)
+
+    logger.info(
+        "attached %d shapes to %d of %d trips",
+        len(used),
+        sum(1 for t in trips if t.shape_id),
+        len(trips),
+    )
+    return replace(feed, trips=trips, stop_times=stop_times, shapes=used)
 
 
 def build_stops(timetable: Timetable) -> list[Stop]:
@@ -226,18 +257,6 @@ def build_routes(timetable: Timetable) -> list[Route]:
     return routes
 
 
-def direction_of(detail: ConnectionDetail) -> int:
-    """0 or 1, from whether the trip walks the line's stop list up or down.
-
-    ``index`` is each stop's position in the line's canonical ordering, so a
-    trip in one direction sees it ascend and the other sees it descend.
-    """
-    indices = [s.index for s in detail.stops]
-    if len(indices) < 2:
-        return 0
-    return 0 if indices[-1] > indices[0] else 1
-
-
 def build_trips_and_stop_times(
     timetable: Timetable,
 ) -> tuple[list[Trip], list[StopTime], list[Service]]:
@@ -303,7 +322,7 @@ def prune_unserved_stops(
 
     The dropped ones are returned rather than discarded: losing service is not
     always permanent. A diversion takes stops out temporarily, so the caller
-    compares this set across rebuilds (see :mod:`dpmp_gtfs.static.watch`).
+    compares this set across rebuilds (see :mod:`dpmp_gtfs.static.service_watch`).
     """
     served = {st.stop_id for st in stop_times}
     platforms = [s for s in stops if s.location_type == 0 and s.stop_id in served]
@@ -321,30 +340,6 @@ def prune_unserved_stops(
         kept, key=lambda s: (s.parent_station or s.stop_id, s.location_type, s.stop_id)
     )
     return ordered, unserved
-
-
-def stop_sequences(
-    stop_times: list[StopTime], stops: list[Stop]
-) -> dict[StopSequence, list[LatLon]]:
-    """Distinct stop sequences and their coordinates.
-
-    Trips overwhelmingly share routes: 2,728 trips collapse to roughly 220
-    sequences, which is what makes routing geometry affordable.
-    """
-    position = {s.stop_id: (s.stop_lat, s.stop_lon) for s in stops}
-
-    by_trip: dict[str, list[tuple[int, str]]] = {}
-    for st in stop_times:
-        by_trip.setdefault(st.trip_id, []).append((st.stop_sequence, st.stop_id))
-
-    sequences: dict[StopSequence, list[LatLon]] = {}
-    for entries in by_trip.values():
-        sequence = tuple(stop_id for _, stop_id in sorted(entries))
-        if len(sequence) < 2 or any(s not in position for s in sequence):
-            continue
-        sequences.setdefault(sequence, [position[s] for s in sequence])
-
-    return sequences
 
 
 def apply_shapes(
@@ -381,75 +376,6 @@ def apply_shapes(
     return updated_trips, updated_times
 
 
-def with_shapes(feed: Feed, cache_path: Path, router: ValhallaRouter | None = None) -> Feed:
-    """Route geometry for a built feed and attach it.
-
-    Separate from :func:`build_feed` because routing reaches the network and
-    can fail: a feed without geometry is still a good feed, so this returns
-    the original unchanged rather than raising.
-    """
-    sequences = stop_sequences(feed.stop_times, feed.stops)
-    if not sequences:
-        return feed
-
-    shapes = build_shapes(sequences, ShapeCache(cache_path), router)
-    if not shapes:
-        logger.warning("no geometry available; publishing the feed without shapes.txt")
-        return feed
-
-    trips, stop_times = apply_shapes(feed.trips, feed.stop_times, shapes)
-    attached = {trip.shape_id for trip in trips if trip.shape_id}
-    used = sorted((s for s in shapes.values() if s.shape_id in attached), key=lambda s: s.shape_id)
-
-    logger.info(
-        "attached %d shapes to %d of %d trips",
-        len(used),
-        sum(1 for t in trips if t.shape_id),
-        len(trips),
-    )
-    return replace(feed, trips=trips, stop_times=stop_times, shapes=used)
-
-
-def build_feed(
-    timetable: Timetable,
-    start_date: dt.date | None = None,
-    validity_days: int = 365,
-) -> Feed:
-    """Assemble a complete feed.
-
-    The API publishes no validity window, so one is synthesised. A daily
-    rebuild keeps rolling it forward; if the service ever stops rebuilding, the
-    feed expires rather than silently claiming to be current forever.
-    """
-    start = start_date or dt.date.today()
-    trips, stop_times, services = build_trips_and_stop_times(timetable)
-    stops, unserved = prune_unserved_stops(build_stops(timetable), stop_times)
-
-    feed = Feed(
-        stops=stops,
-        unserved_stops=unserved,
-        routes=build_routes(timetable),
-        trips=trips,
-        stop_times=stop_times,
-        services=services,
-        start_date=start,
-        end_date=start + dt.timedelta(days=validity_days),
-    )
-    feed.calendar_exceptions = list(
-        calendar_exceptions(feed.services, feed.start_date, feed.end_date)
-    )
-    logger.info(
-        "built feed: %d stops, %d routes, %d trips, %d stop times, %d services, %d shapes",
-        len(feed.stops),
-        len(feed.routes),
-        len(feed.trips),
-        len(feed.stop_times),
-        len(feed.services),
-        len(feed.shapes),
-    )
-    return feed
-
-
 def iter_missing_stop_references(feed: Feed) -> Iterator[str]:
     """Stop ids used by stop_times that no stop declares.
 
@@ -460,3 +386,74 @@ def iter_missing_stop_references(feed: Feed) -> Iterator[str]:
     for st in feed.stop_times:
         if st.stop_id not in known:
             yield st.stop_id
+
+
+def stop_sequences(
+    stop_times: list[StopTime], stops: list[Stop]
+) -> dict[StopSequence, list[LatLon]]:
+    """Distinct stop sequences and their coordinates.
+
+    Trips overwhelmingly share routes: 2,728 trips collapse to roughly 220
+    sequences, which is what makes routing geometry affordable.
+    """
+    position = {s.stop_id: (s.stop_lat, s.stop_lon) for s in stops}
+
+    by_trip: dict[str, list[tuple[int, str]]] = {}
+    for st in stop_times:
+        by_trip.setdefault(st.trip_id, []).append((st.stop_sequence, st.stop_id))
+
+    sequences: dict[StopSequence, list[LatLon]] = {}
+    for entries in by_trip.values():
+        sequence = tuple(stop_id for _, stop_id in sorted(entries))
+        if len(sequence) < 2 or any(s not in position for s in sequence):
+            continue
+        sequences.setdefault(sequence, [position[s] for s in sequence])
+
+    return sequences
+
+
+def used_platforms(timetable: Timetable) -> dict[int, set[int]]:
+    """``{station: {platform, ...}}`` as actually referenced by timetables.
+
+    The authority on which platforms exist is the timetable, not
+    ``/api/stations`` -- the latter is missing several that trips call at.
+    """
+    used: dict[int, set[int]] = {}
+    for detail in timetable.details.values():
+        for stop in detail.stops:
+            used.setdefault(stop.number, set()).add(stop.platform)
+    return used
+
+
+def direction_of(detail: ConnectionDetail) -> int:
+    """0 or 1, from whether the trip walks the line's stop list up or down.
+
+    ``index`` is each stop's position in the line's canonical ordering, so a
+    trip in one direction sees it ascend and the other sees it descend.
+    """
+    indices = [s.index for s in detail.stops]
+    if len(indices) < 2:
+        return 0
+    return 0 if indices[-1] > indices[0] else 1
+
+
+def stop_seconds(stops: list[ConnectionStop]) -> list[int]:
+    """Seconds-from-service-day-start for each stop, unwrapped across midnight.
+
+    Only three trips in the network need this (line 3 trips 322/324 at
+    23:55->00:23, and line 98 trip 9 at 23:58->00:52), but getting it wrong
+    turns them into trips that run backwards in time.
+    """
+    out: list[int] = []
+    offset = 0
+    previous: int | None = None
+
+    for stop in stops:
+        t = stop.time
+        raw = t.hour * 3600 + t.minute * 60 + t.second
+        if previous is not None and raw < previous:
+            offset += DAY
+        previous = raw
+        out.append(raw + offset)
+
+    return out

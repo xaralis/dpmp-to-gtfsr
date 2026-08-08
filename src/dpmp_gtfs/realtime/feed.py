@@ -3,7 +3,7 @@
 import datetime as dt
 import logging
 
-from google.transit import gtfs_realtime_pb2 as rt
+from google.transit import gtfs_realtime_pb2 as gtfsr
 
 from dpmp_gtfs.api.models import Bus
 from dpmp_gtfs.timeutil import format_gtfs_time, service_day_date
@@ -14,45 +14,18 @@ from .tracker import DelayTracker, project_delay
 logger = logging.getLogger(__name__)
 
 
-def _service_date(bus_time: dt.datetime, first_departure: int) -> str:
-    """The service date a trip belongs to, as ``YYYYMMDD``.
-
-    Answered by comparing the vehicle's clock against the trip's own schedule
-    rather than by inspecting the schedule alone. A trip that departs at 23:58
-    and arrives at 00:52 has a first departure below 24:00, yet a vehicle
-    running it at 00:30 still belongs to the previous service day -- and the
-    consumer matching on ``(trip_id, start_date)`` has to be told so.
-    """
-    return service_day_date(bus_time, first_departure).strftime("%Y%m%d")
-
-
-def _descriptor(trip: ScheduledTrip, service_date: str, first_departure: int) -> rt.TripDescriptor:
-    """Identify a trip run.
-
-    ``start_date`` and ``start_time`` together disambiguate which run of a trip
-    this is, which matters around midnight when two service days overlap.
-    """
-    return rt.TripDescriptor(
-        trip_id=trip.trip_id,
-        route_id=trip.route_id,
-        start_date=service_date,
-        start_time=format_gtfs_time(first_departure),
-        schedule_relationship=rt.TripDescriptor.SCHEDULED,
-    )
-
-
 def build_feed_message(
     buses: list[Bus],
     index: StaticIndex,
     tracker: DelayTracker,
     now: dt.datetime | None = None,
-) -> rt.FeedMessage:
+) -> gtfsr.FeedMessage:
     """Assemble vehicle positions and trip updates for one snapshot."""
     now = now or dt.datetime.now(dt.UTC)
 
-    message = rt.FeedMessage()
+    message = gtfsr.FeedMessage()
     message.header.gtfs_realtime_version = "2.0"
-    message.header.incrementality = rt.FeedHeader.FULL_DATASET
+    message.header.incrementality = gtfsr.FeedHeader.FULL_DATASET
     message.header.timestamp = int(now.timestamp())
 
     unmatched = 0
@@ -73,7 +46,7 @@ def build_feed_message(
         service_date = _service_date(bus.state_dtime, first_departure)
         reported_at = int(bus.state_dtime.timestamp())
 
-        vehicle_descriptor = rt.VehicleDescriptor(id=bus.vid, label=bus.vid)
+        vehicle_descriptor = gtfsr.VehicleDescriptor(id=bus.vid, label=bus.vid)
 
         # Where the vehicle is along this trip, resolved once and used by both
         # the position and the predictions so they cannot disagree.
@@ -81,17 +54,17 @@ def build_feed_message(
         position_now = trip.locate(current, bus.current_station)
 
         # --- vehicle position ---
-        position = rt.Position(latitude=bus.gps_latitude, longitude=bus.gps_longitude)
+        position = gtfsr.Position(latitude=bus.gps_latitude, longitude=bus.gps_longitude)
         if bus.gps_course is not None:
             position.bearing = bus.gps_course
 
-        vehicle = rt.VehiclePosition(
+        vehicle = gtfsr.VehiclePosition(
             trip=_descriptor(trip, service_date, first_departure),
             vehicle=vehicle_descriptor,
             position=position,
             timestamp=reported_at,
             stop_id=current or "",
-            current_status=rt.VehiclePosition.IN_TRANSIT_TO,
+            current_status=gtfsr.VehiclePosition.IN_TRANSIT_TO,
         )
         if position_now is not None:
             vehicle.current_stop_sequence = trip.stops[position_now].sequence
@@ -106,7 +79,7 @@ def build_feed_message(
             # assert punctuality for roughly 42% of the fleet.
             continue
 
-        update = rt.TripUpdate(
+        update = gtfsr.TripUpdate(
             trip=_descriptor(trip, service_date, first_departure),
             vehicle=vehicle_descriptor,
             timestamp=reported_at,
@@ -123,7 +96,7 @@ def build_feed_message(
                 stu.stop_id = scheduled.stop_id
                 stu.arrival.delay = predicted
                 stu.departure.delay = predicted
-                stu.schedule_relationship = rt.TripUpdate.StopTimeUpdate.SCHEDULED
+                stu.schedule_relationship = gtfsr.TripUpdate.StopTimeUpdate.SCHEDULED
 
         entity = message.entity.add(id=f"t{bus.vid}")
         entity.trip_update.CopyFrom(update)
@@ -132,3 +105,32 @@ def build_feed_message(
         logger.info("%d of %d vehicles had no matching static trip", unmatched, len(buses))
 
     return message
+
+
+def _descriptor(
+    trip: ScheduledTrip, service_date: str, first_departure: int
+) -> gtfsr.TripDescriptor:
+    """Identify a trip run.
+
+    ``start_date`` and ``start_time`` together disambiguate which run of a trip
+    this is, which matters around midnight when two service days overlap.
+    """
+    return gtfsr.TripDescriptor(
+        trip_id=trip.trip_id,
+        route_id=trip.route_id,
+        start_date=service_date,
+        start_time=format_gtfs_time(first_departure),
+        schedule_relationship=gtfsr.TripDescriptor.SCHEDULED,
+    )
+
+
+def _service_date(bus_time: dt.datetime, first_departure: int) -> str:
+    """The service date a trip belongs to, as ``YYYYMMDD``.
+
+    Answered by comparing the vehicle's clock against the trip's own schedule
+    rather than by inspecting the schedule alone. A trip that departs at 23:58
+    and arrives at 00:52 has a first departure below 24:00, yet a vehicle
+    running it at 00:30 still belongs to the previous service day -- and the
+    consumer matching on ``(trip_id, start_date)`` has to be told so.
+    """
+    return service_day_date(bus_time, first_departure).strftime("%Y%m%d")

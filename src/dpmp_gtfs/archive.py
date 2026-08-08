@@ -13,7 +13,13 @@ import io
 import zipfile
 from pathlib import Path
 
-Row = dict[str, str]
+type Row = dict[str, str]
+
+
+def read_tables(path: Path, *names: str) -> dict[str, list[Row]]:
+    """Read several tables in one pass, opening the archive once."""
+    with zipfile.ZipFile(path) as zf:
+        return {name: read_table(zf, name) for name in names}
 
 
 def read_table(archive: zipfile.ZipFile, name: str) -> list[Row]:
@@ -28,9 +34,3 @@ def read_table(archive: zipfile.ZipFile, name: str) -> list[Row]:
             return list(csv.DictReader(io.TextIOWrapper(fh, "utf8")))
     except KeyError:
         return []
-
-
-def read_tables(path: Path, *names: str) -> dict[str, list[Row]]:
-    """Read several tables in one pass, opening the archive once."""
-    with zipfile.ZipFile(path) as zf:
-        return {name: read_table(zf, name) for name in names}

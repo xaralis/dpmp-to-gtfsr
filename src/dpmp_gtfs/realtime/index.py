@@ -12,54 +12,6 @@ from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.ids import trip_id
 
 
-@dataclass(frozen=True, slots=True)
-class ScheduledStop:
-    stop_id: str
-    station: int
-    """Station number without platform -- what ``last_stop_number`` reports."""
-    sequence: int
-    seconds: int
-    """Scheduled time as seconds from the start of the service day. May exceed
-    86400 for trips that cross midnight."""
-    name: str = ""
-    """Human-readable stop name. Carried here so callers that need to *show* a
-    vehicle's position -- rather than just reference it -- do not have to reopen
-    the feed to turn an id into something a passenger recognises."""
-
-
-@dataclass(frozen=True, slots=True)
-class ScheduledTrip:
-    trip_id: str
-    route_id: str
-    stops: tuple[ScheduledStop, ...]
-
-    def index_of_station(self, station: int) -> int | None:
-        """Position of a station within this trip, if it calls there.
-
-        A station can legitimately appear twice on a circular trip; the first
-        match is returned, which is the conservative reading when a vehicle has
-        only just reached it.
-        """
-        for i, stop in enumerate(self.stops):
-            if stop.station == station:
-                return i
-        return None
-
-    def locate(self, stop_id: str | None, station: int | None) -> int | None:
-        """Where along this trip a vehicle reporting that stop currently is.
-
-        Platform first, then the station it belongs to. The fallback is not
-        defensive padding: vehicles do report a platform their trip does not
-        call at while the station itself is plainly on the route, and treating
-        that as "not on this trip" would drop the vehicle's predictions
-        entirely rather than place it one platform out.
-        """
-        for i, stop in enumerate(self.stops):
-            if stop.stop_id == stop_id:
-                return i
-        return None if station is None else self.index_of_station(station)
-
-
 class StaticIndex:
     """Trips of the current static feed, addressable the way realtime sees them."""
 
@@ -116,6 +68,54 @@ class StaticIndex:
             for tid, stops in collected.items()
         }
         return cls(trips)
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduledTrip:
+    trip_id: str
+    route_id: str
+    stops: tuple[ScheduledStop, ...]
+
+    def index_of_station(self, station: int) -> int | None:
+        """Position of a station within this trip, if it calls there.
+
+        A station can legitimately appear twice on a circular trip; the first
+        match is returned, which is the conservative reading when a vehicle has
+        only just reached it.
+        """
+        for i, stop in enumerate(self.stops):
+            if stop.station == station:
+                return i
+        return None
+
+    def locate(self, stop_id: str | None, station: int | None) -> int | None:
+        """Where along this trip a vehicle reporting that stop currently is.
+
+        Platform first, then the station it belongs to. The fallback is not
+        defensive padding: vehicles do report a platform their trip does not
+        call at while the station itself is plainly on the route, and treating
+        that as "not on this trip" would drop the vehicle's predictions
+        entirely rather than place it one platform out.
+        """
+        for i, stop in enumerate(self.stops):
+            if stop.stop_id == stop_id:
+                return i
+        return None if station is None else self.index_of_station(station)
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduledStop:
+    stop_id: str
+    station: int
+    """Station number without platform -- what ``last_stop_number`` reports."""
+    sequence: int
+    seconds: int
+    """Scheduled time as seconds from the start of the service day. May exceed
+    86400 for trips that cross midnight."""
+    name: str = ""
+    """Human-readable stop name. Carried here so callers that need to *show* a
+    vehicle's position -- rather than just reference it -- do not have to reopen
+    the feed to turn an id into something a passenger recognises."""
 
 
 def _station_of(stop_id: str) -> int:

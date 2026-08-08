@@ -44,14 +44,58 @@ EARTH_RADIUS_M = 6371000.0
 MAX_LOCATIONS = 100
 
 
-def shape_id_for(sequence: StopSequence) -> str:
-    """A stable id derived from the stop sequence itself.
+def build_shapes(
+    sequences: dict[StopSequence, list[LatLon]],
+    cache: ShapeCache,
+    router: ValhallaRouter | None = None,
+) -> dict[StopSequence, TripGeometry]:
+    """Route every stop sequence, reusing cached geometry where possible.
 
-    Deriving it from content rather than position means adding a line does not
-    renumber every other shape, so ids stay comparable between feed versions.
+    Sequences that cannot be routed are simply left out; their trips end up
+    without a ``shape_id``, which GTFS permits.
     """
-    digest = hashlib.sha256("\x00".join(sequence).encode()).hexdigest()
-    return f"shp_{digest[:12]}"
+    router = router or ValhallaRouter()
+    shapes: dict[StopSequence, TripGeometry] = {}
+    keys = {seq: shape_id_for(seq) for seq in sequences}
+
+    if missing := [seq for seq in sequences if cache.get(keys[seq]) is None]:
+        logger.info(
+            "routing %d new shapes (%d cached)", len(missing), len(sequences) - len(missing)
+        )
+
+    failures = 0
+
+    for sequence, coordinates in sequences.items():
+        key = keys[sequence]
+        cached = cache.get(key)
+
+        if cached is None:
+            try:
+                legs, lengths = router.get_route_geometry(coordinates)
+            except RoutingError as exc:
+                failures += 1
+                logger.warning("could not route shape %s: %s", key, exc)
+                continue
+            cache.put(key, legs, lengths)
+        else:
+            legs, lengths = cached
+
+        try:
+            shapes[sequence] = assemble_shape(key, legs, lengths)
+        except (RoutingError, ValueError) as exc:
+            failures += 1
+            logger.warning("could not assemble shape %s: %s", key, exc)
+
+    if pruned := cache.prune(set(keys.values())):
+        logger.info("dropped %d shapes no longer used by any trip", pruned)
+
+    cache.save()
+
+    if failures:
+        logger.warning("%d of %d shapes unavailable", failures, len(sequences))
+
+    logger.info("built %d shapes covering %d stop sequences", len(shapes), len(sequences))
+    return shapes
 
 
 class ValhallaRouter:
@@ -170,24 +214,6 @@ class ShapeCache:
         self.path.write_text(json.dumps(self._entries, sort_keys=True), encoding="utf8")
 
 
-def _step_lengths(points: list[LatLon]) -> list[float]:
-    """Straight-line distance between consecutive points, in metres.
-
-    An equirectangular approximation is plenty at city scale, and it avoids a
-    geodesy dependency for something only used to spread a leg's length across
-    its own points.
-    """
-    steps = []
-
-    for (lat1, lon1), (lat2, lon2) in pairwise(points):
-        mean_lat = math.radians((lat1 + lat2) / 2)
-        dx = math.radians(lon2 - lon1) * math.cos(mean_lat)
-        dy = math.radians(lat2 - lat1)
-        steps.append(math.hypot(dx, dy) * EARTH_RADIUS_M)
-
-    return steps
-
-
 def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> TripGeometry:
     """Stitch routed legs into one shape with cumulative distances.
 
@@ -249,55 +275,29 @@ def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Trip
     )
 
 
-def build_shapes(
-    sequences: dict[StopSequence, list[LatLon]],
-    cache: ShapeCache,
-    router: ValhallaRouter | None = None,
-) -> dict[StopSequence, TripGeometry]:
-    """Route every stop sequence, reusing cached geometry where possible.
+def shape_id_for(sequence: StopSequence) -> str:
+    """A stable id derived from the stop sequence itself.
 
-    Sequences that cannot be routed are simply left out; their trips end up
-    without a ``shape_id``, which GTFS permits.
+    Deriving it from content rather than position means adding a line does not
+    renumber every other shape, so ids stay comparable between feed versions.
     """
-    router = router or ValhallaRouter()
-    shapes: dict[StopSequence, TripGeometry] = {}
-    keys = {seq: shape_id_for(seq) for seq in sequences}
+    digest = hashlib.sha256("\x00".join(sequence).encode()).hexdigest()
+    return f"shp_{digest[:12]}"
 
-    if missing := [seq for seq in sequences if cache.get(keys[seq]) is None]:
-        logger.info(
-            "routing %d new shapes (%d cached)", len(missing), len(sequences) - len(missing)
-        )
 
-    failures = 0
+def _step_lengths(points: list[LatLon]) -> list[float]:
+    """Straight-line distance between consecutive points, in metres.
 
-    for sequence, coordinates in sequences.items():
-        key = keys[sequence]
-        cached = cache.get(key)
+    An equirectangular approximation is plenty at city scale, and it avoids a
+    geodesy dependency for something only used to spread a leg's length across
+    its own points.
+    """
+    steps = []
 
-        if cached is None:
-            try:
-                legs, lengths = router.get_route_geometry(coordinates)
-            except RoutingError as exc:
-                failures += 1
-                logger.warning("could not route shape %s: %s", key, exc)
-                continue
-            cache.put(key, legs, lengths)
-        else:
-            legs, lengths = cached
+    for (lat1, lon1), (lat2, lon2) in pairwise(points):
+        mean_lat = math.radians((lat1 + lat2) / 2)
+        dx = math.radians(lon2 - lon1) * math.cos(mean_lat)
+        dy = math.radians(lat2 - lat1)
+        steps.append(math.hypot(dx, dy) * EARTH_RADIUS_M)
 
-        try:
-            shapes[sequence] = assemble_shape(key, legs, lengths)
-        except (RoutingError, ValueError) as exc:
-            failures += 1
-            logger.warning("could not assemble shape %s: %s", key, exc)
-
-    if pruned := cache.prune(set(keys.values())):
-        logger.info("dropped %d shapes no longer used by any trip", pruned)
-
-    cache.save()
-
-    if failures:
-        logger.warning("%d of %d shapes unavailable", failures, len(sequences))
-
-    logger.info("built %d shapes covering %d stop sequences", len(shapes), len(sequences))
-    return shapes
+    return steps

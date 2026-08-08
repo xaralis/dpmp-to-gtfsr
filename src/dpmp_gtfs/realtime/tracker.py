@@ -47,26 +47,6 @@ logger = logging.getLogger(__name__)
 MEASUREMENT_TTL = dt.timedelta(minutes=20)
 
 
-@dataclass(frozen=True, slots=True)
-class Delay:
-    """A measured delay, positive when late."""
-
-    seconds: int
-    measured_at: dt.datetime
-    at_stop: str
-    """Stop id where the measurement was taken."""
-    measured: bool
-    """False when this is the countdown-derived lower bound rather than an
-    observed transition."""
-
-
-@dataclass(slots=True)
-class _VehicleState:
-    last_station: int | None
-    trip_id: str
-    delay: Delay | None = None
-
-
 class DelayTracker:
     """Keeps just enough per-vehicle history to measure delays.
 
@@ -164,6 +144,19 @@ class DelayTracker:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class Delay:
+    """A measured delay, positive when late."""
+
+    seconds: int
+    measured_at: dt.datetime
+    at_stop: str
+    """Stop id where the measurement was taken."""
+    measured: bool
+    """False when this is the countdown-derived lower bound rather than an
+    observed transition."""
+
+
 def project_delay(delay: Delay, stops_ahead: int) -> int:
     """Delay to predict ``stops_ahead`` stops past where it was measured.
 
@@ -178,3 +171,10 @@ def project_delay(delay: Delay, stops_ahead: int) -> int:
     something that was actually observed.
     """
     return delay.seconds
+
+
+@dataclass(slots=True)
+class _VehicleState:
+    last_station: int | None
+    trip_id: str
+    delay: Delay | None = None

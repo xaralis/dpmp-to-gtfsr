@@ -27,27 +27,6 @@ because nothing else will: they are the same type, and getting it wrong fails
 silently."""
 
 
-def route_line(coordinates: list[LonLat], tolerance: float) -> LineString | None:
-    """One route's drawable geometry, or ``None`` when there is nothing to draw.
-
-    Simplification is Ramer-Douglas-Peucker, left to shapely. It was hand-written
-    here until it was measured: shapely gives byte-identical output on all 218
-    shapes (11,232 points from 114,079) in a sixth of the time, and RDP has
-    well-known edge cases around collinear and duplicate points that this project
-    has no reason to be maintaining an implementation of.
-
-    ``preserve_topology=False`` selects plain RDP. The topology-preserving
-    variant spends time refusing to simplify a line into self-intersection,
-    which does not matter for drawing a bus route.
-    """
-    if len(coordinates) < 2:
-        # A single point is not a line, and GeoJSON would reject it.
-        return None
-    # simplify() is declared as returning any geometry; simplifying a LineString
-    # only ever yields a LineString.
-    return cast(LineString, LineString(coordinates).simplify(tolerance, preserve_topology=False))
-
-
 def build_coverage(path: Path) -> dict[str, Any]:
     """Read a built feed and render routes and stops as GeoJSON.
 
@@ -169,3 +148,24 @@ def build_coverage(path: Path) -> dict[str, Any]:
         )
 
     return {"type": "FeatureCollection", "features": features}
+
+
+def route_line(coordinates: list[LonLat], tolerance: float) -> LineString | None:
+    """One route's drawable geometry, or ``None`` when there is nothing to draw.
+
+    Simplification is Ramer-Douglas-Peucker, left to shapely. It was hand-written
+    here until it was measured: shapely gives byte-identical output on all 218
+    shapes (11,232 points from 114,079) in a sixth of the time, and RDP has
+    well-known edge cases around collinear and duplicate points that this project
+    has no reason to be maintaining an implementation of.
+
+    ``preserve_topology=False`` selects plain RDP. The topology-preserving
+    variant spends time refusing to simplify a line into self-intersection,
+    which does not matter for drawing a bus route.
+    """
+    if len(coordinates) < 2:
+        # A single point is not a line, and GeoJSON would reject it.
+        return None
+    # simplify() is declared as returning any geometry; simplifying a LineString
+    # only ever yields a LineString.
+    return cast(LineString, LineString(coordinates).simplify(tolerance, preserve_topology=False))

@@ -3,7 +3,7 @@
 import datetime as dt
 from pathlib import Path
 
-from dpmp_gtfs.static.watch import (
+from dpmp_gtfs.static.service_watch import (
     UnservedStops,
     _save_state,
     load_unserved,

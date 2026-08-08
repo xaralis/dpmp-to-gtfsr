@@ -16,8 +16,6 @@ import holidays
 from dpmp_gtfs.types import CalendarException, Service
 from dpmp_gtfs.upstream import SATURDAY, SUNDAY_AND_HOLIDAYS, WORKING_DAY
 
-# --- codes -> service -------------------------------------------------------
-
 
 def service_from_codes(codes: Iterable[int]) -> Service:
     """Read a trip's codes as the days it runs.
@@ -32,29 +30,6 @@ def service_from_codes(codes: Iterable[int]) -> Service:
         saturday=bool(present & SATURDAY),
         sunday=bool(present & SUNDAY_AND_HOLIDAYS),
     )
-
-
-# --- Czech public holidays --------------------------------------------------
-
-
-def czech_holidays(year: int) -> set[dt.date]:
-    """Every public holiday in a given year, fixed and movable.
-
-    Delegated to ``holidays``, which tracks the statute (zákon č. 245/2000 Sb.)
-    and computes Easter, rather than carrying a hand-written table that would
-    quietly go wrong the year the law or the algorithm did. Checked against the
-    previous hand-rolled implementation across 2024-2035: identical.
-    """
-    return set(holidays.country_holidays("CZ", years=year).keys())
-
-
-def holidays_between(start: dt.date, end: dt.date) -> set[dt.date]:
-    """Holidays falling within ``[start, end]``."""
-    years = range(start.year, end.year + 1)
-    return {d for year in years for d in czech_holidays(year) if start <= d <= end}
-
-
-# --- calendar_dates.txt -----------------------------------------------------
 
 
 def calendar_exceptions(
@@ -76,3 +51,20 @@ def calendar_exceptions(
             if normally == on_holiday:
                 continue
             yield CalendarException(service.service_id, date, added=on_holiday)
+
+
+def holidays_between(start: dt.date, end: dt.date) -> set[dt.date]:
+    """Holidays falling within ``[start, end]``."""
+    years = range(start.year, end.year + 1)
+    return {d for year in years for d in czech_holidays(year) if start <= d <= end}
+
+
+def czech_holidays(year: int) -> set[dt.date]:
+    """Every public holiday in a given year, fixed and movable.
+
+    Delegated to ``holidays``, which tracks the statute (zákon č. 245/2000 Sb.)
+    and computes Easter, rather than carrying a hand-written table that would
+    quietly go wrong the year the law or the algorithm did. Checked against the
+    previous hand-rolled implementation across 2024-2035: identical.
+    """
+    return set(holidays.country_holidays("CZ", years=year).keys())

@@ -19,8 +19,6 @@ from pydantic import BaseModel, BeforeValidator, Field, field_validator
 from dpmp_gtfs.ids import stop_id
 from dpmp_gtfs.upstream import whole_number
 
-# --- shared field types -----------------------------------------------------
-
 _HHMM = re.compile(r"^(\d{2})(\d{2})$")
 _DURATION = re.compile(r"^(?P<sign>-?)(?P<h>\d{2}):(?P<m>\d{2}):(?P<s>\d{2})$")
 
@@ -32,129 +30,7 @@ def _empty_to_none(v: object) -> object:
 MaybeStr = Annotated[str | None, BeforeValidator(_empty_to_none)]
 
 
-def parse_hhmm(value: str) -> dt.time:
-    """``"0425"`` -> ``04:25``. The API uses this compact form for timetables."""
-    m = _HHMM.match(value)
-    if not m:
-        raise ValueError(f"not a HHMM time: {value!r}")
-    return dt.time(int(m.group(1)), int(m.group(2)))
-
-
-def parse_duration(value: str) -> dt.timedelta:
-    """``"-00:01:24"`` -> ``timedelta(seconds=-84)``.
-
-    Note the sign handling: the whole magnitude is negated, which is what the
-    old implementation got wrong by reaching for ``timedelta.seconds`` (a
-    non-negative field) instead of ``total_seconds()``.
-    """
-    m = _DURATION.match(value)
-    if not m:
-        raise ValueError(f"not a signed HH:MM:SS duration: {value!r}")
-    magnitude = dt.timedelta(
-        hours=int(m.group("h")), minutes=int(m.group("m")), seconds=int(m.group("s"))
-    )
-    return -magnitude if m.group("sign") else magnitude
-
-
-# --- /api/codes -------------------------------------------------------------
-
-
-class Code(BaseModel):
-    number: int
-    name: str
-    value: str
-
-
-# --- /api/stations ----------------------------------------------------------
-
-
-class Platform(BaseModel):
-    number: int
-    gps_latitude: float
-    gps_longitude: float
-
-
-class Station(BaseModel):
-    number: int
-    name: str
-    platforms: list[Platform] = Field(default_factory=list)
-    gps_latitude: float | None = None
-    gps_longitude: float | None = None
-    codes: list[int] = Field(default_factory=list)
-
-
-# --- /api/lines -------------------------------------------------------------
-
-
-class LineStop(BaseModel):
-    number: int
-    name: str
-    codes: list[int] = Field(default_factory=list)
-
-
-class Line(BaseModel):
-    number: int
-    stops: list[LineStop] = Field(default_factory=list)
-
-
-# --- /api/connections -------------------------------------------------------
-
-
-class ConnectionSummary(BaseModel):
-    """One trip, as listed for a line. Carries no per-stop times."""
-
-    line_number: int
-    number: int
-    codes: list[int] = Field(default_factory=list)
-    departureTime: str  # noqa: N815 - upstream spelling
-    arrivalTime: str  # noqa: N815
-
-    @property
-    def departure(self) -> dt.time:
-        return parse_hhmm(self.departureTime)
-
-    @property
-    def arrival(self) -> dt.time:
-        return parse_hhmm(self.arrivalTime)
-
-
-# --- /api/connectionDetail --------------------------------------------------
-
-
-class ConnectionStop(BaseModel):
-    number: int
-    """Station number (without platform)."""
-    name: str
-    codes: list[int] = Field(default_factory=list)
-    index: int
-    """Position within the line's canonical stop list. Monotonic along a trip,
-    which is what direction_id is derived from."""
-    distance: int
-    """Cumulative whole kilometres. Too coarse for shape_dist_traveled."""
-    arrivalTime: MaybeStr = None  # noqa: N815 - only set on the final stop
-    departureTime: MaybeStr = None  # noqa: N815
-    platform: int
-
-    @property
-    def time(self) -> dt.time:
-        """The stop's timetable time.
-
-        Only the last stop of a trip carries ``arrivalTime``; everywhere else
-        ``departureTime`` is authoritative.
-        """
-        raw = self.departureTime or self.arrivalTime
-        if raw is None:
-            raise ValueError(f"stop {self.number} ({self.name}) has no time at all")
-        return parse_hhmm(raw)
-
-
-class ConnectionDetail(BaseModel):
-    line_number: int
-    number: int
-    stops: list[ConnectionStop]
-
-
-# --- /api/buses -------------------------------------------------------------
+# --- /api/buses ------------------------------------------------------------
 
 
 class Bus(BaseModel):
@@ -239,3 +115,122 @@ class Bus(BaseModel):
 class BusesResponse(BaseModel):
     success: bool
     data: list[Bus] = Field(default_factory=list)
+
+
+# --- /api/stations and /api/lines -------------------------------------------
+
+
+class Station(BaseModel):
+    number: int
+    name: str
+    platforms: list[Platform] = Field(default_factory=list)
+    gps_latitude: float | None = None
+    gps_longitude: float | None = None
+    codes: list[int] = Field(default_factory=list)
+
+
+class Platform(BaseModel):
+    number: int
+    gps_latitude: float
+    gps_longitude: float
+
+
+class Line(BaseModel):
+    number: int
+    stops: list[LineStop] = Field(default_factory=list)
+
+
+class LineStop(BaseModel):
+    number: int
+    name: str
+    codes: list[int] = Field(default_factory=list)
+
+
+# --- /api/connections and /api/connectionDetail -----------------------------
+
+
+class ConnectionSummary(BaseModel):
+    """One trip, as listed for a line. Carries no per-stop times."""
+
+    line_number: int
+    number: int
+    codes: list[int] = Field(default_factory=list)
+    departureTime: str  # noqa: N815 - upstream spelling
+    arrivalTime: str  # noqa: N815
+
+    @property
+    def departure(self) -> dt.time:
+        return parse_hhmm(self.departureTime)
+
+    @property
+    def arrival(self) -> dt.time:
+        return parse_hhmm(self.arrivalTime)
+
+
+class ConnectionDetail(BaseModel):
+    line_number: int
+    number: int
+    stops: list[ConnectionStop]
+
+
+class ConnectionStop(BaseModel):
+    number: int
+    """Station number (without platform)."""
+    name: str
+    codes: list[int] = Field(default_factory=list)
+    index: int
+    """Position within the line's canonical stop list. Monotonic along a trip,
+    which is what direction_id is derived from."""
+    distance: int
+    """Cumulative whole kilometres. Too coarse for shape_dist_traveled."""
+    arrivalTime: MaybeStr = None  # noqa: N815 - only set on the final stop
+    departureTime: MaybeStr = None  # noqa: N815
+    platform: int
+
+    @property
+    def time(self) -> dt.time:
+        """The stop's timetable time.
+
+        Only the last stop of a trip carries ``arrivalTime``; everywhere else
+        ``departureTime`` is authoritative.
+        """
+        raw = self.departureTime or self.arrivalTime
+        if raw is None:
+            raise ValueError(f"stop {self.number} ({self.name}) has no time at all")
+        return parse_hhmm(raw)
+
+
+# --- /api/codes -------------------------------------------------------------
+
+
+class Code(BaseModel):
+    number: int
+    name: str
+    value: str
+
+
+# --- field parsing ----------------------------------------------------------
+
+
+def parse_hhmm(value: str) -> dt.time:
+    """``"0425"`` -> ``04:25``. The API uses this compact form for timetables."""
+    m = _HHMM.match(value)
+    if not m:
+        raise ValueError(f"not a HHMM time: {value!r}")
+    return dt.time(int(m.group(1)), int(m.group(2)))
+
+
+def parse_duration(value: str) -> dt.timedelta:
+    """``"-00:01:24"`` -> ``timedelta(seconds=-84)``.
+
+    Note the sign handling: the whole magnitude is negated, which is what the
+    old implementation got wrong by reaching for ``timedelta.seconds`` (a
+    non-negative field) instead of ``total_seconds()``.
+    """
+    m = _DURATION.match(value)
+    if not m:
+        raise ValueError(f"not a signed HH:MM:SS duration: {value!r}")
+    magnitude = dt.timedelta(
+        hours=int(m.group("h")), minutes=int(m.group("m")), seconds=int(m.group("s"))
+    )
+    return -magnitude if m.group("sign") else magnitude

@@ -26,44 +26,6 @@ from .index import ScheduledStop, StaticIndex
 from .tracker import DelayTracker
 
 
-@dataclass(frozen=True, slots=True)
-class StopView:
-    id: str
-    name: str
-    scheduled: str
-    """Timetabled time at this stop, ``HH:MM``. May read past 24:00 on a trip
-    that crosses midnight, as GTFS does."""
-
-
-@dataclass(frozen=True, slots=True)
-class VehicleView:
-    vehicle_id: str
-    line: str
-    trolleybus: bool
-    trip_id: str
-    route_id: str
-    destination: str
-    latitude: float
-    longitude: float
-    bearing: float | None
-    reported_at: str
-    delay_seconds: int | None
-    """Positive when late. ``None`` when nothing supports a claim either way --
-    typically a vehicle waiting at its first stop, which is a large share of
-    them at any moment."""
-    delay_measured: bool
-    """True when observed from a stop-to-stop transition, false when it is the
-    conservative lower bound derived from the countdown."""
-    previous_stop: StopView | None
-    next_stop: StopView | None
-    stops_total: int
-    stop_index: int | None
-
-
-def _stop_view(stop: ScheduledStop) -> StopView:
-    return StopView(id=stop.stop_id, name=stop.name, scheduled=format_clock(stop.seconds))
-
-
 def build_vehicle_views(
     buses: list[Bus],
     index: StaticIndex,
@@ -119,3 +81,41 @@ def as_payload(views: list[VehicleView], built_at: dt.datetime | None) -> dict[s
         "count": len(views),
         "vehicles": [asdict(v) for v in views],
     }
+
+
+@dataclass(frozen=True, slots=True)
+class VehicleView:
+    vehicle_id: str
+    line: str
+    trolleybus: bool
+    trip_id: str
+    route_id: str
+    destination: str
+    latitude: float
+    longitude: float
+    bearing: float | None
+    reported_at: str
+    delay_seconds: int | None
+    """Positive when late. ``None`` when nothing supports a claim either way --
+    typically a vehicle waiting at its first stop, which is a large share of
+    them at any moment."""
+    delay_measured: bool
+    """True when observed from a stop-to-stop transition, false when it is the
+    conservative lower bound derived from the countdown."""
+    previous_stop: StopView | None
+    next_stop: StopView | None
+    stops_total: int
+    stop_index: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class StopView:
+    id: str
+    name: str
+    scheduled: str
+    """Timetabled time at this stop, ``HH:MM``. May read past 24:00 on a trip
+    that crosses midnight, as GTFS does."""
+
+
+def _stop_view(stop: ScheduledStop) -> StopView:
+    return StopView(id=stop.stop_id, name=stop.name, scheduled=format_clock(stop.seconds))

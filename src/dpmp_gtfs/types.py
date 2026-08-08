@@ -24,7 +24,22 @@ type StopSequence = tuple[str, ...]
 calling at the same stops in the same order shares one."""
 
 
-# --- timetable --------------------------------------------------------------
+@dataclass(slots=True)
+class Feed:
+    """A complete static feed, ready to serialise."""
+
+    stops: list[Stop] = field(default_factory=list)
+    shapes: list[TripGeometry] = field(default_factory=list)
+    unserved_stops: dict[str, str] = field(default_factory=dict)
+    """Stop id -> name for stops excluded because nothing calls at them. Kept
+    so rebuilds can spot diversions starting and ending."""
+    routes: list[Route] = field(default_factory=list)
+    trips: list[Trip] = field(default_factory=list)
+    stop_times: list[StopTime] = field(default_factory=list)
+    services: list[Service] = field(default_factory=list)
+    calendar_exceptions: list[CalendarException] = field(default_factory=list)
+    start_date: dt.date = field(default_factory=dt.date.today)
+    end_date: dt.date = field(default_factory=dt.date.today)
 
 
 @dataclass(slots=True)
@@ -41,9 +56,6 @@ class Timetable:
     @property
     def trip_count(self) -> int:
         return len(self.details)
-
-
-# --- geometry ---------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,9 +76,6 @@ class TripGeometry:
     """Cumulative metres at each point."""
     stop_distances: tuple[float, ...]
     """Cumulative metres at each stop, for ``shape_dist_traveled``."""
-
-
-# --- calendar ---------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,9 +134,6 @@ class CalendarException:
     """True for GTFS exception_type 1 (added), False for 2 (removed)."""
 
 
-# --- GTFS records -----------------------------------------------------------
-
-
 @dataclass(frozen=True, slots=True)
 class Stop:
     stop_id: str
@@ -171,21 +177,3 @@ class StopTime:
     drop_off_type: int
     shape_dist_traveled: str = ""
     """Metres along the shape. Blank when the trip has no shape."""
-
-
-@dataclass(slots=True)
-class Feed:
-    """A complete static feed, ready to serialise."""
-
-    stops: list[Stop] = field(default_factory=list)
-    shapes: list[TripGeometry] = field(default_factory=list)
-    unserved_stops: dict[str, str] = field(default_factory=dict)
-    """Stop id -> name for stops excluded because nothing calls at them. Kept
-    so rebuilds can spot diversions starting and ending."""
-    routes: list[Route] = field(default_factory=list)
-    trips: list[Trip] = field(default_factory=list)
-    stop_times: list[StopTime] = field(default_factory=list)
-    services: list[Service] = field(default_factory=list)
-    calendar_exceptions: list[CalendarException] = field(default_factory=list)
-    start_date: dt.date = field(default_factory=dt.date.today)
-    end_date: dt.date = field(default_factory=dt.date.today)
