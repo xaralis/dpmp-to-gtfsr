@@ -27,7 +27,7 @@ from dpmp_gtfs.realtime.tracker import DelayTracker
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.watch import load_unserved, state_path, write_unserved
+from dpmp_gtfs.static.watch import load_unserved, state_path
 from dpmp_gtfs.static.writer import write_feed
 from dpmp_gtfs.timeutil import PRAGUE
 
@@ -168,8 +168,6 @@ class Scheduler:
 
             destination = self.settings.gtfs_zip_path
             version = write_feed(feed, destination)
-
-            write_unserved(self.settings.data_dir, feed.unserved_stops)
 
             index = StaticIndex.from_zip(destination)
             self.state.index = index

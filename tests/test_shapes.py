@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import polyline
 import pytest
 
 from dpmp_gtfs.exceptions import RoutingError
@@ -8,7 +9,6 @@ from dpmp_gtfs.static.shapes import (
     ShapeCache,
     assemble_shape,
     build_shapes,
-    decode_polyline6,
     shape_id_for,
 )
 from dpmp_gtfs.types import Shape, Stop, StopTime, Trip
@@ -60,7 +60,7 @@ def test_shape_id_cannot_be_confused_by_concatenation() -> None:
 
 
 def test_decode_polyline_returns_plausible_coordinates() -> None:
-    points = decode_polyline6(LEG_A)
+    points = polyline.decode(LEG_A, precision=6)
     assert len(points) == LEG_A_POINTS
     for lat, lon in points:
         assert 49.5 < lat < 50.5, "should land in the Pardubice region"
@@ -70,11 +70,11 @@ def test_decode_polyline_returns_plausible_coordinates() -> None:
 def test_decoded_legs_join_at_their_shared_stop() -> None:
     """Leg B starts exactly where leg A ends -- the property the assembly step
     relies on to avoid duplicating a point at every stop."""
-    assert decode_polyline6(LEG_A)[-1] == decode_polyline6(LEG_B)[0]
+    assert polyline.decode(LEG_A, precision=6)[-1] == polyline.decode(LEG_B, precision=6)[0]
 
 
 def test_decode_polyline_of_empty_string() -> None:
-    assert decode_polyline6("") == []
+    assert polyline.decode("", precision=6) == []
 
 
 # --- assembly ---------------------------------------------------------------

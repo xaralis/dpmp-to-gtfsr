@@ -13,7 +13,6 @@ from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.config import settings
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.watch import write_unserved
 from dpmp_gtfs.static.writer import write_feed
 
 app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
@@ -53,7 +52,6 @@ def build_static(
             raise typer.Exit(1)
 
         write_feed(feed, destination)
-        write_unserved(destination.parent, feed.unserved_stops)
 
     asyncio.run(run())
 

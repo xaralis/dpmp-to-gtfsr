@@ -15,6 +15,8 @@ from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.ids import AGENCY_ID
 from dpmp_gtfs.types import Feed
 
+from .watch import write_unserved
+
 logger = logging.getLogger(__name__)
 
 AGENCY_ROWS = [
@@ -178,6 +180,10 @@ def write_feed(feed: Feed, destination: Path) -> str:
 
     Atomic because the HTTP layer serves this file straight off disk: a reader
     arriving mid-write would otherwise get a truncated archive.
+
+    Recording which stops lost service is part of publishing, not a separate
+    step a caller might forget or point somewhere else -- which is exactly what
+    happened while the two were called side by side.
     """
     files = feed_to_files(feed)
     files_content_hash = content_hash(files)
@@ -213,6 +219,7 @@ def write_feed(feed: Feed, destination: Path) -> str:
             zf.writestr(name, files[name])
 
     os.replace(tmp, destination)
+    write_unserved(destination.parent, feed.unserved_stops)
 
     logger.info(
         "wrote %s (%d B, version %s)",

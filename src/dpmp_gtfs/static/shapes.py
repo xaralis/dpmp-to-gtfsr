@@ -29,6 +29,7 @@ from itertools import pairwise
 from pathlib import Path
 
 import httpx
+import polyline
 
 from dpmp_gtfs.exceptions import RoutingError
 from dpmp_gtfs.types import Point, Shape, StopSequence
@@ -51,30 +52,6 @@ def shape_id_for(sequence: StopSequence) -> str:
     """
     digest = hashlib.sha256("\x00".join(sequence).encode()).hexdigest()
     return f"shp_{digest[:12]}"
-
-
-def decode_polyline6(encoded: str) -> list[Point]:
-    """Decode Valhalla's polyline format (six decimal places)."""
-    coords: list[Point] = []
-    index = lat = lon = 0
-
-    while index < len(encoded):
-        deltas = []
-        for _ in range(2):
-            shift = result = 0
-            while True:
-                byte = ord(encoded[index]) - 63
-                index += 1
-                result |= (byte & 0x1F) << shift
-                shift += 5
-                if byte < 0x20:
-                    break
-            deltas.append(~(result >> 1) if result & 1 else result >> 1)
-        lat += deltas[0]
-        lon += deltas[1]
-        coords.append((lat / 1e6, lon / 1e6))
-
-    return coords
 
 
 class ValhallaRouter:
@@ -228,7 +205,8 @@ def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Shap
     stop_distances: list[float] = [0.0]
 
     for index, (encoded, leg_length) in enumerate(zip(legs, lengths, strict=True)):
-        leg_points = decode_polyline6(encoded)
+        # Valhalla encodes at six decimal places rather than the usual five.
+        leg_points: list[Point] = polyline.decode(encoded, precision=6)
         if len(leg_points) < 2:
             raise RoutingError(f"leg {index} of {shape_id} has no usable geometry")
 

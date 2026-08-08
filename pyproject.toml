@@ -18,6 +18,7 @@ dependencies = [
     "typer>=0.19",
     "holidays>=0.102",
     "shapely>=2.1.2",
+    "polyline>=2.0.4",
 ]
 
 [project.scripts]
