@@ -100,17 +100,14 @@
   #map-status .sep { color: var(--border-2); }
   #map-status .fresh { color: var(--text-secondary); }
   #map-status .stale { color: var(--warning); }
-  /* The countdown is the one number that changes every second, so it gets to
-     look like it: boxed, in brand lime, with fixed-width digits so the line
-     does not twitch as it counts down. */
+  /* The countdown is the one number that changes every second. Brand lime and
+     fixed-width digits mark it well enough; inside a panel that already has a
+     border, boxing it again was just noise. */
   .countdown {
-    padding: .15rem .45rem;
-    border: 1px solid var(--lime); color: var(--lime);
-    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--lime); font-variant-numeric: tabular-nums; font-weight: 700;
     display: inline-flex; align-items: center; gap: .4rem;
   }
-  .countdown.refreshing { background: var(--lime); color: var(--coal); }
-  .countdown.stale { border-color: var(--warning); color: var(--warning); background: none; }
+  .countdown.stale { color: var(--warning); }
   .pulse {
     width: .5rem; height: .5rem; border-radius: 50%; background: var(--lime);
     display: inline-block; flex: none; animation: pulse 2s ease-in-out infinite;
@@ -155,9 +152,12 @@
                 gap: .15rem .6rem; font-size: .8rem; }
   .veh-pop dt { color: var(--text-muted); }
   .veh-pop dd { margin: 0; }
+  /* Three distinct states, three colours: late is a warning, on time is
+     reassurance, and running early is neither -- it means the vehicle may
+     leave before a passenger expects it, which is worth noticing. */
   .veh-pop .late { color: var(--warning); font-weight: 700; }
-  .veh-pop .early { color: var(--teal); font-weight: 700; }
-  .veh-pop .ontime { color: var(--lime); font-weight: 700; }
+  .veh-pop .early { color: var(--lime); font-weight: 700; }
+  .veh-pop .ontime { color: var(--teal); font-weight: 700; }
   .veh-pop .unknown { color: var(--text-muted); }
   .veh-pop .est { font-size: .72rem; color: var(--text-muted); }
 </style>
@@ -177,7 +177,7 @@
   </div>
 </div>
 
-<div class="detail" id="detail"><span class="muted">Vyber linku pro zvýraznění.</span></div>
+<div class="detail" id="detail" hidden></div>
 
 <div class="map-wrap">
   <div id="map"></div>
@@ -192,10 +192,6 @@
   <span><i class="veh bus" style="display:inline-block">6</i> vozidlo</span>
   <span><i class="dot" style="background:#c6f432"></i> zastávka vybrané linky</span>
 </div>
-
-<p style="font-size:.8125rem;color:var(--text-muted);margin:.7rem 0 0">
-  Rolování posouvá stránku; přiblížit jde gestem, tlačítky nebo dvojklikem.
-</p>
 
 <p style="margin-top:1.5rem">
   Podklad © <a href="https://www.openstreetmap.org/copyright">přispěvatelé OpenStreetMap</a>.
@@ -222,19 +218,13 @@
   // arrives as a wheel event with ctrlKey set, which the disabled handler
   // would otherwise swallow. touchZoom (two fingers on a touchscreen) is
   // Leaflet's default and is untouched.
-  // zoomSnap below 1 lets a pinch land between zoom levels instead of jumping
-  // a whole one at a time.
-  var map = L.map("map", { scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.5 })
+  // zoomSnap 0 lets the map settle between integer zoom levels. It has to be
+  // 0, not a small fraction: a trackpad pinch arrives as many tiny wheel
+  // deltas, and any snapping rounds each one back to where it started, so the
+  // map never moves at all.
+  var map = L.map("map", { scrollWheelZoom: false, zoomSnap: 0, zoomDelta: 0.5 })
     .setView([50.0343, 15.7812], 12);
 
-  document.getElementById("map").addEventListener("wheel", function (e) {
-    if (!e.ctrlKey && !e.metaKey) return;
-    e.preventDefault();
-    var around = map.mouseEventToContainerPoint(e);
-    // deltaY is finer-grained on a trackpad than a wheel; scale it down so a
-    // pinch feels continuous instead of jumping whole zoom levels.
-    map.setZoomAround(around, map.getZoom() - e.deltaY * 0.01);
-  }, { passive: false });
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
     subdomains: "abcd",
@@ -242,6 +232,47 @@
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
       '&copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
+
+  // Exposed for debugging from the console, and so tests can assert on zoom
+  // without depending on tile URLs appearing in the DOM.
+  window.dpmpMap = map;
+
+  // Pinch-to-zoom, by hand. scrollWheelZoom stays off so plain scrolling moves
+  // the page instead of trapping it in the map, but that also disables the
+  // ctrl+wheel events a trackpad pinch actually sends, so they are handled
+  // here. touchZoom (two fingers on a touchscreen) is Leaflet's own default
+  // and is untouched.
+  (function () {
+    var el = document.getElementById("map");
+
+    el.addEventListener("wheel", function (e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      // Trackpads report pinches as a stream of small deltas, so the factor
+      // has to be generous or the gesture feels stuck. The clamp keeps a
+      // single coarse event (a mouse wheel with ctrl held) from jumping half
+      // the country.
+      var step = Math.max(-0.6, Math.min(0.6, -e.deltaY * 0.045));
+      // animate:false is what makes this feel like a pinch rather than a
+      // ratchet. A trackpad sends a stream of deltas, and Leaflet's zoom
+      // animation swallows every event that arrives while one is running --
+      // roughly nine in ten, which is exactly as sluggish as it sounds.
+      map.setZoomAround(map.mouseEventToContainerPoint(e), map.getZoom() + step,
+                        { animate: false });
+    }, { passive: false });
+
+    // Safari reports pinches as gesture events rather than ctrl+wheel.
+    var gestureZoom = 0;
+    el.addEventListener("gesturestart", function (e) {
+      e.preventDefault();
+      gestureZoom = map.getZoom();
+    });
+    el.addEventListener("gesturechange", function (e) {
+      e.preventDefault();
+      map.setZoom(gestureZoom + Math.log2(e.scale));
+    });
+    el.addEventListener("gestureend", function (e) { e.preventDefault(); });
+  })();
 
   var routeLayer = L.layerGroup().addTo(map);
   var stopLayer = L.layerGroup().addTo(map);
@@ -334,11 +365,13 @@
   }
 
   function describe() {
+    // With no line picked the box has nothing to say, and an empty panel just
+    // pushes the map down.
     if (selected === null) {
-      detailEl.innerHTML = '<span class="muted">Vyber linku pro zvýraznění. ' +
-        counts.routes + " tras, " + counts.stops + " zastávek.</span>";
+      detailEl.hidden = true;
       return;
     }
+    detailEl.hidden = false;
     var line = lines[selected];
     var running = lastVehicles.filter(function (v) { return v.line === selected; }).length;
     detailEl.innerHTML =
