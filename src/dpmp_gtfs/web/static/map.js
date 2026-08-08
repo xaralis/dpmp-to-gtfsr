@@ -138,9 +138,9 @@
         }).bindPopup(
           '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
           '<div class="popup-meta">nástupiště ' + escapeHtml(p.platform) +
-          " · " + escapeHtml(p.stop_id || p.id) + "<br>linky: " +
-          escapeHtml(p.lines.join(", ")) + "</div>"
-        ).addTo(platformLayer);
+          " · " + escapeHtml(p.stop_id || p.id) + "</div>" +
+          '<div class="dep-none">Načítám odjezdy…</div>'
+        ).on("popupopen", function (e) { loadDepartures(p, e.popup); }).addTo(platformLayer);
 
         L.marker([p.lat, p.lon], {
           icon: L.divIcon({
@@ -149,6 +149,42 @@
           }),
           interactive: false
         }).addTo(platformLayer);
+      });
+  }
+
+  function departureRows(payload) {
+    var deps = payload.departures || [];
+    if (!deps.length) return '<div class="dep-none">Dnes odsud už nic nejede.</div>';
+
+    return '<div class="dep-board">' + deps.map(function (d) {
+      // The expected time is the one to read when it differs from the
+      // timetable; showing both would just make the row harder to scan.
+      var shifted = d.expected !== d.scheduled;
+      var mins = Math.round(d.in_seconds / 60);
+      return '<span class="dep-time' + (shifted ? " shifted" : "") + '">' +
+               escapeHtml(d.expected) + "</span>" +
+             '<span class="dep-line">' + escapeHtml(d.line) + "</span>" +
+             '<span class="dep-to">' +
+               '<span class="dep-name">' + escapeHtml(d.headsign) + "</span>" +
+               '<span class="dep-in">· ' + (mins < 1 ? "teď" : mins + " min") + "</span>" +
+               (shifted ? '<span class="dep-in">(řád ' + escapeHtml(d.scheduled) + ")</span>" : "") +
+             "</span>";
+    }).join("") + "</div>";
+  }
+
+  function loadDepartures(p, popup) {
+    var head = '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
+               '<div class="popup-meta">nástupiště ' + escapeHtml(p.platform) +
+               " · " + escapeHtml(p.stop_id || p.id) + "</div>";
+
+    fetch("/departures/" + encodeURIComponent(p.stop_id || p.id) + ".json")
+      .then(function (r) { if (!r.ok) throw new Error("nedostupné"); return r.json(); })
+      .then(function (payload) {
+        popup.setContent('<div class="dep-pop">' + head + departureRows(payload) + "</div>");
+      })
+      .catch(function () {
+        popup.setContent('<div class="dep-pop">' + head +
+          '<div class="dep-none">Odjezdy se nepodařilo načíst.</div></div>');
       });
   }
 
@@ -327,12 +363,21 @@
       if (selected !== null && v.line !== selected) return;
       shown++;
 
-      var kind = selected === v.line ? "picked" : (v.trolleybus ? "trolley" : "bus");
+      // Always the vehicle's own mode colours. Recolouring the selected line
+      // lime cost the bus/trolleybus distinction exactly when the map is
+      // focused on that line -- and when a line is selected its vehicles are
+      // the only ones drawn, so they need no further emphasis.
+      var kind = v.trolleybus ? "trolley" : "bus";
 
       L.marker([v.latitude, v.longitude], {
         icon: L.divIcon({
           className: "",
-          html: '<div class="veh ' + kind + '">' + escapeHtml(v.line) + "</div>",
+          // The arrow points at the next stop. It is computed on the server,
+          // because the upstream never populates gps_course.
+          html: '<div class="veh ' + kind + '">' + escapeHtml(v.line) +
+                (v.heading === null || v.heading === undefined ? "" :
+                  '<i class="veh-arrow" style="transform:rotate(' +
+                  Number(v.heading).toFixed(0) + 'deg)"></i>') + "</div>",
           iconSize: null,
           iconAnchor: [10, 10]
         }),

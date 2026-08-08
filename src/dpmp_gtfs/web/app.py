@@ -16,6 +16,8 @@ from google.protobuf.json_format import MessageToDict
 
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
+from dpmp_gtfs.realtime.departures import as_payload as departures_payload
+from dpmp_gtfs.realtime.departures import build_departures
 from dpmp_gtfs.realtime.view import as_payload
 
 from .coverage import build_coverage
@@ -140,6 +142,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return JSONResponse({"detail": "realtime feed is not ready yet"}, status_code=503)
         return JSONResponse(
             as_payload(state.vehicles, state.realtime_built_at),
+            headers={"Cache-Control": f"public, max-age={int(config.realtime_interval)}"},
+        )
+
+    @app.get("/departures/{stop_id}.json", tags=["feeds"])
+    def departures(stop_id: str) -> JSONResponse:
+        """What leaves a given stop next, with live delays where they are known.
+
+        Built from the published timetable rather than from a vehicle feed, so
+        it answers for the whole day and not only for trips already running.
+        """
+        state = scheduler.state
+        if state.index is None:
+            return JSONResponse({"detail": "static feed is not built yet"}, status_code=503)
+
+        board = build_departures(stop_id, state.index, state.vehicles)
+        return JSONResponse(
+            departures_payload(
+                stop_id, state.index.stop_name(stop_id), board, state.realtime_built_at
+            ),
             headers={"Cache-Control": f"public, max-age={int(config.realtime_interval)}"},
         )
 

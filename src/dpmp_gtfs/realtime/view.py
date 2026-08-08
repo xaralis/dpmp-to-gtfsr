@@ -15,6 +15,7 @@ This is deliberately *not* GTFS-RT. Consumers wanting the standard should take
 """
 
 import datetime as dt
+import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -67,6 +68,10 @@ def build_vehicle_views(
                 delay_measured=bool(delay and delay.measured),
                 previous_stop=_stop_view(previous) if previous else None,
                 next_stop=_stop_view(upcoming) if upcoming else None,
+                heading=_bearing((bus.gps_latitude, bus.gps_longitude), upcoming.position)
+                if upcoming
+                else None,
+                headsign=trip.headsign,
                 stops_total=len(trip.stops),
                 stop_index=position,
             )
@@ -104,6 +109,16 @@ class VehicleView:
     conservative lower bound derived from the countdown."""
     previous_stop: StopView | None
     next_stop: StopView | None
+    heading: float | None
+    """Compass bearing towards the next stop, degrees clockwise from north.
+
+    Worked out from the timetable rather than taken from the vehicle: the
+    upstream has a ``gps_course`` field but it is null on every vehicle in
+    every snapshot recorded so far, so the direction has to come from where
+    the trip goes next."""
+    headsign: str
+    """The trip's final stop -- the direction as a passenger reads it, which
+    is not always what the vehicle's own destination sign says."""
     stops_total: int
     stop_index: int | None
 
@@ -115,6 +130,26 @@ class StopView:
     scheduled: str
     """Timetabled time at this stop, ``HH:MM``. May read past 24:00 on a trip
     that crosses midnight, as GTFS does."""
+
+
+def _bearing(origin: tuple[float, float], target: tuple[float, float] | None) -> float | None:
+    """Compass bearing from one position to another, or ``None`` if unknowable.
+
+    Straight great-circle bearing. Over the few hundred metres to the next stop
+    the difference from a rhumb line is far below what an arrow on a map can
+    show.
+    """
+    if target is None:
+        return None
+    lat1, lon1 = math.radians(origin[0]), math.radians(origin[1])
+    lat2, lon2 = math.radians(target[0]), math.radians(target[1])
+    dlon = lon2 - lon1
+    x = math.sin(dlon) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    if not x and not y:
+        # The vehicle is reporting the stop's own position; no direction to give.
+        return None
+    return math.degrees(math.atan2(x, y)) % 360
 
 
 def _stop_view(stop: ScheduledStop) -> StopView:

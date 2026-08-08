@@ -64,11 +64,18 @@
               font-size: .6875rem; }
 
   /* --- detail + status --- */
+  /* Sits on the map, not above it. As a block element it changed the page
+     height whenever a line was picked, moving the map out from under you.
+     Cleared to the right of the zoom buttons, which own the top-left corner:
+     Leaflet leaves only the bottom-left free, and that is the status bar's. */
   .detail {
-    margin: .9rem 0 0; padding: .75rem 1rem;
-    border: 1px solid var(--border); border-left: 2px solid var(--lime);
-    background: var(--surface-2); font-size: .9375rem; min-height: 1.3em;
+    position: absolute; left: 54px; top: 10px; z-index: 500;
+    padding: .5rem .7rem;
+    border: 1px solid var(--border-2); border-left: 2px solid var(--lime);
+    background: rgba(10,10,10,.85); font-size: .8125rem;
+    max-width: calc(100% - 64px);
   }
+  .detail[hidden] { display: none; }
   .detail .muted { color: var(--text-muted); }
   .detail-line { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
 
@@ -121,6 +128,7 @@
     font-family: var(--font-mono); font-size: 11px; font-weight: 700;
     line-height: 18px; text-align: center;
     min-width: 20px; height: 20px; padding: 0 3px;
+    position: relative;
     border: 1px solid var(--coal); color: var(--coal);
     box-shadow: 0 1px 4px rgba(0,0,0,.6);
     white-space: nowrap;
@@ -129,14 +137,13 @@
      square, so mode survives on a small marker without relying on colour. */
   .veh.bus { background: var(--warning); border-radius: 10px; }
   .veh.trolley { background: var(--teal); }
-  .veh.picked { background: var(--lime); outline: 2px solid rgba(198,244,50,.35); }
 
   /* Stop labels for the selected line. Rendered as markers rather than
      tooltips so they stay put while panning and can be read at a glance. */
   .stop-label {
-    font-family: var(--font-sans); font-size: 10.5px; line-height: 1.25;
+    font-family: var(--font-mono); font-size: 10.5px; line-height: 1.25;
     color: var(--linen); background: rgba(10,10,10,.82);
-    border: 1px solid var(--border-2); padding: 1px 4px;
+    padding: 1px 4px;
     white-space: nowrap; transform: translate(9px, -9px);
     pointer-events: none;
   }
@@ -155,3 +162,40 @@
   .veh-pop .ontime { color: var(--teal); font-weight: 700; }
   .veh-pop .unknown { color: var(--text-muted); }
   .veh-pop .est { font-size: .72rem; color: var(--text-muted); }
+
+  /* Departure board in a stop popup. */
+  .dep-pop { min-width: 248px; max-width: 300px; }
+  .dep-board { margin: .45rem 0 0; display: grid;
+               grid-template-columns: auto auto 1fr; gap: .2rem .55rem;
+               font-size: .8rem; align-items: baseline; }
+  .dep-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+              color: var(--linen); }
+  .dep-time.shifted { color: var(--warning); }
+  .dep-line { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
+  /* Only the destination truncates. The delay note after it is the shortest
+     part of the row and the one worth reading, so clipping that instead was
+     exactly backwards. */
+  .dep-to { color: var(--text-secondary); display: flex; gap: .3rem; min-width: 0; }
+  .dep-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dep-in { color: var(--text-muted); font-variant-numeric: tabular-nums;
+            white-space: nowrap; flex: none; }
+  .dep-none { color: var(--text-muted); font-size: .8rem; margin-top: .4rem; }
+
+  /* Direction of travel: an arrow orbiting the marker, pointing at the next
+     stop. Outside the badge rather than on top of it -- drawn over the fill it
+     read as a bite taken out of the circle, not as a heading.
+
+     The bearing comes from the server, because the upstream's gps_course is
+     null on every vehicle ever recorded. */
+  .veh-arrow {
+    position: absolute; left: 50%; top: 50%;
+    width: 32px; height: 32px; margin: -16px 0 0 -16px;
+    transform-origin: 50% 50%; pointer-events: none;
+  }
+  .veh-arrow::before {
+    content: ""; position: absolute; left: 50%; top: -4px; margin-left: -6px;
+    border-left: 6px solid transparent; border-right: 6px solid transparent;
+    border-bottom: 10px solid var(--linen);
+    /* Reads against lime route lines and dark tiles alike. */
+    filter: drop-shadow(0 0 1.5px rgba(10,10,10,.95));
+  }

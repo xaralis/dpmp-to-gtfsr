@@ -8,6 +8,8 @@ stop is next", so these check that answer rather than the plumbing.
 import datetime as dt
 from typing import Any
 
+import pytest
+
 from dpmp_gtfs.api.models import Bus
 from dpmp_gtfs.realtime.index import ScheduledStop, ScheduledTrip, StaticIndex
 from dpmp_gtfs.realtime.tracker import DelayTracker
@@ -148,3 +150,25 @@ def test_payload_is_json_ready() -> None:
     assert payload["count"] == 1
     restored = json.loads(json.dumps(payload))
     assert restored["vehicles"][0]["next_stop"]["name"] == "Masarykovo nám."
+
+
+# --- direction of travel -----------------------------------------------------
+
+
+def test_bearing_matches_the_compass() -> None:
+    """Degrees clockwise from north, which is what CSS rotate() expects."""
+    from dpmp_gtfs.realtime.view import _bearing
+
+    assert _bearing((50.0, 15.0), (51.0, 15.0)) == pytest.approx(0, abs=1)
+    assert _bearing((50.0, 15.0), (50.0, 16.0)) == pytest.approx(90, abs=1)
+    assert _bearing((50.0, 15.0), (49.0, 15.0)) == pytest.approx(180, abs=1)
+    assert _bearing((50.0, 15.0), (50.0, 14.0)) == pytest.approx(270, abs=1)
+
+
+def test_no_bearing_without_somewhere_to_point() -> None:
+    """A vehicle at its final stop has no next stop, and one sitting exactly on
+    a stop's coordinates gives no direction either."""
+    from dpmp_gtfs.realtime.view import _bearing
+
+    assert _bearing((50.0, 15.0), None) is None
+    assert _bearing((50.0, 15.0), (50.0, 15.0)) is None

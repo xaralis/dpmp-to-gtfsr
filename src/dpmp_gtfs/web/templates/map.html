@@ -22,10 +22,11 @@
   </div>
 </div>
 
-<div class="detail" id="detail" hidden></div>
-
 <div class="map-wrap">
   <div id="map" data-refresh-ms="{{ (settings.realtime_interval * 1000) | int }}"></div>
+  {# Overlaid rather than stacked above the map: as a block element it appeared
+     and disappeared with the selection, shifting the map under the cursor. #}
+  <div class="detail" id="detail" hidden></div>
   <div id="map-status" aria-live="polite">Načítám…</div>
 </div>
 
