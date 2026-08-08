@@ -14,17 +14,22 @@
   // only the ones Leaflet needs for polylines.
   var TROLLEY = "#2ad4c5", BUS = "#8b93a3", PICKED = "#c6f432";
 
-  // scrollWheelZoom stays off so plain scrolling moves the page rather than
-  // trapping it in the map. Pinch still has to work, though: a trackpad pinch
-  // arrives as a wheel event with ctrlKey set, which the disabled handler
-  // would otherwise swallow. touchZoom (two fingers on a touchscreen) is
-  // Leaflet's default and is untouched.
-  // zoomSnap 0 lets the map settle between integer zoom levels. It has to be
-  // 0, not a small fraction: a trackpad pinch arrives as many tiny wheel
-  // deltas, and any snapping rounds each one back to where it started, so the
-  // map never moves at all.
-  var map = L.map("map", { scrollWheelZoom: false, zoomSnap: 0, zoomDelta: 0.5 })
-    .setView([50.0343, 15.7812], 12);
+  // Leaflet's own defaults, deliberately. There used to be thirty lines below
+  // reimplementing pinch-to-zoom, because scrollWheelZoom was off to stop the
+  // map trapping the page scroll -- and turning it off kills trackpad pinch
+  // too, which browsers deliver as a wheel event with ctrlKey set. Sizing the
+  // page to the window removed the reason: with nothing to scroll past, the
+  // wheel has no other job, so Leaflet handles wheel, trackpad pinch and
+  // two-finger touch on its own. online.dpmp.cz gets it right the same way,
+  // on the same Leaflet version.
+  //
+  // No zoom options at all, deliberately. zoomSnap 0 and a raised
+  // wheelPxPerZoomLevel were both tried and both made the wheel feel sluggish:
+  // with snapping off, Leaflet's wheel maths spreads one gesture across
+  // fractional levels, so a flick that should cross a level barely moves.
+  // Stock Leaflet steps one level per gesture, which is what every other map
+  // does and what people are expecting.
+  var map = L.map("map").setView([50.0343, 15.7812], 12);
 
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
@@ -38,42 +43,6 @@
   // without depending on tile URLs appearing in the DOM.
   window.dpmpMap = map;
 
-  // Pinch-to-zoom, by hand. scrollWheelZoom stays off so plain scrolling moves
-  // the page instead of trapping it in the map, but that also disables the
-  // ctrl+wheel events a trackpad pinch actually sends, so they are handled
-  // here. touchZoom (two fingers on a touchscreen) is Leaflet's own default
-  // and is untouched.
-  (function () {
-    var el = mapEl;
-
-    el.addEventListener("wheel", function (e) {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      // Trackpads report pinches as a stream of small deltas, so the factor
-      // has to be generous or the gesture feels stuck. The clamp keeps a
-      // single coarse event (a mouse wheel with ctrl held) from jumping half
-      // the country.
-      var step = Math.max(-0.6, Math.min(0.6, -e.deltaY * 0.045));
-      // animate:false is what makes this feel like a pinch rather than a
-      // ratchet. A trackpad sends a stream of deltas, and Leaflet's zoom
-      // animation swallows every event that arrives while one is running --
-      // roughly nine in ten, which is exactly as sluggish as it sounds.
-      map.setZoomAround(map.mouseEventToContainerPoint(e), map.getZoom() + step,
-                        { animate: false });
-    }, { passive: false });
-
-    // Safari reports pinches as gesture events rather than ctrl+wheel.
-    var gestureZoom = 0;
-    el.addEventListener("gesturestart", function (e) {
-      e.preventDefault();
-      gestureZoom = map.getZoom();
-    });
-    el.addEventListener("gesturechange", function (e) {
-      e.preventDefault();
-      map.setZoom(gestureZoom + Math.log2(e.scale));
-    });
-    el.addEventListener("gestureend", function (e) { e.preventDefault(); });
-  })();
 
   var routeLayer = L.layerGroup().addTo(map);
   var stopLayer = L.layerGroup().addTo(map);

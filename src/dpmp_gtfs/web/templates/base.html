@@ -105,6 +105,26 @@ main { max-width: 46rem; margin: 0 auto; }
 /* Pages whose content is inherently wide (the map) opt out of the reading
    column, which is sized for prose rather than geography. */
 main.wide { max-width: 78rem; }
+/* The map page is the window: the map fills it edge to edge and everything
+   else floats on top. That is a layout choice with a behavioural payoff --
+   with no page scroll to compete for, the wheel goes back to being Leaflet's,
+   and trackpad pinch (which arrives as ctrl+wheel) works with no code of ours.
+   online.dpmp.cz is built the same way, on the same Leaflet version. */
+main.fullscreen { max-width: none; margin: 0; padding: 0; height: 100dvh; }
+main.fullscreen > footer { display: none; }
+/* Above the map, and readable over it. */
+main.fullscreen > nav {
+  position: absolute; z-index: 600; top: 0; left: 0; right: 0;
+  margin: 0; padding: .55rem 1rem;
+  background: linear-gradient(rgba(10,10,10,.92), rgba(10,10,10,0));
+  pointer-events: none;
+}
+main.fullscreen > nav a { pointer-events: auto; }
+/* Both, not just body: with overflow only on body the document element
+   still scrolls, which is the whole thing this page is avoiding. */
+html:has(main.fullscreen), body:has(main.fullscreen) {
+  height: 100%; overflow: hidden;
+}
 
 /* The brand uses square corners everywhere; nothing here rounds. */
 h1, h2, h3 { font-family: var(--font-mono); font-weight: 700; }

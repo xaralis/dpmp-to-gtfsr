@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Mapa pokrytí – GTFS pro pardubickou MHD{% endblock %}
 {% block description %}Trasy, zastávky a živé polohy vozů pardubické MHD na mapě. Kreslí se přímo z publikovaných feedů.{% endblock %}
-{% block main_class %}wide{% endblock %}
+{% block main_class %}fullscreen{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="/static/vendor/leaflet.css">
@@ -9,14 +9,11 @@
 {% endblock %}
 
 {% block content %}
-<h1>Co feed pokrývá</h1>
-<p class="lede">
-  Trasy a zastávky ze statického feedu, vozidla z realtime feedu. Kreslí se přímo z toho,
-  co služba vydává — takže co je špatně tady, je špatně i ve feedu.
-</p>
-
+{# The page is sized to the viewport and does not scroll. That is what lets the
+   map keep Leaflet's own wheel handling: with no page scroll to steal, the
+   wheel has nothing to do but zoom, and a trackpad pinch -- which browsers
+   deliver as ctrl+wheel -- works without any code of ours. #}
 <div class="lines">
-  <h2>Linky</h2>
   <div class="chips" id="chips" role="group" aria-label="Výběr linky">
     <button type="button" class="chip all" id="chip-all" aria-pressed="true">Vše</button>
   </div>
@@ -28,9 +25,8 @@
      and disappeared with the selection, shifting the map under the cursor. #}
   <div class="detail" id="detail" hidden></div>
   <div id="map-status" aria-live="polite">Načítám…</div>
-</div>
 
-<div class="legend">
+  <div class="legend">
   {# The actual vehicle marker, not an abstract swatch: it is what people are
      matching against on the map, and the square/circle carries the mode. #}
   <span><i class="veh trolley">3</i> trolejbus</span>
@@ -42,12 +38,8 @@
     <i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i>
     <i class="dot" style="background:#c6f432"></i> zastávka
   </span>
+  </div>
 </div>
-
-<p style="margin-top:1.5rem">
-  Podklad © <a href="https://www.openstreetmap.org/copyright">přispěvatelé OpenStreetMap</a>.
-  Data z <a href="/gtfs.zip">gtfs.zip</a> a <a href="/vehicles.json">vehicles.json</a>.
-</p>
 {% endblock %}
 
 {% block scripts %}
