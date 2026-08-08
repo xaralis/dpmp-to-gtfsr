@@ -5,8 +5,6 @@ to agree on them exactly -- a mismatch means realtime silently referencing
 trips that consumers cannot resolve.
 """
 
-from __future__ import annotations
-
 AGENCY_ID = "DPMP"
 
 

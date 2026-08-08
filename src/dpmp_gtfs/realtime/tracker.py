@@ -30,8 +30,6 @@ vehicles -- a median of 5 per vehicle in ten minutes, so a vehicle acquires a
 measurement within a stop or two of being observed.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 import logging
 from dataclasses import dataclass

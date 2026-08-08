@@ -22,11 +22,12 @@ Across the whole network only five distinct service patterns occur, so the
 generated ``calendar.txt`` stays small and legible.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass
+
+import holidays
+
+from dpmp_gtfs.types import CalendarException, Service
 
 # Codes that say something about *when a trip runs*. Everything else describes
 # a stop or a vehicle and is handled elsewhere.
@@ -39,106 +40,36 @@ LOW_FLOOR = 3
 STEP_FREE_STOP = 8
 
 
-@dataclass(frozen=True, slots=True)
-class Service:
-    """A GTFS service: which weekdays a set of trips runs on."""
+# --- codes -> service -------------------------------------------------------
 
-    working_days: bool
-    saturday: bool
-    sunday: bool
 
-    @classmethod
-    def from_codes(cls, codes: Iterable[int]) -> Service:
-        s = set(codes)
-        return cls(
-            working_days=WORKING_DAY in s,
-            saturday=bool(s & SATURDAY),
-            sunday=bool(s & SUNDAY_AND_HOLIDAYS),
-        )
+def service_from_codes(codes: Iterable[int]) -> Service:
+    """Read a trip's codes as the days it runs.
 
-    @property
-    def service_id(self) -> str:
-        parts = [
-            name
-            for flag, name in (
-                (self.working_days, "wd"),
-                (self.saturday, "sa"),
-                (self.sunday, "su"),
-            )
-            if flag
-        ]
-        if not parts:
-            raise ValueError("service runs on no days at all")
-        return "-".join(parts)
-
-    @property
-    def weekday_flags(self) -> tuple[int, int, int, int, int, int, int]:
-        """Monday..Sunday, as the 0/1 columns of ``calendar.txt``."""
-        wd = int(self.working_days)
-        return (wd, wd, wd, wd, wd, int(self.saturday), int(self.sunday))
-
-    def runs_on(self, day: dt.date, *, holiday: bool) -> bool:
-        """Whether this service operates on a given date.
-
-        A public holiday takes the Sunday timetable regardless of which weekday
-        it falls on -- that is exactly what code 5 states ("runs on Sundays and
-        state-recognised holidays").
-        """
-        if holiday:
-            return self.sunday
-        weekday = day.weekday()
-        if weekday == 5:
-            return self.saturday
-        if weekday == 6:
-            return self.sunday
-        return self.working_days
+    Codes 4/6 and 5/7 are exact duplicates -- per-line "fixed codes" inherited
+    from JDF, used only by lines 2 and 12 -- so they are merged here rather
+    than producing two services that mean the same thing.
+    """
+    present = set(codes)
+    return Service(
+        working_days=WORKING_DAY in present,
+        saturday=bool(present & SATURDAY),
+        sunday=bool(present & SUNDAY_AND_HOLIDAYS),
+    )
 
 
 # --- Czech public holidays --------------------------------------------------
 
-# Fixed-date holidays under Czech law (zákon č. 245/2000 Sb.).
-_FIXED_HOLIDAYS: tuple[tuple[int, int], ...] = (
-    (1, 1),  # Nový rok / Den obnovy samostatného českého státu
-    (5, 1),  # Svátek práce
-    (5, 8),  # Den vítězství
-    (7, 5),  # Den slovanských věrozvěstů Cyrila a Metoděje
-    (7, 6),  # Den upálení mistra Jana Husa
-    (9, 28),  # Den české státnosti
-    (10, 28),  # Den vzniku samostatného československého státu
-    (11, 17),  # Den boje za svobodu a demokracii
-    (12, 24),  # Štědrý den
-    (12, 25),  # 1. svátek vánoční
-    (12, 26),  # 2. svátek vánoční
-)
-
-
-def easter_sunday(year: int) -> dt.date:
-    """Gregorian Easter Sunday, by the anonymous Gregorian algorithm.
-
-    Computed rather than tabulated so the feed does not quietly go wrong in
-    some future year when a hardcoded table runs out.
-    """
-    a = year % 19
-    b, c = divmod(year, 100)
-    d, e = divmod(b, 4)
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i, k = divmod(c, 4)
-    ll = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * ll) // 451
-    month, day = divmod(h + ll - 7 * m + 114, 31)
-    return dt.date(year, month, day + 1)
-
 
 def czech_holidays(year: int) -> set[dt.date]:
-    """Every public holiday in a given year, fixed and movable."""
-    easter = easter_sunday(year)
-    return {
-        *(dt.date(year, month, day) for month, day in _FIXED_HOLIDAYS),
-        easter - dt.timedelta(days=2),  # Velký pátek
-        easter + dt.timedelta(days=1),  # Velikonoční pondělí
-    }
+    """Every public holiday in a given year, fixed and movable.
+
+    Delegated to ``holidays``, which tracks the statute (zákon č. 245/2000 Sb.)
+    and computes Easter, rather than carrying a hand-written table that would
+    quietly go wrong the year the law or the algorithm did. Checked against the
+    previous hand-rolled implementation across 2024-2035: identical.
+    """
+    return set(holidays.country_holidays("CZ", years=year).keys())
 
 
 def holidays_between(start: dt.date, end: dt.date) -> set[dt.date]:
@@ -148,14 +79,6 @@ def holidays_between(start: dt.date, end: dt.date) -> set[dt.date]:
 
 
 # --- calendar_dates.txt -----------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class CalendarException:
-    service_id: str
-    date: dt.date
-    added: bool
-    """True for GTFS exception_type 1 (added), False for 2 (removed)."""
 
 
 def calendar_exceptions(

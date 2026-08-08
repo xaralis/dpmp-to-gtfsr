@@ -5,8 +5,6 @@ far too much to hand a browser. Geometry is simplified before it leaves here,
 and the result is cached until the static feed changes.
 """
 
-from __future__ import annotations
-
 import csv
 import io
 import logging

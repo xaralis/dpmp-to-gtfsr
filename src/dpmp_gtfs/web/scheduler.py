@@ -7,8 +7,6 @@ factual claim, not a graceful degradation. Instead the last good feed is kept
 and its age is exposed, letting consumers decide for themselves.
 """
 
-from __future__ import annotations
-
 import asyncio
 import contextlib
 import datetime as dt
@@ -20,17 +18,16 @@ from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.config import Settings
+from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import StaticIndex
 from dpmp_gtfs.realtime.tracker import DelayTracker
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.watch import UnservedStops
-from dpmp_gtfs.static.watch import load as load_unserved
-from dpmp_gtfs.static.watch import report as report_changes
-from dpmp_gtfs.static.watch import save as save_unserved
-from dpmp_gtfs.static.writer import write_zip
+from dpmp_gtfs.static.watch import load_unserved as load_unserved
+from dpmp_gtfs.static.watch import write_unserved
+from dpmp_gtfs.static.writer import write_feed
 
 logger = logging.getLogger(__name__)
 
@@ -163,17 +160,14 @@ class Scheduler:
             if missing:
                 # Publishing a feed with dangling stop references would break
                 # every consumer; keeping the previous one is strictly better.
-                raise ValueError(
+                raise FeedBuildError(
                     f"{len(missing)} stop ids referenced but not defined: {missing[:5]}"
                 )
 
             destination = self.settings.gtfs_zip_path
-            version = write_zip(feed, destination)
+            version = write_feed(feed, destination)
 
-            state_path = destination.parent / "unserved-stops.json"
-            current = UnservedStops(dt.datetime.now(dt.UTC), feed.unserved_stops)
-            report_changes(current.compare(load_unserved(state_path)))
-            save_unserved(state_path, current)
+            write_unserved(self.settings.data_dir, feed.unserved_stops)
 
             index = StaticIndex.from_zip(destination)
             self.state.index = index

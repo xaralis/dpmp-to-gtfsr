@@ -20,18 +20,18 @@ Geometry is never required. If the router is unreachable the feed is built
 without ``shapes.txt`` -- degraded, but valid and still useful.
 """
 
-from __future__ import annotations
-
 import hashlib
 import json
 import logging
 import math
 import time
-import urllib.error
-import urllib.request
-from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
+
+import httpx
+
+from dpmp_gtfs.exceptions import RoutingError
+from dpmp_gtfs.types import Point, Shape, StopSequence
 
 logger = logging.getLogger(__name__)
 
@@ -41,23 +41,6 @@ EARTH_RADIUS_M = 6371000.0
 # Valhalla caps a single request's locations; no Pardubice route comes close
 # (the longest calls at 48 stops), but the guard keeps a future change honest.
 MAX_LOCATIONS = 100
-
-
-StopSequence = tuple[str, ...]
-Point = tuple[float, float]
-
-
-@dataclass(frozen=True, slots=True)
-class Shape:
-    """One routed line, shared by every trip with the same stop sequence."""
-
-    shape_id: str
-    points: tuple[Point, ...]
-    """Latitude/longitude along the road."""
-    point_distances: tuple[float, ...]
-    """Cumulative metres at each point."""
-    stop_distances: tuple[float, ...]
-    """Cumulative metres at each stop, for ``shape_dist_traveled``."""
 
 
 def shape_id_for(sequence: StopSequence) -> str:
@@ -94,10 +77,6 @@ def decode_polyline6(encoded: str) -> list[Point]:
     return coords
 
 
-class RoutingError(RuntimeError):
-    """The router could not produce geometry for a stop sequence."""
-
-
 class ValhallaRouter:
     """Minimal Valhalla client.
 
@@ -118,7 +97,7 @@ class ValhallaRouter:
         self.timeout = timeout
         self.delay = delay
 
-    def route(self, coordinates: list[Point]) -> tuple[list[str], list[float]]:
+    def get_route_geometry(self, coordinates: list[Point]) -> tuple[list[str], list[float]]:
         """Route through every coordinate in order.
 
         Returns each leg's encoded geometry and its length in metres. Legs map
@@ -130,26 +109,22 @@ class ValhallaRouter:
         if len(coordinates) > MAX_LOCATIONS:
             raise RoutingError(f"{len(coordinates)} stops exceeds the router's limit")
 
-        payload = json.dumps(
-            {
-                "locations": [
-                    {"lat": lat, "lon": lon, "type": "break"} for lat, lon in coordinates
-                ],
-                "costing": "bus",
-                "directions_options": {"units": "kilometers"},
-            }
-        ).encode()
-
-        request = urllib.request.Request(
-            self.url,
-            data=payload,
-            headers={"Content-Type": "application/json", "User-Agent": self.user_agent},
-        )
+        payload = {
+            "locations": [{"lat": lat, "lon": lon, "type": "break"} for lat, lon in coordinates],
+            "costing": "bus",
+            "directions_options": {"units": "kilometers"},
+        }
 
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = json.load(response)
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            response = httpx.post(
+                self.url,
+                json=payload,
+                headers={"User-Agent": self.user_agent},
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            body = response.json()
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
             raise RoutingError(f"router unreachable: {exc!r}") from exc
 
         legs = body.get("trip", {}).get("legs")
@@ -219,15 +194,17 @@ def _step_lengths(points: list[Point]) -> list[float]:
     its own points.
     """
     steps = []
+
     for (lat1, lon1), (lat2, lon2) in pairwise(points):
         mean_lat = math.radians((lat1 + lat2) / 2)
         dx = math.radians(lon2 - lon1) * math.cos(mean_lat)
         dy = math.radians(lat2 - lat1)
         steps.append(math.hypot(dx, dy) * EARTH_RADIUS_M)
+
     return steps
 
 
-def assemble(shape_id: str, legs: list[str], lengths: list[float]) -> Shape:
+def assemble_shape(shape_id: str, legs: list[str], lengths: list[float]) -> Shape:
     """Stitch routed legs into one shape with cumulative distances.
 
     Each leg spans one gap between stops, so stop distances are just the
@@ -301,20 +278,20 @@ def build_shapes(
     shapes: dict[StopSequence, Shape] = {}
     keys = {seq: shape_id_for(seq) for seq in sequences}
 
-    missing = [seq for seq in sequences if cache.get(keys[seq]) is None]
-    if missing:
+    if missing := [seq for seq in sequences if cache.get(keys[seq]) is None]:
         logger.info(
             "routing %d new shapes (%d cached)", len(missing), len(sequences) - len(missing)
         )
 
     failures = 0
+
     for sequence, coordinates in sequences.items():
         key = keys[sequence]
         cached = cache.get(key)
 
         if cached is None:
             try:
-                legs, lengths = router.route(coordinates)
+                legs, lengths = router.get_route_geometry(coordinates)
             except RoutingError as exc:
                 failures += 1
                 logger.warning("could not route shape %s: %s", key, exc)
@@ -324,16 +301,18 @@ def build_shapes(
             legs, lengths = cached
 
         try:
-            shapes[sequence] = assemble(key, legs, lengths)
+            shapes[sequence] = assemble_shape(key, legs, lengths)
         except (RoutingError, ValueError) as exc:
             failures += 1
             logger.warning("could not assemble shape %s: %s", key, exc)
 
     if pruned := cache.prune(set(keys.values())):
         logger.info("dropped %d shapes no longer used by any trip", pruned)
+
     cache.save()
 
     if failures:
         logger.warning("%d of %d shapes unavailable", failures, len(sequences))
+
     logger.info("built %d shapes covering %d stop sequences", len(shapes), len(sequences))
     return shapes

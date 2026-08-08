@@ -4,8 +4,6 @@ Several of these are regressions against real defects in the predecessor
 project (xaralis/dpmp-gtfs); those are called out individually.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 
 import pytest

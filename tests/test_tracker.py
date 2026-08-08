@@ -5,8 +5,6 @@ feed as a delay. It is a countdown, and publishing it would report the wrong
 quantity to every consumer.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 import glob
 import json

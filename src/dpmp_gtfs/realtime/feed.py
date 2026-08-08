@@ -1,7 +1,5 @@
 """Builds the GTFS-Realtime FeedMessage from a /api/buses snapshot."""
 
-from __future__ import annotations
-
 import datetime as dt
 import logging
 from zoneinfo import ZoneInfo

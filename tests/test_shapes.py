@@ -1,19 +1,17 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 import pytest
 
+from dpmp_gtfs.exceptions import RoutingError
 from dpmp_gtfs.static.builder import Stop, StopTime, apply_shapes, stop_sequences
 from dpmp_gtfs.static.shapes import (
-    RoutingError,
-    Shape,
     ShapeCache,
-    assemble,
+    assemble_shape,
     build_shapes,
     decode_polyline6,
     shape_id_for,
 )
+from dpmp_gtfs.types import Shape
 
 # Real Valhalla output, recorded from a bus-costed route along line 1:
 # Hlavní nádraží -> Náměstí Republiky -> Zimní stadion.
@@ -35,7 +33,9 @@ class FakeRouter:
         self.fail = fail
         self.calls = 0
 
-    def route(self, coordinates: list[tuple[float, float]]) -> tuple[list[str], list[float]]:
+    def get_route_geometry(
+        self, coordinates: list[tuple[float, float]]
+    ) -> tuple[list[str], list[float]]:
         self.calls += 1
         if self.fail:
             raise RoutingError("router unreachable")
@@ -81,7 +81,7 @@ def test_decode_polyline_of_empty_string() -> None:
 
 
 def _shape(legs: list[str], lengths: list[float]) -> Shape:
-    return assemble("shp_test", legs, lengths)
+    return assemble_shape("shp_test", legs, lengths)
 
 
 def test_distances_increase_along_the_shape() -> None:
@@ -119,7 +119,7 @@ def test_every_point_has_a_distance() -> None:
 
 def test_a_leg_without_geometry_is_rejected() -> None:
     with pytest.raises(RoutingError, match="no usable geometry"):
-        assemble("shp_test", [""], [100.0])
+        assemble_shape("shp_test", [""], [100.0])
 
 
 def test_repeated_coordinates_are_collapsed() -> None:
@@ -254,3 +254,48 @@ def test_a_trip_without_geometry_keeps_empty_fields() -> None:
 
     assert trips[0].shape_id == ""
     assert times[0].shape_dist_traveled == ""
+
+
+# --- transport --------------------------------------------------------------
+
+
+def test_router_speaks_http_and_reports_failure_as_routing_error() -> None:
+    """The client moved from urllib to httpx; what matters to callers is that
+    a transport failure still surfaces as RoutingError, since that is what
+    build_shapes catches to degrade instead of failing the build."""
+    import httpx
+    import respx
+
+    from dpmp_gtfs.static.shapes import VALHALLA_URL, ValhallaRouter
+
+    with respx.mock:
+        respx.post(VALHALLA_URL).mock(side_effect=httpx.ConnectTimeout("down"))
+        with pytest.raises(RoutingError, match="router unreachable"):
+            ValhallaRouter(delay=0).get_route_geometry([(50.0, 15.0), (50.1, 15.1)])
+
+
+def test_router_parses_a_successful_response() -> None:
+    import httpx
+    import respx
+
+    from dpmp_gtfs.static.shapes import VALHALLA_URL, ValhallaRouter
+
+    body = {"trip": {"legs": [{"shape": LEG_A, "summary": {"length": 1.006}}]}}
+    with respx.mock:
+        respx.post(VALHALLA_URL).mock(return_value=httpx.Response(200, json=body))
+        legs, lengths = ValhallaRouter(delay=0).get_route_geometry([(50.0, 15.0), (50.1, 15.1)])
+
+    assert legs == [LEG_A]
+    assert lengths == [1006.0]
+
+
+def test_a_router_error_response_is_not_mistaken_for_a_route() -> None:
+    import httpx
+    import respx
+
+    from dpmp_gtfs.static.shapes import VALHALLA_URL, ValhallaRouter
+
+    with respx.mock:
+        respx.post(VALHALLA_URL).mock(return_value=httpx.Response(400, json={}))
+        with pytest.raises(RoutingError):
+            ValhallaRouter(delay=0).get_route_geometry([(50.0, 15.0), (50.1, 15.1)])

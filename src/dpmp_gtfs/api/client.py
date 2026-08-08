@@ -12,8 +12,6 @@ Two upstream quirks drive the shape of this module:
    must be able to survive a total outage.
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging
@@ -24,14 +22,11 @@ import httpx
 
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
+from dpmp_gtfs.exceptions import DpmpApiError
 
 from .models import Bus, BusesResponse, Code, ConnectionDetail, ConnectionSummary, Line, Station
 
 logger = logging.getLogger(__name__)
-
-
-class DpmpApiError(RuntimeError):
-    """The upstream could not be reached, or answered with something unusable."""
 
 
 class DpmpApiClient:

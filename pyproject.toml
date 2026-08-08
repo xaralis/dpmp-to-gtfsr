@@ -16,6 +16,7 @@ dependencies = [
     "jinja2>=3.1",
     "gtfs-realtime-bindings>=2.2",
     "typer>=0.19",
+    "holidays>=0.102",
 ]
 
 [project.scripts]

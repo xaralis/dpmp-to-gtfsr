@@ -14,8 +14,6 @@ This is deliberately *not* GTFS-RT. Consumers wanting the standard should take
 ``/gtfs-rt.pb``; this is the same data shaped for reading.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 from dataclasses import asdict, dataclass
 from typing import Any

@@ -1,7 +1,5 @@
 """Serialises a :class:`Feed` into a GTFS zip archive."""
 
-from __future__ import annotations
-
 import csv
 import datetime as dt
 import hashlib
@@ -14,9 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from dpmp_gtfs.ids import AGENCY_ID
-
-from .builder import Feed
-from .calendar import CalendarException
+from dpmp_gtfs.types import Feed
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +39,7 @@ def _csv(rows: Sequence[dict[str, Any]], columns: Sequence[str]) -> bytes:
     return buf.getvalue().encode("utf8")
 
 
-def _as_rows(items: Iterable[Any], columns: Sequence[str]) -> list[dict[str, Any]]:
+def _as_csv_rows(items: Iterable[Any], columns: Sequence[str]) -> list[dict[str, Any]]:
     return [{c: getattr(item, c) for c in columns} for item in items]
 
 
@@ -51,7 +47,7 @@ def _date(value: dt.date) -> str:
     return value.strftime("%Y%m%d")
 
 
-def feed_files(feed: Feed) -> dict[str, bytes]:
+def feed_to_files(feed: Feed) -> dict[str, bytes]:
     """Render every GTFS table. Returned in memory so the caller can hash the
     result before deciding whether it is worth republishing."""
     stop_columns = (
@@ -85,9 +81,10 @@ def feed_files(feed: Feed) -> dict[str, bytes]:
         "shape_dist_traveled",
     )
 
-    routes = [{**r, "agency_id": AGENCY_ID} for r in _as_rows(feed.routes, route_columns)]
-
+    # Force static agency_id to every route, since the feed has only one agency.
+    routes = [{**r, "agency_id": AGENCY_ID} for r in _as_csv_rows(feed.routes, route_columns)]
     calendar_rows = []
+
     for service in feed.services:
         mon, tue, wed, thu, fri, sat, sun = service.weekday_flags
         calendar_rows.append(
@@ -105,24 +102,23 @@ def feed_files(feed: Feed) -> dict[str, bytes]:
             }
         )
 
-    exceptions: list[CalendarException] = list(feed.calendar_exceptions)  # type: ignore[arg-type]
+    files = {
+        "agency.txt": _csv(AGENCY_ROWS, list(AGENCY_ROWS[0])),
+        "stops.txt": _csv(_as_csv_rows(feed.stops, stop_columns), stop_columns),
+        "routes.txt": _csv(routes, ("route_id", "agency_id", *route_columns[1:])),
+        "trips.txt": _csv(_as_csv_rows(feed.trips, trip_columns), trip_columns),
+        "stop_times.txt": _csv(_as_csv_rows(feed.stop_times, stop_time_columns), stop_time_columns),
+        "calendar.txt": _csv(calendar_rows, list(calendar_rows[0])),
+    }
     exception_rows = [
         {
             "service_id": e.service_id,
             "date": _date(e.date),
             "exception_type": 1 if e.added else 2,
         }
-        for e in exceptions
+        for e in feed.calendar_exceptions
     ]
 
-    files = {
-        "agency.txt": _csv(AGENCY_ROWS, list(AGENCY_ROWS[0])),
-        "stops.txt": _csv(_as_rows(feed.stops, stop_columns), stop_columns),
-        "routes.txt": _csv(routes, ("route_id", "agency_id", *route_columns[1:])),
-        "trips.txt": _csv(_as_rows(feed.trips, trip_columns), trip_columns),
-        "stop_times.txt": _csv(_as_rows(feed.stop_times, stop_time_columns), stop_time_columns),
-        "calendar.txt": _csv(calendar_rows, list(calendar_rows[0])),
-    }
     if exception_rows:
         files["calendar_dates.txt"] = _csv(exception_rows, list(exception_rows[0]))
 
@@ -148,6 +144,7 @@ def feed_files(feed: Feed) -> dict[str, bytes]:
             zip(shape.points, shape.point_distances, strict=True)
         )
     ]
+
     if shape_rows:
         files["shapes.txt"] = _csv(shape_rows, shape_columns)
 
@@ -161,20 +158,22 @@ def content_hash(files: dict[str, bytes]) -> str:
     the build date and would otherwise make every rebuild look like a change.
     """
     digest = hashlib.sha256()
+
     for name in sorted(files):
         digest.update(name.encode())
         digest.update(files[name])
+
     return digest.hexdigest()[:16]
 
 
-def write_zip(feed: Feed, destination: Path) -> str:
-    """Write ``destination`` atomically and return the content hash.
+def write_feed(feed: Feed, destination: Path) -> str:
+    """Write feed to ``destination`` atomically and return the content hash.
 
     Atomic because the HTTP layer serves this file straight off disk: a reader
     arriving mid-write would otherwise get a truncated archive.
     """
-    files = feed_files(feed)
-    version = content_hash(files)
+    files = feed_to_files(feed)
+    files_content_hash = content_hash(files)
 
     files["feed_info.txt"] = _csv(
         [
@@ -184,7 +183,7 @@ def write_zip(feed: Feed, destination: Path) -> str:
                 "feed_lang": "cs",
                 "feed_start_date": _date(feed.start_date),
                 "feed_end_date": _date(feed.end_date),
-                "feed_version": f"{_date(dt.date.today())}-{version}",
+                "feed_version": f"{_date(dt.date.today())}-{files_content_hash}",
                 "feed_contact_url": f"{FEED_PUBLISHER_URL}/issues",
             }
         ],
@@ -201,10 +200,17 @@ def write_zip(feed: Feed, destination: Path) -> str:
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     tmp = destination.with_suffix(destination.suffix + ".tmp")
+
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in sorted(files):
             zf.writestr(name, files[name])
+
     os.replace(tmp, destination)
 
-    logger.info("wrote %s (%d B, version %s)", destination, destination.stat().st_size, version)
-    return version
+    logger.info(
+        "wrote %s (%d B, version %s)",
+        destination,
+        destination.stat().st_size,
+        files_content_hash,
+    )
+    return files_content_hash

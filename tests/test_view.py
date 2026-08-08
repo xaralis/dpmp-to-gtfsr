@@ -5,8 +5,6 @@ back into names and times. Doing it on the server means one answer to "which
 stop is next", so these check that answer rather than the plumbing.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 from typing import Any
 

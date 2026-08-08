@@ -1,7 +1,5 @@
 """Command line entry points."""
 
-from __future__ import annotations
-
 import asyncio
 import datetime as dt
 import json
@@ -15,10 +13,8 @@ from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.config import settings
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.watch import UnservedStops, report
-from dpmp_gtfs.static.watch import load as load_unserved
-from dpmp_gtfs.static.watch import save as save_unserved
-from dpmp_gtfs.static.writer import write_zip
+from dpmp_gtfs.static.watch import write_unserved
+from dpmp_gtfs.static.writer import write_feed
 
 app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
 
@@ -27,12 +23,6 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
 )
 logger = logging.getLogger("dpmp_gtfs")
-
-
-def _write(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf8")
-    logger.info("wrote %s (%d B)", path, path.stat().st_size)
 
 
 @app.command("build-static")
@@ -52,25 +42,18 @@ def build_static(
         if shapes:
             feed = with_shapes(feed, destination.parent / "shape-cache.json")
 
-        missing = sorted(set(iter_missing_stop_references(feed)))
-        if missing:
+        if missing := sorted(set(iter_missing_stop_references(feed))):
             # A dangling stop reference makes the whole feed invalid, so refuse
             # rather than publish something consumers will reject.
             typer.echo(
-                f"aborting: {len(missing)} stop ids referenced but not defined: "
+                f"Aborting: {len(missing)} stop ids referenced but not defined: "
                 f"{', '.join(missing[:10])}",
                 err=True,
             )
             raise typer.Exit(1)
 
-        write_zip(feed, destination)
-
-        # Losing service is not always permanent, so compare against the last
-        # build: a stop that newly drops out usually means a diversion.
-        state_path = destination.parent / "unserved-stops.json"
-        current = UnservedStops(dt.datetime.now(dt.UTC), feed.unserved_stops)
-        report(current.compare(load_unserved(state_path)))
-        save_unserved(state_path, current)
+        write_feed(feed, destination)
+        write_unserved(destination, feed.unserved_stops)
 
     asyncio.run(run())
 
@@ -137,6 +120,7 @@ def watch_buses(
 
     async def run() -> None:
         dest.mkdir(parents=True, exist_ok=True)
+
         async with DpmpApiClient() as api:
             for i in range(count):
                 stamp = dt.datetime.now(dt.UTC)
@@ -153,10 +137,17 @@ def watch_buses(
                             "buses": [b.model_dump(mode="json") for b in buses],
                         },
                     )
+
                 if i + 1 < count:
                     await asyncio.sleep(interval)
 
     asyncio.run(run())
+
+
+def _write(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf8")
+    logger.info("wrote %s (%d B)", path, path.stat().st_size)
 
 
 if __name__ == "__main__":

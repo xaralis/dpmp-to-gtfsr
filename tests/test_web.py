@@ -4,8 +4,6 @@ These drive the ASGI app directly rather than through TestClient, so the
 lifespan never runs and no background loop reaches the live API.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 import zipfile
 from collections.abc import AsyncIterator

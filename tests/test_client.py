@@ -1,7 +1,5 @@
 """Tests for the transport layer: request shape, retries, outage behaviour."""
 
-from __future__ import annotations
-
 import httpx
 import pytest
 import respx

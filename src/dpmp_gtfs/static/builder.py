@@ -1,20 +1,35 @@
 """Turns a crawled :class:`Timetable` into GTFS records."""
 
-from __future__ import annotations
-
 import datetime as dt
 import logging
 from collections.abc import Iterator
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from pathlib import Path
 
 from dpmp_gtfs.api.models import ConnectionDetail, ConnectionStop
 from dpmp_gtfs.ids import route_id, station_id, stop_id, trip_id
+from dpmp_gtfs.types import (
+    Feed,
+    Point,
+    Route,
+    Service,
+    Shape,
+    Stop,
+    StopSequence,
+    StopTime,
+    Timetable,
+    Trip,
+)
 
-from .calendar import LOW_FLOOR, STEP_FREE_STOP, STOP_ON_REQUEST, Service, calendar_exceptions
-from .crawler import Timetable
+from .calendar import (
+    LOW_FLOOR,
+    STEP_FREE_STOP,
+    STOP_ON_REQUEST,
+    calendar_exceptions,
+    service_from_codes,
+)
 from .overrides import STATION_COORDINATES, STATION_NAMES, unused_overrides
-from .shapes import Point, Shape, ShapeCache, StopSequence, ValhallaRouter, build_shapes
+from .shapes import ShapeCache, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
 
@@ -67,73 +82,6 @@ def stop_seconds(stops: list[ConnectionStop]) -> list[int]:
         out.append(raw + offset)
 
     return out
-
-
-# --- GTFS records -----------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class Stop:
-    stop_id: str
-    stop_name: str
-    stop_lat: float
-    stop_lon: float
-    location_type: int
-    parent_station: str
-    platform_code: str
-    wheelchair_boarding: int
-
-
-@dataclass(frozen=True, slots=True)
-class Route:
-    route_id: str
-    route_short_name: str
-    route_long_name: str
-    route_type: int
-
-
-@dataclass(frozen=True, slots=True)
-class Trip:
-    route_id: str
-    service_id: str
-    trip_id: str
-    trip_headsign: str
-    direction_id: int
-    wheelchair_accessible: int
-    shape_id: str = ""
-    """Empty when geometry could not be routed. GTFS allows trips without one."""
-
-
-@dataclass(frozen=True, slots=True)
-class StopTime:
-    trip_id: str
-    arrival_time: str
-    departure_time: str
-    stop_id: str
-    stop_sequence: int
-    pickup_type: int
-    drop_off_type: int
-    shape_dist_traveled: str = ""
-    """Metres along the shape. Blank when the trip has no shape."""
-
-
-@dataclass(slots=True)
-class Feed:
-    stops: list[Stop] = field(default_factory=list)
-    shapes: list[Shape] = field(default_factory=list)
-    unserved_stops: dict[str, str] = field(default_factory=dict)
-    """Stop id -> name for stops excluded from the feed because nothing calls
-    at them. Kept so rebuilds can spot diversions starting and ending."""
-    routes: list[Route] = field(default_factory=list)
-    trips: list[Trip] = field(default_factory=list)
-    stop_times: list[StopTime] = field(default_factory=list)
-    services: list[Service] = field(default_factory=list)
-    start_date: dt.date = field(default_factory=dt.date.today)
-    end_date: dt.date = field(default_factory=dt.date.today)
-
-    @property
-    def calendar_exceptions(self) -> list[object]:
-        return list(calendar_exceptions(self.services, self.start_date, self.end_date))
 
 
 # --- building ---------------------------------------------------------------
@@ -323,7 +271,7 @@ def build_trips_and_stop_times(
             logger.warning("trip %s/%s has no stops, skipping", line_number, connection_number)
             continue
 
-        service = Service.from_codes(summary.codes)
+        service = service_from_codes(summary.codes)
         services.setdefault(service.service_id, service)
 
         tid = trip_id(line_number, connection_number)
@@ -505,6 +453,9 @@ def build_feed(
         services=services,
         start_date=start,
         end_date=start + dt.timedelta(days=validity_days),
+    )
+    feed.calendar_exceptions = list(
+        calendar_exceptions(feed.services, feed.start_date, feed.end_date)
     )
     logger.info(
         "built feed: %d stops, %d routes, %d trips, %d stop times, %d services, %d shapes",

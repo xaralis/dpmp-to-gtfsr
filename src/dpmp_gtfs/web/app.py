@@ -1,7 +1,5 @@
 """HTTP service: serves both feeds, a status page and documentation."""
 
-from __future__ import annotations
-
 import datetime as dt
 import hashlib
 import json

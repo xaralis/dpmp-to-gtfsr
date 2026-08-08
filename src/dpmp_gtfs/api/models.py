@@ -10,8 +10,6 @@ of the codebase never has to think about it again:
 * ``time_difference`` is **not a delay** -- see :mod:`dpmp_gtfs.realtime.tracker`.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 import re
 from typing import Annotated

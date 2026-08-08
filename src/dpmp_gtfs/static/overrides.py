@@ -20,8 +20,6 @@ If DPMP ever completes ``/api/stations``, this table becomes dead weight --
 :func:`unused_overrides` reports entries that are no longer needed.
 """
 
-from __future__ import annotations
-
 import logging
 from typing import NamedTuple
 

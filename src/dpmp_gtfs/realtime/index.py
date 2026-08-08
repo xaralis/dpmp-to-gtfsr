@@ -5,8 +5,6 @@ the upstream's own line and trip numbers -- the same pair the timetable
 endpoints use. So the join is direct, with no name matching or heuristics.
 """
 
-from __future__ import annotations
-
 import csv
 import io
 import zipfile

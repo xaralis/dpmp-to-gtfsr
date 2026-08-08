@@ -1,7 +1,5 @@
 """Tests for the GeoJSON that backs the coverage map."""
 
-from __future__ import annotations
-
 import zipfile
 from pathlib import Path
 
