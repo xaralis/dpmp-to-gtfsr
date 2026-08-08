@@ -11,12 +11,14 @@ import asyncio
 import contextlib
 import datetime as dt
 import logging
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api import DpmpApiClient
+from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
@@ -25,9 +27,9 @@ from dpmp_gtfs.realtime.tracker import DelayTracker
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.watch import load_unserved as load_unserved
-from dpmp_gtfs.static.watch import write_unserved
+from dpmp_gtfs.static.watch import load_unserved, state_path, write_unserved
 from dpmp_gtfs.static.writer import write_feed
+from dpmp_gtfs.timeutil import PRAGUE
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +135,7 @@ class Scheduler:
 
         # Restore which stops were out of service, so the status page is
         # accurate before the first rebuild of this process.
-        previous = load_unserved(path.parent / "unserved-stops.json")
+        previous = load_unserved(state_path(self.settings.data_dir))
         if previous is not None:
             self.state.unserved_stops = previous.stops
 
@@ -190,10 +192,7 @@ class Scheduler:
 
     def _seconds_until_rebuild(self) -> float:
         """Seconds until the next nightly rebuild, in local time."""
-        from zoneinfo import ZoneInfo
-
-        prague = ZoneInfo("Europe/Prague")
-        now = dt.datetime.now(prague)
+        now = dt.datetime.now(PRAGUE)
         target = now.replace(
             hour=self.settings.static_rebuild_hour, minute=0, second=0, microsecond=0
         )
@@ -240,13 +239,8 @@ def read_feed_version(path: Path) -> str | None:
     Lets a feed loaded from disk report the same version it was published
     with, rather than looking unversioned until the next rebuild.
     """
-    import csv
-    import io
-    import zipfile
-
     try:
-        with zipfile.ZipFile(path) as zf, zf.open("feed_info.txt") as fh:
-            rows = list(csv.DictReader(io.TextIOWrapper(fh, "utf8")))
-        return rows[0].get("feed_version") if rows else None
-    except OSError, KeyError, zipfile.BadZipFile:
+        rows = read_tables(path, "feed_info.txt")["feed_info.txt"]
+    except OSError, zipfile.BadZipFile:
         return None
+    return rows[0].get("feed_version") if rows else None

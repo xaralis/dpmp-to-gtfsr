@@ -5,14 +5,13 @@ far too much to hand a browser. Geometry is simplified before it leaves here,
 and the result is cached until the static feed changes.
 """
 
-import csv
-import io
 import logging
 import math
-import zipfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+from dpmp_gtfs.archive import read_tables
 
 logger = logging.getLogger(__name__)
 
@@ -73,44 +72,43 @@ def build_coverage(path: Path) -> dict[str, Any]:
     Shapes are grouped by the routes that use them, so the map can colour and
     label a line without the browser joining tables itself.
     """
-    with zipfile.ZipFile(path) as zf:
+    tables = read_tables(
+        path, "routes.txt", "trips.txt", "shapes.txt", "stops.txt", "stop_times.txt"
+    )
 
-        def rows(name: str) -> list[dict[str, str]]:
-            try:
-                with zf.open(name) as fh:
-                    return list(csv.DictReader(io.TextIOWrapper(fh, "utf8")))
-            except KeyError:
-                return []
+    routes = {r["route_id"]: r for r in tables["routes.txt"]}
 
-        routes = {r["route_id"]: r for r in rows("routes.txt")}
-        shape_routes: dict[str, str] = {}
-        for trip in rows("trips.txt"):
-            if trip.get("shape_id"):
-                shape_routes.setdefault(trip["shape_id"], trip["route_id"])
+    # One pass over trips.txt answers both questions asked of it: which route
+    # drew each shape, and which route each trip belongs to.
+    shape_routes: dict[str, str] = {}
+    trip_routes: dict[str, str] = {}
+    for trip in tables["trips.txt"]:
+        trip_routes[trip["trip_id"]] = trip["route_id"]
+        if trip.get("shape_id"):
+            shape_routes.setdefault(trip["shape_id"], trip["route_id"])
 
-        points: dict[str, list[tuple[int, float, float]]] = defaultdict(list)
-        for row in rows("shapes.txt"):
-            points[row["shape_id"]].append(
-                (
-                    int(row["shape_pt_sequence"]),
-                    float(row["shape_pt_lat"]),
-                    float(row["shape_pt_lon"]),
-                )
+    points: dict[str, list[tuple[int, float, float]]] = defaultdict(list)
+    for row in tables["shapes.txt"]:
+        points[row["shape_id"]].append(
+            (
+                int(row["shape_pt_sequence"]),
+                float(row["shape_pt_lat"]),
+                float(row["shape_pt_lon"]),
             )
+        )
 
-        all_stops = rows("stops.txt")
-        stops = [s for s in all_stops if s["location_type"] == "1"]
-        platforms = {s["stop_id"]: s for s in all_stops if s["location_type"] == "0"}
+    all_stops = tables["stops.txt"]
+    stops = [s for s in all_stops if s["location_type"] == "1"]
+    platforms = {s["stop_id"]: s for s in all_stops if s["location_type"] == "0"}
 
-        # Which lines call at each platform. Emitted once per platform with a
-        # list of lines, not once per line: interchanges are served by a dozen
-        # routes each, and repeating them tripled the payload for nothing.
-        trip_routes = {t["trip_id"]: t["route_id"] for t in rows("trips.txt")}
-        platform_routes: dict[str, set[str]] = {}
-        for row in rows("stop_times.txt"):
-            route_id = trip_routes.get(row["trip_id"])
-            if route_id:
-                platform_routes.setdefault(row["stop_id"], set()).add(route_id)
+    # Which lines call at each platform. Emitted once per platform with a list
+    # of lines, not once per line: interchanges are served by a dozen routes
+    # each, and repeating them tripled the payload for nothing.
+    platform_routes: dict[str, set[str]] = {}
+    for row in tables["stop_times.txt"]:
+        route_id = trip_routes.get(row["trip_id"])
+        if route_id:
+            platform_routes.setdefault(row["stop_id"], set()).add(route_id)
 
     features: list[dict[str, Any]] = []
     raw_total = simplified_total = 0

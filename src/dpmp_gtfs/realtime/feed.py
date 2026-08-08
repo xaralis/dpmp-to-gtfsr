@@ -2,36 +2,29 @@
 
 import datetime as dt
 import logging
-from zoneinfo import ZoneInfo
 
 from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api.models import Bus
 from dpmp_gtfs.ids import stop_id
+from dpmp_gtfs.timeutil import format_gtfs_time, service_day_date
 
 from .index import ScheduledTrip, StaticIndex
 from .tracker import DelayTracker, project_delay
 
 logger = logging.getLogger(__name__)
 
-PRAGUE = ZoneInfo("Europe/Prague")
-DAY = 24 * 3600
-
 
 def _service_date(bus_time: dt.datetime, first_departure: int) -> str:
     """The service date a trip belongs to, as ``YYYYMMDD``.
 
-    A trip scheduled at 24:10 that a vehicle is running at 00:10 belongs to the
-    previous calendar day, so the offset is subtracted back out.
+    Answered by comparing the vehicle's clock against the trip's own schedule
+    rather than by inspecting the schedule alone. A trip that departs at 23:58
+    and arrives at 00:52 has a first departure below 24:00, yet a vehicle
+    running it at 00:30 still belongs to the previous service day -- and the
+    consumer matching on ``(trip_id, start_date)`` has to be told so.
     """
-    local = bus_time.astimezone(PRAGUE)
-    return (local - dt.timedelta(days=first_departure // DAY)).strftime("%Y%m%d")
-
-
-def _start_time(first_departure: int) -> str:
-    hours, rest = divmod(first_departure, 3600)
-    minutes, seconds = divmod(rest, 60)
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return service_day_date(bus_time, first_departure).strftime("%Y%m%d")
 
 
 def _descriptor(trip: ScheduledTrip, service_date: str, first_departure: int) -> rt.TripDescriptor:
@@ -44,7 +37,7 @@ def _descriptor(trip: ScheduledTrip, service_date: str, first_departure: int) ->
         trip_id=trip.trip_id,
         route_id=trip.route_id,
         start_date=service_date,
-        start_time=_start_time(first_departure),
+        start_time=format_gtfs_time(first_departure),
         schedule_relationship=rt.TripDescriptor.SCHEDULED,
     )
 
@@ -83,8 +76,12 @@ def build_feed_message(
 
         vehicle_descriptor = rt.VehicleDescriptor(id=bus.vid, label=bus.vid)
 
-        # --- vehicle position ---
+        # Where the vehicle is along this trip, resolved once and used by both
+        # the position and the predictions so they cannot disagree.
         current = stop_id(bus.current_station, bus.current_platform)
+        position_now = trip.locate(current, bus.current_station)
+
+        # --- vehicle position ---
         position = rt.Position(latitude=bus.gps_latitude, longitude=bus.gps_longitude)
         if bus.gps_course is not None:
             position.bearing = bus.gps_course
@@ -97,12 +94,8 @@ def build_feed_message(
             stop_id=current,
             current_status=rt.VehiclePosition.IN_TRANSIT_TO,
         )
-        sequence = next(
-            (s.sequence for s in trip.stops if s.stop_id == current),
-            None,
-        )
-        if sequence is not None:
-            vehicle.current_stop_sequence = sequence
+        if position_now is not None:
+            vehicle.current_stop_sequence = trip.stops[position_now].sequence
 
         entity = message.entity.add(id=f"v{bus.vid}")
         entity.vehicle.CopyFrom(vehicle)
@@ -123,7 +116,6 @@ def build_feed_message(
 
         # Predictions for the rest of the trip, starting from where the vehicle
         # is now.
-        position_now = next((i for i, s in enumerate(trip.stops) if s.stop_id == current), None)
         if position_now is not None:
             for offset, scheduled in enumerate(trip.stops[position_now:]):
                 predicted = project_delay(delay, offset)

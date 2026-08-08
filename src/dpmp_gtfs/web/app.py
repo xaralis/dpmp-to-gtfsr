@@ -25,6 +25,22 @@ HERE = Path(__file__).parent
 TEMPLATES = Jinja2Templates(directory=str(HERE / "templates"))
 
 
+def _etag(payload: bytes) -> str:
+    return f'"{hashlib.sha256(payload).hexdigest()[:32]}"'
+
+
+def _not_modified(request: Request, etag: str) -> Response | None:
+    """A 304 when the client already holds this exact body.
+
+    Both feed routes need this, and they need to agree on the tag format --
+    a client holding an old-format tag would otherwise be served stale
+    responses by one route and fresh ones by the other.
+    """
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    return None
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or default_settings
     scheduler = Scheduler(config)
@@ -60,9 +76,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return Response("static feed is not built yet", status_code=503)
 
         payload = path.read_bytes()
-        etag = f'"{hashlib.sha256(payload).hexdigest()[:32]}"'
-        if request.headers.get("if-none-match") == etag:
-            return Response(status_code=304, headers={"ETag": etag})
+        etag = _etag(payload)
+        if cached := _not_modified(request, etag):
+            return cached
 
         modified = dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC)
         return Response(
@@ -116,9 +132,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         else:
             payload = cached[1]
 
-        etag = f'"{hashlib.sha256(payload).hexdigest()[:32]}"'
-        if request.headers.get("if-none-match") == etag:
-            return Response(status_code=304, headers={"ETag": etag})
+        etag = _etag(payload)
+        if not_modified := _not_modified(request, etag):
+            return not_modified
 
         return Response(
             payload,

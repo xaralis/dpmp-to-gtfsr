@@ -53,7 +53,7 @@ def build_static(
             raise typer.Exit(1)
 
         write_feed(feed, destination)
-        write_unserved(destination, feed.unserved_stops)
+        write_unserved(destination.parent, feed.unserved_stops)
 
     asyncio.run(run())
 

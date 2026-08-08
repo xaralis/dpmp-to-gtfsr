@@ -299,3 +299,31 @@ def test_a_router_error_response_is_not_mistaken_for_a_route() -> None:
         respx.post(VALHALLA_URL).mock(return_value=httpx.Response(400, json={}))
         with pytest.raises(RoutingError):
             ValhallaRouter(delay=0).get_route_geometry([(50.0, 15.0), (50.1, 15.1)])
+
+
+def test_the_politeness_delay_applies_even_when_the_router_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: the pause sat on the success path only.
+
+    This points at a community-run OSM instance. When that instance answered
+    429 or 5xx -- precisely when it is under strain -- the exception path
+    skipped the sleep and the next of up to 218 requests went out immediately.
+    """
+    import httpx
+
+    from dpmp_gtfs.static import shapes as shapes_module
+
+    slept: list[float] = []
+    monkeypatch.setattr(shapes_module.time, "sleep", slept.append)
+
+    def explode(*args: object, **kwargs: object) -> object:
+        raise httpx.ConnectError("router is down")
+
+    monkeypatch.setattr(shapes_module.httpx, "post", explode)
+
+    router = shapes_module.ValhallaRouter(delay=0.25)
+    with pytest.raises(RoutingError):
+        router.get_route_geometry([(50.0, 15.7), (50.1, 15.8)])
+
+    assert slept == [0.25]

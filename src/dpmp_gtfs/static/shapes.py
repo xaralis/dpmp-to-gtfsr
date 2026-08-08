@@ -115,31 +115,38 @@ class ValhallaRouter:
             "directions_options": {"units": "kilometers"},
         }
 
+        # The pause applies however the request turns out. It used to sit on
+        # the success path only, which meant a router answering 429 or 5xx --
+        # exactly when it is under strain -- got the next of up to 218 requests
+        # with no pause at all.
         try:
-            response = httpx.post(
-                self.url,
-                json=payload,
-                headers={"User-Agent": self.user_agent},
-                timeout=self.timeout,
+            try:
+                response = httpx.post(
+                    self.url,
+                    json=payload,
+                    headers={"User-Agent": self.user_agent},
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                body = response.json()
+            except (httpx.HTTPError, json.JSONDecodeError) as exc:
+                raise RoutingError(f"router unreachable: {exc!r}") from exc
+
+            legs = body.get("trip", {}).get("legs")
+            if not legs:
+                raise RoutingError(
+                    f"router returned no route: {body.get('trip', {}).get('status')}"
+                )
+            if len(legs) != len(coordinates) - 1:
+                raise RoutingError(f"expected {len(coordinates) - 1} legs, got {len(legs)}")
+
+            return (
+                [leg["shape"] for leg in legs],
+                [leg["summary"]["length"] * 1000.0 for leg in legs],
             )
-            response.raise_for_status()
-            body = response.json()
-        except (httpx.HTTPError, json.JSONDecodeError) as exc:
-            raise RoutingError(f"router unreachable: {exc!r}") from exc
-
-        legs = body.get("trip", {}).get("legs")
-        if not legs:
-            raise RoutingError(f"router returned no route: {body.get('trip', {}).get('status')}")
-        if len(legs) != len(coordinates) - 1:
-            raise RoutingError(f"expected {len(coordinates) - 1} legs, got {len(legs)}")
-
-        if self.delay:
-            time.sleep(self.delay)
-
-        return (
-            [leg["shape"] for leg in legs],
-            [leg["summary"]["length"] * 1000.0 for leg in legs],
-        )
+        finally:
+            if self.delay:
+                time.sleep(self.delay)
 
 
 class ShapeCache:

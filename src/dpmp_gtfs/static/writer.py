@@ -11,6 +11,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.ids import AGENCY_ID
 from dpmp_gtfs.types import Feed
 
@@ -80,6 +81,12 @@ def feed_to_files(feed: Feed) -> dict[str, bytes]:
         "drop_off_type",
         "shape_dist_traveled",
     )
+
+    # A feed with no services is not a degraded feed, it is a failed crawl:
+    # every trip would be unreachable. Say so here, rather than dying on an
+    # IndexError further down and reporting that as the cause.
+    if not feed.services:
+        raise FeedBuildError("feed has no services; the crawl returned no usable trips")
 
     # Force static agency_id to every route, since the feed has only one agency.
     routes = [{**r, "agency_id": AGENCY_ID} for r in _as_csv_rows(feed.routes, route_columns)]

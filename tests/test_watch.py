@@ -3,7 +3,13 @@
 import datetime as dt
 from pathlib import Path
 
-from dpmp_gtfs.static.watch import UnservedStops, _save_state, load_unserved
+from dpmp_gtfs.static.watch import (
+    UnservedStops,
+    _save_state,
+    load_unserved,
+    state_path,
+    write_unserved,
+)
 
 NOW = dt.datetime(2026, 8, 7, 3, 0, tzinfo=dt.UTC)
 LATER = NOW + dt.timedelta(days=1)
@@ -62,3 +68,36 @@ def test_corrupt_state_does_not_break_a_rebuild(tmp_path: Path) -> None:
     path = tmp_path / "unserved-stops.json"
     path.write_text("{ this is not json", encoding="utf8")
     assert load_unserved(path) is None
+
+
+# --- where the state file lives ---------------------------------------------
+
+
+def test_the_writer_and_the_reader_agree_on_the_path(tmp_path: Path) -> None:
+    """Regression: they used to derive it independently and disagree.
+
+    write_unserved took ``.parent`` of its argument, but the CLI passed a file
+    (``data/gtfs.zip``) while the scheduler passed a directory (``data``). So
+    the service wrote its state beside the working directory and read it back
+    from the data directory: the comparison never ran, and under Docker the
+    file fell outside the mounted volume and vanished on every restart.
+    """
+    write_unserved(tmp_path, {"S7P1": "Třída Míru"})
+
+    assert state_path(tmp_path).exists()
+    restored = load_unserved(state_path(tmp_path))
+    assert restored is not None
+    assert restored.stops == {"S7P1": "Třída Míru"}
+
+
+def test_state_survives_a_round_trip_through_the_service_paths(tmp_path: Path) -> None:
+    """What one build writes, the next process must find -- that is the whole
+    point of the file."""
+    write_unserved(tmp_path, {"S7P1": "Třída Míru"})
+    first = load_unserved(state_path(tmp_path))
+
+    write_unserved(tmp_path, {})
+    second = load_unserved(state_path(tmp_path))
+
+    assert first is not None and second is not None
+    assert second.compare(first).regained == {"S7P1": "Třída Míru"}

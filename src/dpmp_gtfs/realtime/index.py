@@ -5,12 +5,10 @@ the upstream's own line and trip numbers -- the same pair the timetable
 endpoints use. So the join is direct, with no name matching or heuristics.
 """
 
-import csv
-import io
-import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.ids import trip_id
 
 
@@ -47,6 +45,20 @@ class ScheduledTrip:
                 return i
         return None
 
+    def locate(self, stop_id: str, station: int) -> int | None:
+        """Where along this trip a vehicle reporting that stop currently is.
+
+        Platform first, then the station it belongs to. The fallback is not
+        defensive padding: vehicles do report a platform their trip does not
+        call at while the station itself is plainly on the route, and treating
+        that as "not on this trip" would drop the vehicle's predictions
+        entirely rather than place it one platform out.
+        """
+        for i, stop in enumerate(self.stops):
+            if stop.stop_id == stop_id:
+                return i
+        return self.index_of_station(station)
+
 
 class StaticIndex:
     """Trips of the current static feed, addressable the way realtime sees them."""
@@ -68,31 +80,24 @@ class StaticIndex:
         guarantees the realtime feed references trips that consumers can
         actually resolve: if the two ever disagree, the feed is broken.
         """
-        with zipfile.ZipFile(path) as zf:
+        # stops.txt only supplies display names; a feed without it is still
+        # perfectly usable for matching realtime to trips.
+        tables = read_tables(path, "trips.txt", "stops.txt", "stop_times.txt")
 
-            def rows(name: str) -> list[dict[str, str]]:
-                # stops.txt only supplies display names; a feed without it is
-                # still perfectly usable for matching realtime to trips.
-                try:
-                    with zf.open(name) as fh:
-                        return list(csv.DictReader(io.TextIOWrapper(fh, "utf8")))
-                except KeyError:
-                    return []
+        routes_by_trip = {r["trip_id"]: r["route_id"] for r in tables["trips.txt"]}
+        names = {r["stop_id"]: r["stop_name"] for r in tables["stops.txt"]}
 
-            routes_by_trip = {r["trip_id"]: r["route_id"] for r in rows("trips.txt")}
-            names = {r["stop_id"]: r["stop_name"] for r in rows("stops.txt")}
-
-            collected: dict[str, list[ScheduledStop]] = {}
-            for row in rows("stop_times.txt"):
-                collected.setdefault(row["trip_id"], []).append(
-                    ScheduledStop(
-                        stop_id=row["stop_id"],
-                        station=_station_of(row["stop_id"]),
-                        sequence=int(row["stop_sequence"]),
-                        seconds=_parse_gtfs_time(row["departure_time"]),
-                        name=names.get(row["stop_id"], ""),
-                    )
+        collected: dict[str, list[ScheduledStop]] = {}
+        for row in tables["stop_times.txt"]:
+            collected.setdefault(row["trip_id"], []).append(
+                ScheduledStop(
+                    stop_id=row["stop_id"],
+                    station=_station_of(row["stop_id"]),
+                    sequence=int(row["stop_sequence"]),
+                    seconds=_parse_gtfs_time(row["departure_time"]),
+                    name=names.get(row["stop_id"], ""),
                 )
+            )
 
         trips = {
             tid: ScheduledTrip(
@@ -111,6 +116,8 @@ def _station_of(stop_id: str) -> int:
 
 
 def _parse_gtfs_time(value: str) -> int:
-    """``"24:23:00"`` -> seconds. Hours past 24 are meaningful here."""
+    """``"24:23:00"`` -> seconds. The inverse of
+    :func:`dpmp_gtfs.timeutil.format_gtfs_time`, so hours past 24 stay
+    meaningful rather than wrapping."""
     hours, minutes, seconds = (int(p) for p in value.split(":"))
     return hours * 3600 + minutes * 60 + seconds

@@ -17,16 +17,14 @@ This is deliberately *not* GTFS-RT. Consumers wanting the standard should take
 import datetime as dt
 from dataclasses import asdict, dataclass
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from dpmp_gtfs.api.models import Bus
 from dpmp_gtfs.ids import stop_id
 from dpmp_gtfs.static.builder import TROLLEYBUS_LINES
+from dpmp_gtfs.timeutil import PRAGUE, format_clock
 
-from .index import ScheduledStop, ScheduledTrip, StaticIndex
+from .index import ScheduledStop, StaticIndex
 from .tracker import DelayTracker
-
-PRAGUE = ZoneInfo("Europe/Prague")
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,28 +61,8 @@ class VehicleView:
     stop_index: int | None
 
 
-def _clock(seconds: int) -> str:
-    hours, rest = divmod(seconds, 3600)
-    return f"{hours:02d}:{rest // 60:02d}"
-
-
 def _stop_view(stop: ScheduledStop) -> StopView:
-    return StopView(id=stop.stop_id, name=stop.name, scheduled=_clock(stop.seconds))
-
-
-def _position_on_trip(bus: Bus, trip: ScheduledTrip) -> int | None:
-    """Where along the trip the vehicle currently is.
-
-    ``current_stop_number`` is the stop being approached, so its index is also
-    the boundary: everything before it has been served.
-    """
-    current = stop_id(bus.current_station, bus.current_platform)
-    for i, stop in enumerate(trip.stops):
-        if stop.stop_id == current:
-            return i
-    # Fall back to the station, since a vehicle may report a platform the trip
-    # does not use while the station itself is on the route.
-    return trip.index_of_station(bus.current_station)
+    return StopView(id=stop.stop_id, name=stop.name, scheduled=format_clock(stop.seconds))
 
 
 def build_vehicle_views(
@@ -102,7 +80,10 @@ def build_vehicle_views(
         if trip is None:
             continue
 
-        position = _position_on_trip(bus, trip)
+        # ``current_stop_number`` is the stop being approached, so its index is
+        # also the boundary: everything before it has been served.
+        current = stop_id(bus.current_station, bus.current_platform)
+        position = trip.locate(current, bus.current_station)
         previous = trip.stops[position - 1] if position is not None and position > 0 else None
         upcoming = (
             trip.stops[position] if position is not None and position < len(trip.stops) else None

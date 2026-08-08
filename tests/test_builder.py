@@ -156,3 +156,15 @@ def test_ids_are_stable_and_unambiguous() -> None:
     assert trip_id(9, 115) == "L9C115"
     # The upstream's own encoding would collide here; explicit ids do not.
     assert stop_id(1, 60) != stop_id(16, 0)
+
+
+def test_a_feed_with_no_services_is_refused_with_a_usable_message() -> None:
+    """Regression: this died on ``IndexError: list index out of range`` deep in
+    the CSV writer, which the scheduler then reported as the cause of a failed
+    rebuild. The actual condition -- an empty crawl -- said nothing about it."""
+    from dpmp_gtfs.exceptions import FeedBuildError
+    from dpmp_gtfs.static.writer import feed_to_files
+    from dpmp_gtfs.types import Feed
+
+    with pytest.raises(FeedBuildError, match="no services"):
+        feed_to_files(Feed())

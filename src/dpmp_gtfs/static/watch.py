@@ -76,16 +76,29 @@ class UnservedStops:
         )
 
 
-def write_unserved(dest: Path | None, unserved_stops: dict[str, str]) -> None:
+def state_path(data_dir: Path | None = None) -> Path:
+    """Where the unserved-stop snapshot lives, given the data directory.
+
+    Both the writer and the reader go through here. They previously derived it
+    independently and disagreed: one caller passed the *file* ``data/gtfs.zip``
+    and the other the *directory* ``data``, so taking ``.parent`` of each landed
+    them in different places. The service wrote its state beside the working
+    directory and read it from the data directory, which meant the comparison
+    never ran there and the file fell outside the container's volume.
+    """
+    return (data_dir or settings.data_dir) / "unserved-stops.json"
+
+
+def write_unserved(data_dir: Path | None, unserved_stops: dict[str, str]) -> None:
     # Losing service is not always permanent, so compare against the last
     # build: a stop that newly drops out usually means a diversion.
-    state_path = (dest or settings.gtfs_zip_path).parent / "unserved-stops.json"
+    path = state_path(data_dir)
     current = UnservedStops(dt.datetime.now(dt.UTC), unserved_stops)
 
-    if service_change := current.compare(load_unserved(state_path)):
+    if service_change := current.compare(load_unserved(path)):
         report_service_change(service_change)
 
-    _save_state(state_path, current)
+    _save_state(path, current)
 
 
 def load_unserved(path: Path) -> UnservedStops | None:

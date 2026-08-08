@@ -33,16 +33,13 @@ measurement within a stop or two of being observed.
 import datetime as dt
 import logging
 from dataclasses import dataclass
-from zoneinfo import ZoneInfo
 
 from dpmp_gtfs.api.models import Bus
+from dpmp_gtfs.timeutil import service_day_seconds
 
 from .index import ScheduledTrip, StaticIndex
 
 logger = logging.getLogger(__name__)
-
-PRAGUE = ZoneInfo("Europe/Prague")
-DAY = 24 * 3600
 
 # A measurement older than this is not reported. A vehicle that has not passed
 # a stop in this long has probably been held up in a way its last measurement
@@ -68,21 +65,6 @@ class _VehicleState:
     last_station: int | None
     trip_id: str
     delay: Delay | None = None
-
-
-def service_day_seconds(moment: dt.datetime, scheduled: int) -> int:
-    """Seconds-from-service-day-start for ``moment``, on the day matching
-    ``scheduled``.
-
-    Needed because scheduled times can exceed 86400 for trips that run past
-    midnight: a vehicle observed at 00:10 local time may be 24:10 into the
-    previous service day. The interpretation closest to the schedule wins,
-    which is unambiguous as long as a vehicle is not a full twelve hours late.
-    """
-    local = moment.astimezone(PRAGUE)
-    midnight = local.replace(hour=0, minute=0, second=0, microsecond=0)
-    base = int((local - midnight).total_seconds())
-    return min((base - DAY, base, base + DAY), key=lambda s: abs(s - scheduled))
 
 
 class DelayTracker:

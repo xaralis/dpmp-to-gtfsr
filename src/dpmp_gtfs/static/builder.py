@@ -8,6 +8,7 @@ from pathlib import Path
 
 from dpmp_gtfs.api.models import ConnectionDetail, ConnectionStop
 from dpmp_gtfs.ids import route_id, station_id, stop_id, trip_id
+from dpmp_gtfs.timeutil import DAY, format_gtfs_time
 from dpmp_gtfs.types import (
     Feed,
     Point,
@@ -33,8 +34,6 @@ from .shapes import ShapeCache, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
 
-DAY = 24 * 3600
-
 # DPMP runs trolleybuses on these lines and buses on the rest. The split comes
 # from the CIS registry, where the trolleybus lines (655001-655033) are
 # published in the separate "draha/mestske" archive. It is baked in as a
@@ -48,18 +47,6 @@ ROUTE_TYPE_TROLLEYBUS = 11
 # GTFS pickup_type / drop_off_type
 REGULAR = 0
 COORDINATE_WITH_DRIVER = 3
-
-
-def format_gtfs_time(seconds: int) -> str:
-    """``87780`` -> ``"24:23:00"``.
-
-    GTFS counts from noon-minus-twelve-hours of the *service* day, so a trip
-    that starts before midnight and ends after it keeps counting past 24:00
-    rather than wrapping to 00:23.
-    """
-    hours, rest = divmod(seconds, 3600)
-    minutes, secs = divmod(rest, 60)
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
 def stop_seconds(stops: list[ConnectionStop]) -> list[int]:

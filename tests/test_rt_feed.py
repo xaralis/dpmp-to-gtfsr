@@ -134,3 +134,56 @@ def test_feed_round_trips_through_protobuf() -> None:
 
     update = next(e.trip_update for e in restored.entity if e.HasField("trip_update"))
     assert update.delay == -50
+
+
+# --- regressions ------------------------------------------------------------
+
+
+def test_a_vehicle_on_an_unlisted_platform_still_gets_predictions() -> None:
+    """Regression: the feed used to match the vehicle's stop id exactly.
+
+    Vehicles do report a platform their trip does not call at while the station
+    itself is plainly on the route. Matching on the id alone left those trip
+    updates with no stop_time_update at all and their positions with no
+    current_stop_sequence -- while the map page, which had the station
+    fallback, showed them correctly. The two must not disagree.
+    """
+    index = _index()
+    # Station 2 is on the trip, but as platform 1; the vehicle claims 9.
+    bus = _bus(current_stop_number="209", last_stop_number="1", time_difference="-00:02:00")
+
+    msg = build_feed_message([bus], index, DelayTracker(index), NOW)
+
+    positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
+    assert positions[0].current_stop_sequence == 1
+
+    updates = [e.trip_update for e in msg.entity if e.HasField("trip_update")]
+    assert [u.stop_id for u in updates[0].stop_time_update] == ["S2P1", "S3P1"]
+
+
+def test_a_trip_running_past_midnight_reports_the_day_it_started() -> None:
+    """Regression: start_date came from the schedule alone, so a trip that
+    departs at 23:58 and is still running at 00:30 was reported against the new
+    calendar day. Consumers key TripUpdates on (trip_id, start_date)."""
+    late = ScheduledTrip(
+        trip_id="L98C9",
+        route_id="L98",
+        stops=(
+            ScheduledStop("S1P1", 1, 0, 23 * 3600 + 58 * 60),
+            ScheduledStop("S2P1", 2, 1, 24 * 3600 + 52 * 60),
+        ),
+    )
+    index = StaticIndex({"L98C9": late})
+    # 00:30 Prague on 9 August = 22:30 UTC on the 8th.
+    bus = _bus(
+        line_name="98",
+        connection_no=9,
+        current_stop_number="201",
+        state_dtime="2026-08-08 22:30:00",
+    )
+
+    msg = build_feed_message([bus], index, DelayTracker(index), NOW)
+
+    positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
+    assert positions[0].trip.start_date == "20260808"
+    assert positions[0].trip.start_time == "23:58:00"
