@@ -39,6 +39,9 @@ services:
       # but still out of the image so rotating it is a restart, not a rebuild.
       DPMP_API_KEY: ${DPMP_API_KEY:?set DPMP_API_KEY in .env}
       DPMP_DATA_DIR: /data
+      # Needed for absolute URLs in social preview tags. Optional: left unset,
+      # those tags are omitted rather than pointing somewhere unreachable.
+      DPMP_PUBLIC_URL: ${DPMP_PUBLIC_URL:-}
     volumes:
       - feed-data:/data
     # Reachable only from the tunnel, never from the host's network.
