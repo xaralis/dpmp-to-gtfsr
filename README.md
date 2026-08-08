@@ -28,6 +28,10 @@ přes HTTP.
 
 Homepage se stavem služby je na `/`, dokumentace feedů na `/docs`.
 
+> **Trasy v `shapes.txt` jsou odhad.** Zastávky, časy a spoje pocházejí přímo
+> z API dopravního podniku, ale geometrii jízdy po ulicích v použitelné podobě
+> nikdo nepublikuje, takže se dopočítává routováním. Podrobnosti níž.
+
 ## Spuštění
 
 Konfigurace je v `.env` **v kořeni repozitáře** — tam ho hledá jak služba
@@ -100,9 +104,33 @@ Několik vlastností zdrojového API, které nejsou zřejmé a stály za ověře
   [`realtime/tracker.py`](src/dpmp_gtfs/realtime/tracker.py).
 - **`current_stop_number`** kóduje stanici i nástupiště jako `stanice * 100 + nástupiště`,
   kdežto `last_stop_number` nese jen holé číslo stanice.
-- **Geometrie tras v API není.** `shapes.txt` vzniká zroutováním zastávek přes
-  [Valhallu](https://valhalla.github.io/valhalla/) nad OpenStreetMap. Výsledky se cachují
-  v `shape-cache.json`, takže běžná noční přestavba nepošle na router ani jeden dotaz.
+- **`gps_course` je vždy `null`** — ve všech nahraných snímcích, u všech vozidel. Směr
+  vozidla se proto počítá z jízdního řádu, ne z kompasu vozu.
+
+### Trasy jsou odhad
+
+`shapes.txt` nevzniká z podkladů dopravního podniku, ale **zroutováním zastávek přes
+[Valhallu](https://valhalla.github.io/valhalla/) nad OpenStreetMap**. Je to tedy
+nejpravděpodobnější cesta po ulicích mezi zastávkami, ne doložené vedení linky.
+Výsledky se cachují v `shape-cache.json`, takže běžná noční přestavba nepošle na router
+ani jeden dotaz.
+
+Pokusili jsme se získat data od zdroje a nestačí na to:
+
+- API má endpoint `/api/route?line=N` s geometrií, ale vrací **jednu reprezentativní
+  trasu na linku**, ne na spoj. Linky mají varianty — zkrácené obraty, jiné větve — které
+  se od ní liší i o kilometry, takže z ní `shapes.txt` sestavit nejde. Per-spoj geometrii
+  nemá ani vlastní aplikace dopravního podniku.
+- Změřeno na 218 sekvencích zastávek: zroutované trasy míjejí zastávky, které mají
+  obsloužit, o 8–11 m, geometrie z API o stovky metrů. Ani na 98 sekvencích, kde sedí
+  nejlíp, nevyhraje ani jednou.
+- JDF z registru CIS je formát pro jízdní řády a geometrii tras nenese; nemá dokonce ani
+  souřadnice zastávek, což byl důvod, proč se od něj tenhle projekt odklonil.
+
+**Co z toho plyne pro konzumenty:** zastávky, časy a spoje berte jako data dopravního
+podniku, tvar trasy mezi zastávkami jako odhad. Routování může zvolit jinou, byť
+průjezdnou ulici — pár desítek takových míst je známo a nikdo je neprošel proti
+skutečnému vedení linek. Rozbor je v [`docs/upstream-api.md`](docs/upstream-api.md).
 
 ## Předchůdce
 
