@@ -207,3 +207,84 @@ def test_feed_version_of_a_broken_archive_is_none(tmp_path: Path) -> None:
     path = tmp_path / "broken.zip"
     path.write_bytes(b"not a zip")
     assert read_feed_version(path) is None
+
+
+# --- transfer size -----------------------------------------------------------
+
+
+def _write_zip_with_geometry(path: Path, points: int = 400) -> None:
+    """A feed with enough geometry to be worth compressing.
+
+    The minimal fixture is a few hundred bytes, where the gzip wrapper costs
+    more than it saves -- which the route correctly declines to do, so a test
+    of compression needs something closer to the real 508 kB.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr(
+            "routes.txt", "route_id,route_short_name,route_long_name,route_type\nL9,9,A - B,3\n"
+        )
+        zf.writestr("trips.txt", "route_id,service_id,trip_id,shape_id\nL9,wd,L9C115,shp_a\n")
+        zf.writestr(
+            "stops.txt",
+            "stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station\n"
+            "S1,A,50.03,15.77,1,\nS1P1,A,50.03,15.77,0,S1\n",
+        )
+        zf.writestr(
+            "stop_times.txt",
+            "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            "L9C115,19:00:00,19:00:00,S1P1,0\n",
+        )
+        rows = "".join(
+            f"shp_a,{50.0 + i * 0.0007:.6f},{15.7 + (i % 7) * 0.0009:.6f},{i},0.0\n"
+            for i in range(points)
+        )
+        zf.writestr(
+            "shapes.txt",
+            "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence,shape_dist_traveled\n" + rows,
+        )
+        zf.writestr("feed_info.txt", "feed_publisher_name,feed_lang,feed_version\nx,cs,v1\n")
+
+
+async def test_coverage_is_served_compressed_and_decodes_to_the_same_json(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """The map's largest asset by an order of magnitude: 508 kB of GeoJSON that
+    gzips to 66 kB. Compressed once when built rather than per request."""
+    _write_zip_with_geometry(tmp_path / "gtfs.zip")
+
+    plain = await client.get("/coverage.geojson", headers={"Accept-Encoding": "identity"})
+    zipped = await client.get("/coverage.geojson", headers={"Accept-Encoding": "gzip"})
+
+    assert plain.status_code == zipped.status_code == 200
+    assert zipped.headers["content-encoding"] == "gzip"
+    # Without Vary a shared cache could hand the compressed bytes to a client
+    # that never asked for them.
+    assert "accept-encoding" in zipped.headers["vary"].lower()
+    # httpx decodes transparently, so equal content here means the compressed
+    # response carries exactly the same document.
+    assert zipped.json() == plain.json()
+
+    # The cache holds both forms; the compressed one has to be the smaller,
+    # which is the whole reason for keeping it.
+    _, raw, compressed = client.app.state.coverage_cache  # type: ignore[attr-defined]
+    assert len(compressed) < len(raw)
+
+
+async def test_the_geojson_carries_no_needless_whitespace(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """json.dumps defaults to ", " and ": ", which across ~33,000 numbers came
+    to 47 kB of spaces nothing reads."""
+    _write_zip_with_geometry(tmp_path / "gtfs.zip")
+
+    body = (await client.get("/coverage.geojson", headers={"Accept-Encoding": "identity"})).text
+    assert ", " not in body
+    assert '": ' not in body
+
+
+async def test_text_responses_are_compressed(client: httpx.AsyncClient) -> None:
+    """Not just the GeoJSON -- the realtime protobuf drops 70% too."""
+    response = await client.get("/", headers={"Accept-Encoding": "gzip"})
+    assert response.status_code == 200
+    assert response.headers.get("content-encoding") == "gzip"
