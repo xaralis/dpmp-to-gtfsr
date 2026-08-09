@@ -68,6 +68,15 @@
   var feedTime = null;
   var failure = null;
   var nextRefreshAt = 0;
+  // Which vehicle's popup is open, if any. Markers are rebuilt from scratch on
+  // every refresh and on every selection, so without remembering this the
+  // popup would close by itself every fifteen seconds -- and clicking a
+  // vehicle, which now also picks its line, would close the popup it opened.
+  var openVehicle = null;
+  // Leaflet fires popupclose when a marker is removed, not only when the user
+  // dismisses it. Without this flag the teardown at the start of a rebuild
+  // would clear openVehicle before the rebuild could act on it.
+  var rebuilding = false;
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
@@ -88,16 +97,16 @@
     Object.keys(lines).forEach(function (number) {
       var line = lines[number];
       var isPicked = selected === number;
-      var dimmed = selected !== null && !isPicked;
       line.polylines.forEach(function (p) {
-        p.setStyle({
-          color: isPicked ? PICKED : (line.trolleybus ? TROLLEY : BUS),
-          weight: isPicked ? 5 : 2.5,
-          // Dimmed rather than hidden: the selected line reads better against
-          // the rest of the network than floating on an empty map.
-          opacity: isPicked ? 0.95 : (dimmed ? 0.12 : 0.55)
-        });
-        if (isPicked) p.bringToFront();
+        // On the map only while its line is picked. Drawing every route at
+        // once buries the vehicles and stops under 425 overlapping shapes.
+        if (isPicked) {
+          p.setStyle({ color: PICKED, weight: 5, opacity: 0.95 });
+          if (!routeLayer.hasLayer(p)) routeLayer.addLayer(p);
+          p.bringToFront();
+        } else if (routeLayer.hasLayer(p)) {
+          routeLayer.removeLayer(p);
+        }
       });
     });
 
@@ -178,7 +187,7 @@
       });
   }
 
-  function select(number) {
+  function select(number, keepView) {
     selected = (selected === number) ? null : number;
     restyle();
     describe();
@@ -186,6 +195,10 @@
     renderVehicles(lastVehicles);
     paintStatus();
 
+    // Picking a line from the chips means "show me this line", so the map
+    // frames it. Picking it by clicking a vehicle does not: the view would
+    // jump away from the vehicle just clicked, taking its popup with it.
+    if (keepView) return;
     var target = selected ? lines[selected].bounds : allBounds;
     if (target && target.isValid()) map.fitBounds(target, { padding: [24, 24] });
   }
@@ -231,9 +244,11 @@
           };
         }
         var line = lines[number];
+        // Built now, attached only while its line is selected. All 425 shapes
+        // at once turn the city into a thicket that hides the vehicles and
+        // stops, which are the parts that are actually live.
         var poly = L.polyline(latlngs, { weight: 2.5, opacity: 0.55 })
-          .on("click", function () { select(number); })
-          .addTo(routeLayer);
+          .on("click", function () { select(number); });
 
         line.polylines.push(poly);
         line.bounds.extend(poly.getBounds());
@@ -354,6 +369,7 @@
   }
 
   function renderVehicles(vehicles) {
+    rebuilding = true;
     vehicleLayer.clearLayers();
     var shown = 0;
 
@@ -367,7 +383,7 @@
       // the only ones drawn, so they need no further emphasis.
       var kind = v.trolleybus ? "trolley" : "bus";
 
-      L.marker([v.latitude, v.longitude], {
+      var marker = L.marker([v.latitude, v.longitude], {
         icon: L.divIcon({
           className: "",
           // The arrow points at the next stop. It is computed on the server,
@@ -381,9 +397,26 @@
         }),
         // Above stops and lines, so a vehicle is never hidden behind them.
         zIndexOffset: 1000
-      }).bindPopup(vehiclePopup(v)).addTo(vehicleLayer);
+      });
+
+      marker
+        .bindPopup(vehiclePopup(v))
+        // Clicking a vehicle picks its line too: the question that follows
+        // "which bus is that" is almost always "and where does it go".
+        .on("click", function () {
+          openVehicle = v.vehicle_id;
+          if (selected !== v.line) select(v.line, true);
+        })
+        .on("popupclose", function () {
+          if (!rebuilding && openVehicle === v.vehicle_id) openVehicle = null;
+        })
+        .addTo(vehicleLayer);
+
+      // Restore the popup this vehicle had open before the rebuild.
+      if (openVehicle === v.vehicle_id) marker.openPopup();
     });
 
+    rebuilding = false;
     return shown;
   }
 
