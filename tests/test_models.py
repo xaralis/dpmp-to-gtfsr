@@ -40,6 +40,21 @@ def test_stop_flags_come_from_fixed_codes():
     assert not plain.step_free and not plain.on_request
 
 
+def test_a_stop_with_no_coordinates_still_validates():
+    """Stop 147, "Opočínek,rozvodna", publishes no gpsLat/gpsLon at all -- see
+    tests/fixtures/stops.json. A required field here would fail the whole
+    /stops payload over this one record."""
+    stop = Stop.model_validate({"id": 147, "name": "Opočínek,rozvodna"})
+    assert stop.gps_latitude is None
+    assert stop.gps_longitude is None
+
+
+def test_the_real_stops_payload_all_validate(stops_payload):
+    stops = [Stop.model_validate(s) for s in stops_payload]
+    assert len(stops) == len(stops_payload) == 219
+    assert sum(1 for s in stops if s.gps_latitude is None) == 1
+
+
 def test_line_exposes_its_jdf_id(lines_payload):
     line = Line.model_validate(lines_payload[0])
     assert line.jdf_id.startswith("655")

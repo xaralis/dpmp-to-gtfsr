@@ -116,11 +116,23 @@ def build_stops(timetable: Timetable) -> list[Stop]:
     coordinates any more (see :mod:`dpmp_gtfs.upstream`). Their numbers are
     real, so the ids and ``platform_code`` are unchanged -- only the geometry
     is coarser than it used to be.
+
+    A handful of stops (e.g. 147, "Opočínek,rozvodna") publish no coordinates at
+    all; those are skipped rather than published with a nonsensical position.
+    :func:`build_trips_and_stop_times` applies the same exclusion so
+    ``stop_times.txt`` never points at a stop this function dropped.
     """
     stops: list[Stop] = []
     used = used_platforms(timetable)
+    known_ids = {s.id for s in timetable.stops}
 
     for api_stop in timetable.stops:
+        if api_stop.gps_latitude is None or api_stop.gps_longitude is None:
+            logger.warning(
+                "stop %s (%s) has no coordinates, skipping", api_stop.id, api_stop.name
+            )
+            continue
+
         step_free = int(api_stop.step_free)
         parent = station_id(api_stop.id)
         stops.append(
@@ -149,7 +161,25 @@ def build_stops(timetable: Timetable) -> list[Stop]:
                 )
             )
 
+    for number in sorted(set(used) - known_ids):
+        logger.error(
+            "stop %s is used by timetables but is unknown to /stops; its trips "
+            "will reference a stop that does not exist",
+            number,
+        )
+
     return stops
+
+
+def stops_without_coordinates(timetable: Timetable) -> set[int]:
+    """Ids of stops ``/stops`` describes but without a position.
+
+    Shared between :func:`build_stops`, which drops them from ``stops.txt``,
+    and :func:`build_trips_and_stop_times`, which must drop the matching
+    ``stop_times.txt`` rows -- otherwise the two files disagree about which
+    stops exist.
+    """
+    return {s.id for s in timetable.stops if s.gps_latitude is None or s.gps_longitude is None}
 
 
 def build_routes(timetable: Timetable) -> list[Route]:
@@ -195,6 +225,7 @@ def build_trips_and_stop_times(
     services: dict[str, Service] = {}
     names = {s.id: s.name for s in timetable.stops}
     on_request_stops = {s.id for s in timetable.stops if s.on_request}
+    missing_coords = stops_without_coordinates(timetable)
 
     for key, connection in sorted(timetable.connections.items()):
         line_id, connection_number = key
@@ -202,28 +233,17 @@ def build_trips_and_stop_times(
             logger.warning("trip %s/%s has no stops, skipping", line_id, connection_number)
             continue
 
-        service = service_from_codes(connection.fixed_codes)
-        services.setdefault(service.service_id, service)
-
         tid = trip_id(line_id, connection_number)
-        trips.append(
-            Trip(
-                route_id=route_id(line_id),
-                service_id=service.service_id,
-                trip_id=tid,
-                trip_headsign=names.get(connection.stops[-1].stop_id, ""),
-                direction_id=timetable.directions.get(key, 0),
-                wheelchair_accessible=1 if connection.low_floor else 0,
-            )
-        )
+        trip_stop_times: list[StopTime] = []
+        surviving_stops: list[ConnectionStop] = []
 
         for sequence, (stop, seconds) in enumerate(
             zip(connection.stops, stop_seconds(connection.stops), strict=True)
         ):
-            # "Zastávka na znamení" -- the bus only calls if asked.
-            on_request = stop.stop_id in on_request_stops
-            boarding = COORDINATE_WITH_DRIVER if on_request else REGULAR
-            time = format_gtfs_time(seconds)
+            if stop.stop_id in missing_coords:
+                # Not in stops.txt (build_stops already logged this stop); a
+                # stop_times row here would dangle.
+                continue
             if not stop.platform_id.isdigit():
                 logger.warning(
                     "trip %s stop %s has no numeric platform (%r), skipping the stop",
@@ -232,7 +252,12 @@ def build_trips_and_stop_times(
                     stop.platform_id,
                 )
                 continue
-            stop_times.append(
+
+            # "Zastávka na znamení" -- the bus only calls if asked.
+            on_request = stop.stop_id in on_request_stops
+            boarding = COORDINATE_WITH_DRIVER if on_request else REGULAR
+            time = format_gtfs_time(seconds)
+            trip_stop_times.append(
                 StopTime(
                     trip_id=tid,
                     arrival_time=time,
@@ -243,6 +268,31 @@ def build_trips_and_stop_times(
                     drop_off_type=boarding,
                 )
             )
+            surviving_stops.append(stop)
+
+        if len(trip_stop_times) < 2:
+            logger.warning(
+                "trip %s/%s has fewer than 2 usable stop times after filtering, "
+                "dropping the trip",
+                line_id,
+                connection_number,
+            )
+            continue
+
+        service = service_from_codes(connection.fixed_codes)
+        services.setdefault(service.service_id, service)
+
+        trips.append(
+            Trip(
+                route_id=route_id(line_id),
+                service_id=service.service_id,
+                trip_id=tid,
+                trip_headsign=names.get(surviving_stops[-1].stop_id, ""),
+                direction_id=timetable.directions.get(key, 0),
+                wheelchair_accessible=1 if connection.low_floor else 0,
+            )
+        )
+        stop_times.extend(trip_stop_times)
 
     return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
 

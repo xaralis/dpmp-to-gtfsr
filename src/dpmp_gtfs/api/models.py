@@ -106,8 +106,12 @@ class VehiclesResponse(BaseModel):
 class Stop(BaseModel):
     id: int
     name: str
-    gps_latitude: float = Field(alias="gpsLat")
-    gps_longitude: float = Field(alias="gpsLon")
+    gps_latitude: float | None = Field(alias="gpsLat", default=None)
+    gps_longitude: float | None = Field(alias="gpsLon", default=None)
+    """Absent for a handful of stops (e.g. 147, "Opočínek,rozvodna") -- ``None``
+    rather than a required field, so one such record does not fail validation
+    for the whole ``/stops`` payload. :func:`dpmp_gtfs.static.builder.build_stops`
+    is what actually drops these; this model only has to admit the possibility."""
     fixed_codes: list[str] = Field(alias="fixedCodes", default_factory=list)
     aliases: list[str] = Field(default_factory=list)
 

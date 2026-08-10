@@ -1,6 +1,9 @@
+import logging
+
 import pytest
 
-from dpmp_gtfs.api.models import ConnectionStop
+from dpmp_gtfs.api.models import Connection, ConnectionStop, Line
+from dpmp_gtfs.api.models import Stop as ApiStop
 from dpmp_gtfs.ids import route_id, stop_id, trip_id
 from dpmp_gtfs.static.builder import (
     ROUTE_TYPE_BUS,
@@ -188,3 +191,138 @@ def test_direction_comes_from_the_timetable_not_the_stop_order(
 ) -> None:
     trips, _, _ = build_trips_and_stop_times(simple_timetable)
     assert {t.trip_id: t.direction_id for t in trips} == {"L1C1": 0, "L1C2": 1}
+
+
+# --- stops with no coordinates -----------------------------------------------
+
+
+def test_the_real_stops_payload_validates_and_drops_the_coordinateless_stop(
+    stops_payload: list[dict],
+) -> None:
+    """Regression: stop 147 ("Opočínek,rozvodna") has no gpsLat/gpsLon at all in
+    the real /stops response. One such record must not fail validation for the
+    whole payload, and build_stops must skip it rather than publish a stop with
+    no position -- while every other stop in the payload survives untouched."""
+    stops = [ApiStop.model_validate(s) for s in stops_payload]
+    assert len(stops) == len(stops_payload) == 219
+
+    timetable = Timetable(stops=stops, lines=[])
+    built = build_stops(timetable)
+
+    assert "S147" not in {s.stop_id for s in built}
+    # One parent Stop per surviving api stop; none of them had platforms
+    # (there are no connections here), so this is also the total count.
+    assert len(built) == len(stops) - 1
+
+
+def test_a_stop_time_referencing_a_coordinateless_stop_is_dropped() -> None:
+    stops = [
+        ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
+        ApiStop.model_validate({"id": 147, "name": "Opočínek,rozvodna"}),
+        ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.02, "gpsLon": 15.02}),
+    ]
+    lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
+    connection = Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": 1,
+            "fixedCodes": ["X", "@"],
+            "stops": [
+                {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
+                {"stopId": 147, "platformId": "1", "departureTime": "04:05:00"},
+                {"stopId": 2, "platformId": "1", "departureTime": "04:10:00"},
+            ],
+        }
+    )
+    timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
+
+    stop_ids = {s.stop_id for s in build_stops(timetable)}
+    trips, stop_times, _ = build_trips_and_stop_times(timetable)
+
+    assert "S147" not in stop_ids
+    assert all(st.stop_id in stop_ids for st in stop_times)
+    assert [st.stop_id for st in stop_times] == ["S1P1", "S2P1"]
+    assert len(trips) == 1
+
+
+# --- trips left with too few stops -------------------------------------------
+
+
+def test_a_trip_with_fewer_than_two_usable_stops_is_dropped() -> None:
+    stops = [
+        ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
+        ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.01, "gpsLon": 15.01}),
+    ]
+    lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
+    connection = Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": 1,
+            "fixedCodes": ["X", "@"],
+            "stops": [
+                {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
+                {"stopId": 2, "platformId": "", "departureTime": "04:10:00"},
+            ],
+        }
+    )
+    timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
+
+    trips, stop_times, _ = build_trips_and_stop_times(timetable)
+    assert trips == []
+    assert stop_times == []
+
+
+def test_trip_headsign_comes_from_the_last_surviving_stop() -> None:
+    """The naive ``connection.stops[-1]`` would read "Nowhere" here, even though
+    that stop was dropped for lacking a numeric platform."""
+    stops = [
+        ApiStop.model_validate({"id": 1, "name": "Start", "gpsLat": 50.0, "gpsLon": 15.0}),
+        ApiStop.model_validate({"id": 2, "name": "Middle", "gpsLat": 50.01, "gpsLon": 15.01}),
+        ApiStop.model_validate({"id": 3, "name": "Nowhere", "gpsLat": 50.02, "gpsLon": 15.02}),
+    ]
+    lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
+    connection = Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": 1,
+            "fixedCodes": ["X", "@"],
+            "stops": [
+                {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
+                {"stopId": 2, "platformId": "1", "departureTime": "04:05:00"},
+                {"stopId": 3, "platformId": "", "departureTime": "04:10:00"},
+            ],
+        }
+    )
+    timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
+
+    trips, stop_times, _ = build_trips_and_stop_times(timetable)
+    assert len(trips) == 1
+    assert trips[0].trip_headsign == "Middle"
+    assert len(stop_times) == 2
+
+
+# --- diagnostics --------------------------------------------------------------
+
+
+def test_a_stop_unknown_to_stops_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    """A station timetables reference but /stops never listed at all -- distinct
+    from one /stops lists without coordinates."""
+    lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
+    connection = Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": 1,
+            "fixedCodes": ["X", "@"],
+            "stops": [
+                {"stopId": 999, "platformId": "1", "departureTime": "04:00:00"},
+                {"stopId": 998, "platformId": "1", "departureTime": "04:10:00"},
+            ],
+        }
+    )
+    timetable = Timetable(stops=[], lines=lines, connections={("1", 1): connection})
+
+    with caplog.at_level(logging.ERROR):
+        build_stops(timetable)
+
+    assert "999" in caplog.text
+    assert "998" in caplog.text
