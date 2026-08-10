@@ -132,6 +132,24 @@ nezávisle časy prvního odjezdu. 63 z 2 762 spojů (2,3 %) v CIS protějšek n
 soustředěně na linkách 12, 9 a 3 — a těm zůstanou kódy z API; build to loguje
 po spojích a přeleze-li podíl 10 %, hlásí to jako chybu.
 
+### Verze jedné linky se nepřebíjejí, navazují na sebe
+
+Linka je v archivu vícekrát: celoroční verze plus doplněk na dobu školních
+prázdnin. K datu buildu jsou platné obě, ale nesoupeří o celý rok — **dělí si
+časovou osu**. Kdyby doplněk (má pozdější `FromDate`) vyhrál celé okno, sedm
+linek včetně dvojky a šestky by od 1. září zhaslo ve feedu, který se tváří, že
+platí rok. Verzi proto vybíráme **pro každý den zvlášť**.
+
+Číslo spoje ale **není napříč verzemi identifikátor**. Změřeno na lince 2:
+zářijová verze sdílí se srpnovou 103 čísel spojů a u 45 z nich znamená jinou
+jízdu (spoj 21 vyjíždí v 5:15, po změně v 5:20). Slepé sjednocení by tedy
+publikovalo srpnové časy s zářijovými dny — cestující stojí na zastávce, kudy
+v tu chvíli nic nejede. Pozdější verze proto smí spoj protáhnout jen tehdy,
+když se **shodují všechny jeho časy** s verzí právě platnou; jinak spoj v den
+změny jízdního řádu prostě končí a build to zaloguje po linkách. Feed je pak
+neúplný, ne špatný. Ze změřených 8 linek s návazností se takhle protáhne
+například celá 906 a 92 ze 115 spojů linky 902.
+
 ## Na co si dát pozor
 
 Podrobněji i s důkazy v [`upstream.py`](../src/dpmp_gtfs/upstream.py) a

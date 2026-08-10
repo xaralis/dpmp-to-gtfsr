@@ -84,10 +84,16 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
   a těm zůstávají kódy z API.
 </p>
 <p>
-  Výsledkem je zhruba patnáct služeb: kromě pracovních dnů, soboty, neděle a denního
+  Výsledkem je necelá dvacítka služeb: kromě pracovních dnů, soboty, neděle a denního
   provozu i sezónní varianty, protože DPMP jezdí jiné pracovní dny podle školního
   vyučování. Rozdíly oproti týdennímu vzorci — včetně státních svátků, kdy síť jede
   nedělní provoz — jsou v <code>calendar_dates.txt</code>.
+</p>
+<p>
+  <strong>Kolem změny jízdního řádu je feed neúplný.</strong> Nový jízdní řád spoje
+  přečísluje, takže spoj, jehož časy se po změně mění, má poslední den provozu právě den
+  před ní — feed o něm dál neví nic a nic si nedomýšlí. Noční přestavba to srovná, jakmile
+  dopravní podnik nový řád vydá. Kdo si feed stahuje, ať to dělá denně.
 </p>
 
 <h3>Geometrie tras — odhad</h3>
