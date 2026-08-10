@@ -42,6 +42,12 @@ def build_static(
         today = dt.date.today()
         archives = await fetch_archives(settings.cis_urls, settings.cis_dir)
         calendars = build_calendars(archives, today, today + dt.timedelta(days=VALIDITY_DAYS))
+        if not calendars:
+            # Every trip would fall back to the API's days of operation, which
+            # are wrong for about a third of them. Overwriting a good gtfs.zip
+            # with that is the one outcome worth refusing outright.
+            typer.echo("Aborting: the CIS archives describe no DPMP calendars", err=True)
+            raise typer.Exit(1)
 
         async with DpmpApiClient() as api:
             timetable = await crawl(api, calendars)

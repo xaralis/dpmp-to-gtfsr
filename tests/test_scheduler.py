@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from dpmp_gtfs.cis import CisUnavailable
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.types import Timetable
 from dpmp_gtfs.web import scheduler as scheduler_module
@@ -119,6 +120,98 @@ async def test_the_phase_is_cleared_even_when_the_build_fails(
 
     assert sched.state.static_phase is None
     assert sched.state.static_error is not None
+
+
+async def test_the_cis_registry_is_fetched_before_the_timetable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: object
+) -> None:
+    """The crawl is six minutes; the registry download is a conditional request
+    that usually costs one round trip. Doing the cheap, refusable one first
+    means an unreachable CIS is found out before 4,400 API requests, not
+    after."""
+    seen: list[str | None] = []
+    sched = Scheduler(_settings(tmp_path))
+
+    def fake_build_calendars(paths: Any, on_date: Any, horizon: Any) -> Any:
+        seen.append(sched.state.static_phase)
+        return stub_cis
+
+    async def fake_crawl(api: Any, calendars: Any) -> Timetable:
+        seen.append(sched.state.static_phase)
+        return Timetable(stops=[], lines=[])
+
+    monkeypatch.setattr(scheduler_module, "build_calendars", fake_build_calendars)
+    monkeypatch.setattr(scheduler_module, "crawl", fake_crawl)
+
+    await sched.rebuild_static()
+
+    assert seen == ["stahuji rejstřík CIS", "stahuji jízdní řády"]
+
+
+async def test_the_calendars_read_from_cis_reach_the_crawl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: dict[tuple[str, int], object]
+) -> None:
+    """They are the whole point of the phase; handing the crawl an empty dict
+    would build a feed on the API's days without anything saying so."""
+    seen: list[object] = []
+    sched = Scheduler(_settings(tmp_path))
+
+    async def fake_crawl(api: Any, calendars: Any) -> Timetable:
+        seen.append(calendars)
+        return Timetable(stops=[], lines=[])
+
+    monkeypatch.setattr(scheduler_module, "crawl", fake_crawl)
+
+    await sched.rebuild_static()
+
+    assert seen == [stub_cis]
+
+
+async def test_an_unreachable_cis_leaves_the_previous_feed_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The API's own days of operation are wrong for about a third of trips, so
+    a build that cannot reach CIS must not quietly publish one built on them."""
+    crawled = False
+    sched = Scheduler(_settings(tmp_path))
+
+    async def unreachable(urls: Any, dest: Any, client: Any = None) -> list[Path]:
+        raise CisUnavailable("portal.cisjr.cz is unreachable and nothing is cached")
+
+    async def fake_crawl(api: Any, calendars: Any) -> Timetable:
+        nonlocal crawled
+        crawled = True
+        return Timetable(stops=[], lines=[])
+
+    monkeypatch.setattr(scheduler_module, "fetch_archives", unreachable)
+    monkeypatch.setattr(scheduler_module, "crawl", fake_crawl)
+
+    await sched.rebuild_static()
+
+    assert crawled is False
+    assert sched.state.index is None
+    assert "CisUnavailable" in (sched.state.static_error or "")
+    assert sched.state.static_phase is None
+
+
+async def test_archives_that_describe_no_calendars_stop_the_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: dict[tuple[str, int], object]
+) -> None:
+    """An archive that parses to nothing -- CIS restructuring its files, say --
+    looks exactly like a successful download and would take every trip down the
+    fallback path at once."""
+    sched = Scheduler(_settings(tmp_path))
+
+    monkeypatch.setattr(scheduler_module, "build_calendars", lambda *args: {})
+    monkeypatch.setattr(scheduler_module, "crawl", _unreached_crawl)
+
+    await sched.rebuild_static()
+
+    assert "no DPMP calendars" in (sched.state.static_error or "")
+
+
+async def _unreached_crawl(api: Any, calendars: Any) -> Timetable:
+    raise AssertionError("the crawl must not start without calendars")
 
 
 async def test_a_second_rebuild_is_skipped_while_one_is_in_flight(
