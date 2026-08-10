@@ -156,6 +156,54 @@ Písmena pevných kódů podle konvence JDF, zadrátovaná místo mrtvého endpo
 | `+` | jede v neděli a ve státem uznané svátky |
 | `@` | nízkopodlažní vůz (nejde o kalendář, mapuje se na `wheelchair_accessible`) |
 
+### Pole, která v `/connections` zmizela
+
+Starý `ConnectionStop` nesl `index`, `distance` a per-zastávkové `codes`. Nový
+vrací jen `stopId`, `platformId` a `departureTime`. Dopad:
+
+- **`index` živil `direction_of()`** v `builder.py:428`. Náhrada je v NeTEx:
+  `ServiceJourneyPattern` má sufix `_out` / `_in`. Na lince 1 sedí bezvýhradně
+  (102 lichých spojů `_out`, 104 sudých `_in`, nula výjimek), takže parita čísla
+  spoje by fungovala taky — ale bere se sufix, protože je to údaj, ne konvence.
+  Proto `ServiceIndex` mapuje `jdfId -> dict[spoj, direction_id]`, ne na holou
+  množinu čísel.
+- **`distance`** byl už dřív příliš hrubý na `shape_dist_traveled`. Nechybí.
+- **per-zastávkové `codes`** živily `on_request`. Náhrada je `fixedCodes` na
+  zastávce v `/stops`. Sémantika se mírně mění: „na znamení" je nově vlastnost
+  zastávky, ne zastávky v rámci spoje. To je spíš správnější.
+
+### Past na velikost písmen
+
+`fixedCodes` existují na dvou úrovních a stejné písmeno v nich znamená různé
+věci:
+
+| úroveň | kód | význam |
+|---|---|---|
+| spoj (`/connections`) | `X` | jede v pracovních dnech |
+| spoj | `6` / `+` | sobota / neděle a svátky |
+| spoj | `@` | nízkopodlažní vůz |
+| zastávka (`/stops`) | `@` | bezbariérová zastávka (`wheelchair_boarding`) |
+| zastávka | `x` | zastávka na znamení |
+
+Velké `X` a malé `x` jsou dva různé kódy. Porovnání kódů musí být
+case-sensitive.
+
+### Co migrace umožní smazat
+
+`/stops` má 219 zastávek s rozsahem id 1–252 a obsahuje i všechny tři stanice,
+které staré API neznalo:
+
+```
+Svítkov,západ  id=250  50.025582, 15.719706   (náš OSM override byl ~3 m vedle)
+Vápenka        id=252  50.030040, 15.754394   (~26 m vedle)
+Mikulovice     id=178  49.989946, 15.774823   (alias "Mikulovice,škola")
+```
+
+`STATION_COORDINATES` i `STATION_NAMES` v `upstream.py` tedy končí, včetně
+`unused_overrides()` a jeho testu. `TROLLEYBUS_LINES` zůstává konstantou, ale
+migrace ji nezávisle potvrdila: 13 linek v `NeTEx_DrahyMestske.zip` je přesně
+těch 13 v konstantě.
+
 ### Nástupiště
 
 `platform_code` zůstává, protože `platformId` je v `/connections/{l}/{n}`.
