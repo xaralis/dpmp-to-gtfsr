@@ -9,7 +9,8 @@ behaviour lives with the module that owns it.
 import datetime as dt
 from dataclasses import dataclass, field
 
-from dpmp_gtfs.api.models import Code, ConnectionDetail, ConnectionSummary, Line, Station
+from dpmp_gtfs.api.models import Connection, Line
+from dpmp_gtfs.api.models import Stop as ApiStop
 
 type LatLon = tuple[float, float]
 """A position, latitude first -- the order the feed and the API both use.
@@ -44,18 +45,22 @@ class Feed:
 
 @dataclass(slots=True)
 class Timetable:
-    """Everything needed to build a static feed, as crawled from the API."""
+    """Everything needed to build a static feed.
 
-    stations: list[Station]
+    Assembled from two sources: the CIS registry says which trips exist and
+    which way they run, the API says what each one does.
+    """
+
+    stops: list[ApiStop]
     lines: list[Line]
-    codes: list[Code]
-    summaries: dict[tuple[int, int], ConnectionSummary] = field(default_factory=dict)
-    """Keyed by ``(line_number, connection_number)``."""
-    details: dict[tuple[int, int], ConnectionDetail] = field(default_factory=dict)
+    directions: dict[tuple[str, int], int] = field(default_factory=dict)
+    """``(line_id, connection_id)`` -> ``direction_id``, from CIS."""
+    connections: dict[tuple[str, int], Connection] = field(default_factory=dict)
+    """``(line_id, connection_id)`` -> the trip's stop times, from the API."""
 
     @property
     def trip_count(self) -> int:
-        return len(self.details)
+        return len(self.connections)
 
 
 @dataclass(frozen=True, slots=True)
