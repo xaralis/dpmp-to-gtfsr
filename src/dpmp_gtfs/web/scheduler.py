@@ -46,18 +46,24 @@ class Scheduler:
     async def start(self) -> None:
         """Load whatever is on disk, then begin refreshing.
 
-        Reusing an existing gtfs.zip matters: a cold start would otherwise
-        crawl 2,700 trips before the service could answer anything.
+        The initial build, when nothing usable is on disk, runs as a
+        background task rather than being awaited here. Awaiting it would
+        block the ASGI lifespan itself -- and with it every route, including
+        ``/healthz`` -- for as long as a cold-start crawl of ~2,700 trips
+        takes. Coming up immediately instead costs nothing new: a request
+        arriving before the build finishes is exactly the "not ready yet"
+        state ``/vehicles.json`` and ``/healthz`` already model, not a new
+        one to invent.
         """
         self._load_static_from_disk()
-        if self.state.index is None:
-            logger.info("no usable static feed on disk, building one now")
-            await self.rebuild_static()
 
         self._tasks = [
             asyncio.create_task(self._realtime_loop(), name="realtime"),
             asyncio.create_task(self._static_loop(), name="static"),
         ]
+        if self.state.index is None:
+            logger.info("no usable static feed on disk, building one now")
+            self._tasks.append(asyncio.create_task(self.rebuild_static(), name="initial-build"))
 
     async def stop(self) -> None:
         for task in self._tasks:

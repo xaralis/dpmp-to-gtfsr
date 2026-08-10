@@ -4,6 +4,7 @@ These drive the ASGI app directly rather than through TestClient, so the
 lifespan never runs and no background loop reaches the live API.
 """
 
+import asyncio
 import datetime as dt
 import zipfile
 from collections.abc import AsyncIterator
@@ -14,6 +15,8 @@ import pytest
 from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.config import Settings
+from dpmp_gtfs.types import Timetable
+from dpmp_gtfs.web import scheduler as scheduler_module
 from dpmp_gtfs.web.app import create_app
 from dpmp_gtfs.web.scheduler import read_feed_version
 
@@ -139,6 +142,38 @@ async def test_status_reports_the_phase_while_building(client: httpx.AsyncClient
 
     response = await client.get("/healthz")
     assert response.json()["static"]["phase"] == "stahuji jízdní řády"
+
+
+async def test_healthz_answers_immediately_during_a_cold_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The one test in this module that actually runs the lifespan: with no
+    ``gtfs.zip`` on disk, ``start()`` must not await the initial build --
+    otherwise nothing, including this very request, would get an answer
+    for however long the crawl takes. Health is honestly 503 while it
+    builds, but it must answer, and the answer must carry the phase."""
+    gate = asyncio.Event()
+
+    async def hanging_crawl(api: object) -> Timetable:
+        await gate.wait()
+        return Timetable(stops=[], lines=[])
+
+    monkeypatch.setattr(scheduler_module, "crawl", hanging_crawl)
+
+    app = create_app(_settings(tmp_path))
+    transport = httpx.ASGITransport(app=app)
+
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(transport=transport, base_url="http://test") as client,
+    ):
+        response = await client.get("/healthz")
+        assert response.status_code == 503
+        payload = response.json()
+        assert payload["healthy"] is False
+        assert payload["static"]["phase"] == "stahuji jízdní řády"
+    # Exiting the block above cancels the still-hanging build; a clean
+    # shutdown must swallow that cancellation rather than let it escape here.
 
 
 async def test_a_stale_realtime_feed_is_unhealthy(
