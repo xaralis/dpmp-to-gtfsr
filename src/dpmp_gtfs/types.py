@@ -85,50 +85,70 @@ class TripGeometry:
     """Cumulative metres at each stop, for ``shape_dist_traveled``."""
 
 
+DAY_NAMES = ("mo", "tu", "we", "th", "fr", "sa", "su")
+WORKING_WEEK = frozenset({0, 1, 2, 3, 4})
+
+
 @dataclass(frozen=True, slots=True)
 class Service:
-    """A GTFS service: which weekdays a set of trips runs on."""
+    """A GTFS service: which weekdays a set of trips runs on.
 
-    working_days: bool
-    saturday: bool
-    sunday: bool
+    An arbitrary set of days rather than the weekday/Saturday/Sunday triple the
+    network mostly uses, because JDF also has a code per weekday and the
+    airport shuttle runs on the days flights leave -- Mondays and Fridays, say.
+    """
+
+    days: frozenset[int]
+    """Weekdays it runs, numbered as ``date.weekday()``: 0 = Monday, 6 = Sunday."""
+    holidays: bool
+    """Whether it also runs on state holidays, whatever weekday they land on.
+
+    Deliberately separate from ``6 in days``. JDF distinguishes ``+`` ("jede v
+    neděli a ve státem uznané svátky") from ``7`` ("jede v neděli"), and
+    collapsing the two would put a trip on the road on Christmas Day that its
+    timetable says stays in the depot.
+    """
 
     @property
     def service_id(self) -> str:
-        parts = [
-            name
-            for flag, name in (
-                (self.working_days, "wd"),
-                (self.saturday, "sa"),
-                (self.sunday, "su"),
-            )
-            if flag
-        ]
-        if not parts:
+        """A legible name, e.g. ``wd``, ``sa-su+h``, ``mo-fr``.
+
+        The whole working week collapses to ``wd`` however it was spelled, so a
+        trip marked ``X`` and one marked ``1,2,3,4,5`` share a calendar row
+        rather than producing two rows saying the same thing.
+        """
+        remaining = set(self.days)
+        parts = []
+        if remaining >= WORKING_WEEK:
+            parts.append("wd")
+            remaining -= WORKING_WEEK
+        parts.extend(DAY_NAMES[day] for day in sorted(remaining))
+
+        name = "-".join(parts)
+        if self.holidays:
+            # Always marked, so that "+" and "7" can never land on one id while
+            # meaning different things.
+            return f"{name}+h" if name else "h"
+        if not name:
             raise ValueError("service runs on no days at all")
-        return "-".join(parts)
+        return name
 
     @property
     def weekday_flags(self) -> tuple[int, int, int, int, int, int, int]:
         """Monday..Sunday, as the 0/1 columns of ``calendar.txt``."""
-        wd = int(self.working_days)
-        return (wd, wd, wd, wd, wd, int(self.saturday), int(self.sunday))
+        flags = tuple(int(day in self.days) for day in range(7))
+        return flags  # type: ignore[return-value]
 
     def runs_on(self, day: dt.date, *, holiday: bool) -> bool:
         """Whether this service operates on a given date.
 
-        A public holiday takes the Sunday timetable regardless of which weekday
-        it falls on -- exactly what code 5 states ("runs on Sundays and
-        state-recognised holidays").
+        On a state holiday the network runs its Sunday timetable, so what
+        decides the day is :attr:`holidays` rather than the weekday the holiday
+        happens to fall on.
         """
         if holiday:
-            return self.sunday
-        weekday = day.weekday()
-        if weekday == 5:
-            return self.saturday
-        if weekday == 6:
-            return self.sunday
-        return self.working_days
+            return self.holidays
+        return day.weekday() in self.days
 
 
 @dataclass(frozen=True, slots=True)

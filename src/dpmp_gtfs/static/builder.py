@@ -280,12 +280,26 @@ def build_trips_and_stop_times(
             continue
 
         service = service_from_codes(connection.fixed_codes)
-        services.setdefault(service.service_id, service)
+        try:
+            sid = service.service_id
+        except ValueError:
+            # A trip carrying no calendar code at all cannot be placed in the
+            # week. Dropping one trip beats the alternative: this used to raise
+            # through build_feed and take the whole feed down, so a single
+            # unrecognised code meant publishing nothing at all.
+            logger.warning(
+                "trip %s/%s runs on no known days (codes %r), dropping the trip",
+                line_id,
+                connection_number,
+                sorted(connection.fixed_codes),
+            )
+            continue
+        services.setdefault(sid, service)
 
         trips.append(
             Trip(
                 route_id=route_id(line_id),
-                service_id=service.service_id,
+                service_id=sid,
                 trip_id=tid,
                 trip_headsign=names.get(surviving_stops[-1].stop_id, ""),
                 direction_id=timetable.directions.get(key, 0),

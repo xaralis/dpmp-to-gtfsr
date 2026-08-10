@@ -272,6 +272,49 @@ def test_a_trip_with_fewer_than_two_usable_stops_is_dropped() -> None:
     assert stop_times == []
 
 
+def test_a_calendarless_trip_is_dropped_without_taking_the_feed_with_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One trip whose codes place it on no day at all used to raise straight
+    through ``build_feed``, so the service could publish nothing until someone
+    noticed. The rest of the network is worth more than that one trip."""
+    stops = [
+        ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
+        ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.01, "gpsLon": 15.01}),
+    ]
+    lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
+
+    def _connection(number: int, codes: list[str]) -> Connection:
+        return Connection.model_validate(
+            {
+                "lineId": "1",
+                "connectionId": number,
+                "fixedCodes": codes,
+                "stops": [
+                    {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
+                    {"stopId": 2, "platformId": "1", "departureTime": "04:10:00"},
+                ],
+            }
+        )
+
+    timetable = Timetable(
+        stops=stops,
+        lines=lines,
+        connections={
+            ("1", 1): _connection(1, ["@"]),  # low-floor marker only
+            ("1", 2): _connection(2, ["X", "@"]),
+        },
+    )
+
+    with caplog.at_level(logging.WARNING):
+        trips, stop_times, services = build_trips_and_stop_times(timetable)
+
+    assert [t.trip_id for t in trips] == [trip_id("1", 2)]
+    assert {s.service_id for s in services} == {"wd"}
+    assert stop_times
+    assert "runs on no known days" in caplog.text
+
+
 def test_trip_headsign_comes_from_the_last_surviving_stop() -> None:
     """The naive ``connection.stops[-1]`` would read "Nowhere" here, even though
     that stop was dropped for lacking a numeric platform."""

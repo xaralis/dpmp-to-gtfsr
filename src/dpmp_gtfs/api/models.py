@@ -30,10 +30,25 @@ _DURATION = re.compile(
 )
 _HHMMSS = re.compile(r"^(\d{2}):(\d{2}):(\d{2})$")
 
-# Trip-level fixed codes (JDF convention).
+# Trip-level fixed codes, from the JDF 1.10 table of fixed codes (Ministerstvo
+# dopravy, Odbor veřejné dopravy). The old API published these meanings at
+# ``/api/codes``; the new one does not, so they are spelled out here.
 WORKING_DAYS = "X"
 SATURDAY = "6"
 SUNDAY_AND_HOLIDAYS = "+"
+"""``+``: "jede v neděli a ve státem uznané svátky"."""
+SUNDAY = "7"
+""""jede v neděli" -- and, unlike ``+``, *not* on state holidays.
+
+The distinction is real, not pedantic: it is what keeps a trip marked ``7`` off
+the road on Christmas Day.
+"""
+PER_WEEKDAY = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, SATURDAY: 5, SUNDAY: 6}
+"""Codes naming a single weekday, as Python's ``date.weekday()`` numbering.
+
+Used by the airport shuttle (line 90), which runs on the days flights leave
+rather than on any weekday/weekend pattern.
+"""
 LOW_FLOOR = "@"
 
 # Stop-level fixed codes. Note the case clash with WORKING_DAYS above.

@@ -14,14 +14,14 @@ from dpmp_gtfs.static.calendar import (
 
 def test_weekday_trips() -> None:
     service = service_from_codes(["X", "@"])
-    assert service.working_days and not service.saturday and not service.sunday
+    assert service.days == frozenset({0, 1, 2, 3, 4})
     assert service.service_id == "wd"
 
 
 def test_weekend_trips() -> None:
     service = service_from_codes(["6", "+", "@"])
-    assert not service.working_days and service.saturday and service.sunday
-    assert service.service_id == "sa-su"
+    assert service.days == frozenset({5, 6})
+    assert service.service_id == "sa-su+h"
 
 
 def test_low_floor_is_not_a_calendar_code() -> None:
@@ -32,8 +32,8 @@ def test_low_floor_is_not_a_calendar_code() -> None:
 
 def test_upper_and_lower_x_are_different_codes() -> None:
     # "x" is a stop-level "on request" marker and must never mean weekdays.
-    assert service_from_codes(["X"]).working_days
-    assert not service_from_codes(["x"]).working_days
+    assert service_from_codes(["X"]).days
+    assert not service_from_codes(["x"]).days
 
 
 def test_weekday_flags_match_gtfs_column_order() -> None:
@@ -41,6 +41,55 @@ def test_weekday_flags_match_gtfs_column_order() -> None:
     assert service_from_codes(["@", "6"]).weekday_flags == (0, 0, 0, 0, 0, 1, 0)
     assert service_from_codes(["@", "+"]).weekday_flags == (0, 0, 0, 0, 0, 0, 1)
     assert service_from_codes(["X", "@", "6", "+"]).weekday_flags == (1, 1, 1, 1, 1, 1, 1)
+
+
+# --- per-weekday codes ------------------------------------------------------
+#
+# The airport shuttle (line 90, Hlavní nádraží <-> Letiště terminál) runs on
+# the days flights leave, so its trips carry JDF's single-weekday codes 1..7
+# instead of X/6/+. Before these were understood, one such trip took the whole
+# feed build down with "service runs on no days at all".
+
+
+def test_a_trip_running_only_on_monday_and_friday() -> None:
+    service = service_from_codes(["1", "5", "@"])
+    assert service.days == frozenset({0, 4})
+    assert service.weekday_flags == (1, 0, 0, 0, 1, 0, 0)
+    assert service.service_id == "mo-fr"
+
+
+def test_a_single_midweek_day() -> None:
+    service = service_from_codes(["3", "@"])
+    assert service.weekday_flags == (0, 0, 1, 0, 0, 0, 0)
+    assert service.service_id == "we"
+
+
+def test_plain_sunday_is_not_the_same_service_as_sunday_with_holidays() -> None:
+    """JDF ``7`` is "jede v neděli"; ``+`` is "jede v neděli a ve státem
+    uznané svátky". Same weekday column, different behaviour on a holiday --
+    so they must not collapse onto one service_id."""
+    plain = service_from_codes(["7", "@"])
+    with_holidays = service_from_codes(["+", "@"])
+
+    assert plain.weekday_flags == with_holidays.weekday_flags == (0, 0, 0, 0, 0, 0, 1)
+    assert plain.service_id != with_holidays.service_id
+    assert (plain.service_id, with_holidays.service_id) == ("su", "su+h")
+
+    # 2026-12-25 is a Friday and a state holiday.
+    christmas = dt.date(2026, 12, 25)
+    assert christmas.weekday() == 4
+    assert plain.runs_on(christmas, holiday=True) is False
+    assert with_holidays.runs_on(christmas, holiday=True) is True
+
+
+def test_a_full_working_week_still_collapses_to_wd() -> None:
+    """Spelled out day by day, it is the same service as ``X`` and must not
+    become a second calendar row saying the same thing."""
+    assert service_from_codes(["1", "2", "3", "4", "5"]).service_id == "wd"
+
+
+def test_a_weekday_code_beyond_the_working_week_keeps_its_own_name() -> None:
+    assert service_from_codes(["X", "6"]).service_id == "wd-sa"
 
 
 # --- movable feasts ---------------------------------------------------------
@@ -135,7 +184,7 @@ def test_holiday_on_a_weekday_removes_and_adds_the_right_services() -> None:
     labour_day = dt.date(2026, 5, 1)  # Friday
 
     got = {(e.service_id, e.added) for e in calendar_exceptions(services, labour_day, labour_day)}
-    assert got == {("wd", False), ("su", True)}
+    assert got == {("wd", False), ("su+h", True)}
 
 
 def test_a_holiday_falling_on_a_sunday_needs_no_exceptions() -> None:
@@ -162,4 +211,4 @@ def test_saturday_holiday_swaps_saturday_for_sunday() -> None:
     assert boxing_day.weekday() == 5
 
     got = {(e.service_id, e.added) for e in calendar_exceptions(services, boxing_day, boxing_day)}
-    assert got == {("sa", False), ("su", True)}
+    assert got == {("sa", False), ("su+h", True)}

@@ -18,24 +18,32 @@ from collections.abc import Iterable, Iterator
 
 import holidays
 
-from dpmp_gtfs.api.models import SATURDAY, SUNDAY_AND_HOLIDAYS, WORKING_DAYS
-from dpmp_gtfs.types import CalendarException, Service
+from dpmp_gtfs.api.models import PER_WEEKDAY, SUNDAY_AND_HOLIDAYS, WORKING_DAYS
+from dpmp_gtfs.types import WORKING_WEEK, CalendarException, Service
 
 
 def service_from_codes(codes: Iterable[str]) -> Service:
     """Read a trip's fixed codes as the days it runs.
 
-    Codes that describe the vehicle rather than the calendar (``@`` for a
+    Three kinds of code contribute: ``X`` for the whole working week, ``+`` for
+    Sundays and state holidays, and the single-weekday codes ``1``..``7``. The
+    last kind is rare -- only the airport shuttle uses it -- but ignoring it
+    left those trips running on no days at all.
+
+    Codes describing the vehicle rather than the calendar (``@`` for a
     low-floor trip) are simply not matched here; a trip carrying only those
     yields a service that runs on no days, and ``Service.service_id`` raises
     rather than emitting an empty calendar entry.
     """
     present = set(codes)
-    return Service(
-        working_days=WORKING_DAYS in present,
-        saturday=SATURDAY in present,
-        sunday=SUNDAY_AND_HOLIDAYS in present,
-    )
+    days: set[int] = set()
+    if WORKING_DAYS in present:
+        days |= WORKING_WEEK
+    if SUNDAY_AND_HOLIDAYS in present:
+        days.add(6)
+    days |= {PER_WEEKDAY[code] for code in present & PER_WEEKDAY.keys()}
+
+    return Service(days=frozenset(days), holidays=SUNDAY_AND_HOLIDAYS in present)
 
 
 def calendar_exceptions(
