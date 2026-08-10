@@ -28,3 +28,6 @@ docker/cloudflared/config.yml
 
 # Editor/tool config
 .claude/
+
+# SDD scratch workspace (subagent-driven-development)
+.superpowers/
