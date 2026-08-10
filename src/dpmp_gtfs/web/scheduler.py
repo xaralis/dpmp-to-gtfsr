@@ -237,6 +237,6 @@ def read_feed_version(path: Path) -> str | None:
     """
     try:
         rows = read_tables(path, "feed_info.txt")["feed_info.txt"]
-    except (OSError, zipfile.BadZipFile):
+    except OSError, zipfile.BadZipFile:
         return None
     return rows[0].get("feed_version") if rows else None
