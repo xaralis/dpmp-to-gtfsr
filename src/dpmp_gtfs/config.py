@@ -21,16 +21,6 @@ class Settings(BaseSettings):
 
     user_agent: str = "dpmp-to-gtfsr/0.1 (+https://github.com/xaralis/dpmp-to-gtfsr)"
 
-    # --- CIS ----------------------------------------------------------------
-    cis_urls: tuple[str, ...] = (
-        "https://portal.cisjr.cz/pub/netex/NeTEx_DrahyMestske.zip",
-        "https://portal.cisjr.cz/pub/netex/NeTEx_VerejnaLinkovaDoprava.zip",
-    )
-    """Trolleybus lines live in the first archive, buses in the second. Both
-    are needed: JDF alone covers only 19 of the 32 lines."""
-
-    cis_dir: Path = Path("data/cis")
-
     # --- politeness ---------------------------------------------------------
     request_timeout: float = 15.0
     max_retries: int = 4

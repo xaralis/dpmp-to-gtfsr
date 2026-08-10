@@ -1,129 +1,126 @@
 """Tests for crawling the timetable.
 
-The point of interest is the join between the two sources: the registry says
-which trips exist and which way they run, the API is asked only for those. A
-trip the registry lists but the API answers 404 for is skipped, not fatal --
-unless too many of one line's trips are missing, in which case that is the
-wrong CIS version in force and the build must fail.
+The point of interest is retry behaviour: the client already retries single
+requests, but a crawl is ~2,700 of them over several minutes, so an outage
+that outlasts one request's retries would otherwise discard the whole run.
+The other point of interest is the shape of what comes out: trips discovered
+and directions assigned, with nothing left to reconcile against a second
+source.
 """
-
-import datetime as dt
 
 import pytest
 
-from dpmp_gtfs.cis.index import LineServices, ServiceIndex
+from dpmp_gtfs.api.models import Connection, Line, Stop
 from dpmp_gtfs.exceptions import DpmpApiError
-from dpmp_gtfs.static.crawler import MISSING_TRIP_LIMIT, crawl
+from dpmp_gtfs.static.crawler import crawl
+
+
+class FailingApi:
+    """Fails a set number of times before answering, to exercise retry."""
+
+    def __init__(self, failures: int = 0) -> None:
+        self.failures = failures
+        self.attempts = 0
+
+    async def _maybe_fail(self) -> None:
+        if self.attempts <= self.failures:
+            raise DpmpApiError("upstream is down")
+
+    async def stops(self) -> list[Stop]:
+        self.attempts += 1
+        await self._maybe_fail()
+        return []
+
+    async def lines(self) -> list[Line]:
+        await self._maybe_fail()
+        return []
+
+    async def connection(self, line: str, number: int) -> Connection | None:
+        raise AssertionError("not reached with no lines")
+
+
+async def test_a_clean_crawl_makes_one_attempt():
+    api = FailingApi()
+    timetable = await crawl(api, backoff=0)
+    assert api.attempts == 1
+    assert timetable.trip_count == 0
+
+
+async def test_a_transient_outage_is_retried():
+    """An outage lasting longer than one request's retries must not cost the
+    whole rebuild."""
+    api = FailingApi(failures=2)
+    await crawl(api, attempts=3, backoff=0)
+    assert api.attempts == 3
+
+
+async def test_a_sustained_outage_raises_rather_than_returning_a_partial_feed():
+    """A half-crawled timetable would publish a feed where missing trips look
+    cancelled, which is worse than not publishing."""
+    api = FailingApi(failures=99)
+
+    with pytest.raises(DpmpApiError, match="failed after 3 attempts"):
+        await crawl(api, attempts=3, backoff=0)
+
+    assert api.attempts == 3
+
+
+async def test_attempts_can_be_disabled():
+    api = FailingApi(failures=1)
+
+    with pytest.raises(DpmpApiError):
+        await crawl(api, attempts=1, backoff=0)
+
+    assert api.attempts == 1
 
 
 class FakeApi:
-    """Stands in for the client: answers only for connections in ``present``,
-    returning ``None`` (a 404) for everything else."""
+    """A single line with a handful of trips, split into two directions."""
 
-    def __init__(self, present: set[tuple[str, int]]):
+    def __init__(self, present: set[int]):
         self.present = present
         self.asked: list[tuple[str, int]] = []
 
-    async def stops(self):
-        from dpmp_gtfs.api.models import Stop
-
+    async def stops(self) -> list[Stop]:
         return [Stop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0})]
 
-    async def lines(self):
-        from dpmp_gtfs.api.models import Line
-
+    async def lines(self) -> list[Line]:
         return [Line.model_validate({"id": "1", "jdfId": "655001", "enabled": True})]
 
-    async def connection(self, line: str, number: int):
-        from dpmp_gtfs.api.models import Connection
-
+    async def connection(self, line: str, number: int) -> Connection | None:
         self.asked.append((line, number))
-        if (line, number) not in self.present:
+        if number not in self.present:
             return None
+        # Odd trips run one way, even trips the other, so direction
+        # assignment has something to do.
+        outbound = number % 2 == 1
+        stops = [10, 20] if outbound else [20, 10]
         return Connection.model_validate(
             {
                 "lineId": line,
                 "connectionId": number,
                 "fixedCodes": ["X"],
-                "stops": [{"stopId": 1, "platformId": "1", "departureTime": "04:12:00"}],
+                "stops": [
+                    {"stopId": s, "platformId": "1", "departureTime": "04:12:00"} for s in stops
+                ],
             }
         )
 
 
-def _index(trips: dict[int, int]) -> ServiceIndex:
-    return ServiceIndex(
-        lines={"655001": LineServices(jdf_id="655001", valid_from=dt.date(2026, 7, 1), trips=trips)}
-    )
+async def test_crawl_discovers_trips_and_assigns_directions():
+    api = FakeApi(present={1, 2, 3, 4})
+    table = await crawl(api)
+
+    assert table.trip_count == 4
+    assert table.stops[0].id == 1
+    assert table.lines[0].id == "1"
+    assert table.directions[("1", 1)] != table.directions[("1", 2)]
+    assert table.directions[("1", 1)] == table.directions[("1", 3)]
 
 
-async def test_asks_only_for_trips_the_registry_lists():
-    api = FakeApi(present={("1", 1), ("1", 3)})
-    table = await crawl(api, _index({1: 0, 3: 1}))
-
-    assert sorted(api.asked) == [("1", 1), ("1", 3)]
-    assert table.trip_count == 2
-    assert table.directions[("1", 3)] == 1
-
-
-async def test_a_few_missing_trips_are_skipped():
-    trips = {n: 0 for n in range(1, 41)}
-    api = FakeApi(present={("1", n) for n in range(1, 41)} - {("1", 7)})
-    table = await crawl(api, _index(trips))
-
-    assert table.trip_count == 39
-
-
-async def test_missing_at_exactly_the_limit_is_tolerated():
-    """The threshold is a ``>``, not a ``>=``: a line sitting exactly on the
-    limit is real drift, not evidence of the wrong version, and must build."""
-    total = 100
-    missing = int(total * MISSING_TRIP_LIMIT)
-    trips = {n: 0 for n in range(1, total + 1)}
-    api = FakeApi(present={("1", n) for n in range(1, total + 1 - missing)})
-
-    table = await crawl(api, _index(trips))
-
-    assert table.trip_count == total - missing
-
-
-async def test_missing_just_over_the_limit_fails_the_build():
-    total = 100
-    missing = int(total * MISSING_TRIP_LIMIT) + 1
-    trips = {n: 0 for n in range(1, total + 1)}
-    api = FakeApi(present={("1", n) for n in range(1, total + 1 - missing)})
-
-    with pytest.raises(DpmpApiError, match=r"655001.*100.*tolerated"):
-        await crawl(api, _index(trips), attempts=1)
-
-
-async def test_failure_message_reports_only_what_was_observed():
-    """The message must not claim the version is wrong -- it may well be the
-    correct one, just showing genuine upstream drift. State only the line,
-    the counts, the version, and that the tolerance was exceeded."""
-    trips = {n: 0 for n in range(1, 101)}
-    api = FakeApi(present=set())  # all 100 missing
-
-    with pytest.raises(DpmpApiError) as exc_info:
-        await crawl(api, _index(trips), attempts=1)
-
-    message = str(exc_info.value)
-    assert "655001" in message
-    assert "100 of 100" in message
-    assert "2026-07-01" in message
-    assert "20%" in message
-    assert "probably not" not in message
-
-
-async def test_a_line_with_no_registry_trips_does_not_divide_by_zero():
+async def test_a_line_with_no_trips_yields_none_for_it():
     api = FakeApi(present=set())
-    table = await crawl(api, _index({}))
+    table = await crawl(api)
 
     assert table.trip_count == 0
-    assert api.asked == []
-
-
-async def test_lines_the_registry_does_not_know_are_skipped():
-    api = FakeApi(present=set())
-    table = await crawl(api, ServiceIndex(lines={}))
-    assert table.trip_count == 0
-    assert api.asked == []
+    assert table.directions == {}

@@ -1,14 +1,13 @@
-"""Fetches the timetable, guided by the CIS registry.
+"""Fetches the whole timetable from the API alone.
 
-The API exposes trips one at a time and no longer lists them, so the registry
-supplies the list and this module fetches exactly those -- roughly 2,700
-requests at 8/s, about six minutes.
-
-The two sources drift: CIS republishes in batches, the API changes when DPMP
-changes it. A trip the registry lists and the API answers 404 for is skipped,
-because a genuinely cancelled trip looks exactly like that. Too many of them
-on one line is a different thing entirely -- it means the wrong version was
-selected -- so that fails the build rather than quietly halving a line.
+The API exposes trips one at a time and publishes no listing, so for each
+line this walks its trip-number space with :func:`discover_trips`, fetches
+exactly the numbers found, and derives which way each one runs with
+:func:`assign_directions` over the connections just fetched. Roughly 2,700
+trips at 8 req/s, about six minutes -- plus the discovery probes themselves,
+which cost the same again in requests but are cheap next to the outage risk
+of trusting a second source that cannot be kept in sync (see
+``docs/upstream-api.md``).
 """
 
 import asyncio
@@ -16,8 +15,9 @@ import logging
 from typing import Protocol
 
 from dpmp_gtfs.api.models import Connection, Line, Stop
-from dpmp_gtfs.cis.index import ServiceIndex
 from dpmp_gtfs.exceptions import DpmpApiError
+from dpmp_gtfs.static.direction import assign_directions
+from dpmp_gtfs.static.discovery import discover_trips
 from dpmp_gtfs.types import Timetable
 
 logger = logging.getLogger(__name__)
@@ -28,25 +28,6 @@ DEFAULT_BACKOFF = 30.0
 upstream outages last minutes, and a crawl is a nightly job with nobody
 waiting on it."""
 
-MISSING_TRIP_LIMIT = 0.20
-"""How much of one line's registry may be missing from the API before the
-build is treated as wrong rather than merely out of date.
-
-Measured against live data for line 655003, whose selected CIS version (the
-correct one -- confirmed by cross-checking all three versions against the
-live API) still showed drift between the current CIS archive (published
-2026-08-07) and the live API on 2026-08-10 -- three days apart, not stale:
-
-    2026-01-01  154 trips   57% absent from the API (wrong version)
-    2026-07-01  141 trips   32% absent from the API (wrong version)
-    2026-07-27  141 trips    7% absent from the API (correct version, real drift)
-
-CIS republishes roughly weekly, so drift just before a new batch could run
-considerably higher than the 7% seen three days in. 20% sits comfortably
-above that and well below a genuinely wrong version, with margin on both
-sides; a tighter limit such as 10% would risk failing builds during normal
-operation."""
-
 
 class SupportsTimetable(Protocol):
     async def stops(self) -> list[Stop]: ...
@@ -56,7 +37,6 @@ class SupportsTimetable(Protocol):
 
 async def crawl(
     api: SupportsTimetable,
-    index: ServiceIndex,
     attempts: int = DEFAULT_ATTEMPTS,
     backoff: float = DEFAULT_BACKOFF,
 ) -> Timetable:
@@ -74,7 +54,7 @@ async def crawl(
 
     for attempt in range(1, attempts + 1):
         try:
-            return await _crawl_once(api, index)
+            return await _crawl_once(api)
         except DpmpApiError as exc:
             last = exc
             if attempt == attempts:
@@ -92,42 +72,32 @@ async def crawl(
     raise DpmpApiError(f"crawl failed after {attempts} attempts: {last!r}") from last
 
 
-async def _crawl_once(api: SupportsTimetable, index: ServiceIndex) -> Timetable:
+async def _crawl_once(api: SupportsTimetable) -> Timetable:
     stops, lines = await asyncio.gather(api.stops(), api.lines())
     logger.info("crawling %d lines, %d stops", len(lines), len(stops))
 
     timetable = Timetable(stops=stops, lines=lines)
 
     for line in lines:
-        services = index.lines.get(line.jdf_id)
-        if services is None:
-            logger.warning(
-                "line %s (%s) is not in the CIS registry; it will have no trips",
-                line.id,
-                line.jdf_id,
-            )
-            continue
+        numbers = await discover_trips(api, line.id)
+        results = await asyncio.gather(*(api.connection(line.id, n) for n in numbers))
 
-        wanted = sorted(services.trips)
-        results = await asyncio.gather(*(api.connection(line.id, n) for n in wanted))
-
-        missing = 0
-        for number, connection in zip(wanted, results, strict=True):
+        connections: dict[int, Connection] = {}
+        for number, connection in zip(numbers, results, strict=True):
             if connection is None:
-                missing += 1
-                logger.debug("line %s trip %d is in CIS but not in the API", line.id, number)
+                # Found during discovery, gone by the time it was fetched --
+                # a race, not evidence of anything wrong with the line.
+                logger.debug(
+                    "line %s trip %d vanished between discovery and fetch", line.id, number
+                )
                 continue
+            connections[number] = connection
             timetable.connections[(line.id, number)] = connection
-            timetable.directions[(line.id, number)] = services.trips[number]
 
-        if wanted and missing / len(wanted) > MISSING_TRIP_LIMIT:
-            raise DpmpApiError(
-                f"line {line.id} ({line.jdf_id}): {missing} of {len(wanted)} registry trips "
-                f"(version valid from {services.valid_from}) are absent from the API, "
-                f"more than the {MISSING_TRIP_LIMIT:.0%} tolerated for drift"
-            )
-        if missing:
-            logger.info("line %s: skipped %d of %d trips", line.id, missing, len(wanted))
+        for number, direction in assign_directions(connections).items():
+            timetable.directions[(line.id, number)] = direction
+
+        logger.info("line %s: %d trips", line.id, len(connections))
 
     logger.info("crawl complete: %d trips", timetable.trip_count)
     return timetable

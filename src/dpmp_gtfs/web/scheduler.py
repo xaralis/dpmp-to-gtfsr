@@ -19,7 +19,6 @@ from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.archive import read_tables
-from dpmp_gtfs.cis import build_index, fetch_archives
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
@@ -99,10 +98,8 @@ class Scheduler:
 
     async def rebuild_static(self) -> None:
         try:
-            paths = await fetch_archives(self.settings.cis_urls, self.settings.cis_dir)
-            service_index = build_index(paths, on_date=dt.date.today())
             async with DpmpApiClient(self.settings) as api:
-                timetable = await crawl(api, service_index)
+                timetable = await crawl(api)
             feed = build_feed(timetable)
 
             if self.settings.shapes_enabled:
@@ -237,6 +234,6 @@ def read_feed_version(path: Path) -> str | None:
     """
     try:
         rows = read_tables(path, "feed_info.txt")["feed_info.txt"]
-    except OSError, zipfile.BadZipFile:
+    except (OSError, zipfile.BadZipFile):
         return None
     return rows[0].get("feed_version") if rows else None

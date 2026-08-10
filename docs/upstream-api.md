@@ -38,7 +38,7 @@ Endpointy, které tenhle projekt používá:
 | endpoint | parametry | vrací | používáme na |
 |---|---|---|---|
 | `stops` | — | zastávky, GPS, `fixedCodes` | `stops.txt` |
-| `lines` | — | linky, `jdfId` na napojení k CIS | `routes.txt` |
+| `lines` | — | linky, `jdfId` (JDF číslo linky, jen k identifikaci) | `routes.txt` |
 | `connections/{line}/{n}` | linka, číslo spoje | zastávkové časy jednoho spoje | `stop_times.txt` |
 | `vehicles` | — | živé polohy vozidel, jedna společná `time` | GTFS-RT |
 | `events` | — | mimořádnosti | zatím nic, vždy prázdné — stejně jako u starého API |
@@ -47,31 +47,46 @@ Bundl nabízí i další cesty (`configuration/connectionDetail`, `presets`,
 `vehicles/movement`, `paths/{a}/{b}`, `stops/{id}/incomingArrivals`,
 `connections/{line}/longest`, …), ale žádnou z nich projekt nepotřebuje.
 
-## Zdroj jízdních řádů: CIS
+## Zdroj jízdních řádů: dohledávání přes API samotné
 
-Chybějící seznam spojů dodá CIS JŘ (`portal.cisjr.cz`), kam DPMP jízdní řády
-odevzdává jako primární zdroj. `dpmp_gtfs.cis` stáhne dva NeTEx archivy
-(trolejbusy a čistě městské linky v jednom, autobusy včetně příměstských ve
-druhém — JDF samotné pokrývá jen 19 z 32 linek), rozpozná DPMP podle IČO
-`63217066` a z toho postaví rejstřík „která linka má k danému dni která čísla
-spojů a kterým směrem".
+Dřív seznam spojů dodával celostátní CIS JŘ (`portal.cisjr.cz`), kam DPMP
+jízdní řády odevzdává jako primární zdroj. Tenhle projekt ho používal přes
+`dpmp_gtfs.cis`, které stahovalo dva NeTEx archivy a z nich stavělo rejstřík
+„která linka má k danému dni která čísla spojů a kterým směrem".
 
-**Klíčové zjištění: `connectionId` je číslo spoje z JDF.** Statika z CIS
-a realtime z API jdou spojit napřímo — ověřeno na lince 25, kde se seznam
-spojů z CIS a `connectionId`, které vrací API, shodují do posledního čísla.
-Proto zůstává `trip_id` ve tvaru `L9C115` beze změny.
+**Proč je pryč.** Změřeno proti živému API: ze 32 linek se 3 rozešly s CIS
+rejstříkem (linka 12 o 28,5 %, linka 9 o 15,1 %, linka 3 o 7,1 %), ostatních
+29 sedělo přesně. Rozchod nesouvisí se stářím verze — linka 1 i linka 12
+běžely na verzi staré 40 dní, první s rozchodem 0 %, druhá 28,5 % — je to
+vlastnost jednotlivé linky, ne postupné zastarávání. Celkem 63 z 2 762 spojů
+chybělo v feedu, aniž by o tom cokoli řeklo. A prahová hodnota to nespraví:
+jen si vybírá mezi hlasitým selháním buildu a tichou dírou v feedu, protože
+spoj, o kterém rejstřík neví, se u API nikdy ani nezkusí — nemá číslo, které
+by se dalo požádat. Vlastní zdroj dat, který se s API neshoduje a nedá se s
+ním sesynchronizovat, je horší než mít jenom API.
 
-**Výběr verze je nutný, ne volitelný.** Linka je v NeTEx často vícekrát
-a víc verzí platí současně (`LINE-607`, 283 spojů, platnost 2026-01-01 —
-2030-12-31, souběžně s `LINE-396`, 206 spojů, platnost od 2026-07-01; API
-odpovídá druhé verzi přesně). Sjednocení by přidalo neexistující spoje.
-Pravidlo: z verzí, jejichž platnost pokrývá datum buildu, vyhrává ta
-s nejpozdějším `FromDate`; při shodě delší `ToDate`, pak jméno souboru — aby
-byl výběr deterministický.
+**Co ho nahradilo.** Dvě věci, obě jen z `api.mhdonline.cz`:
 
-**Co CIS nedá:** souřadnice ani čísla nástupišť. `<Location />` je v každém
-`ScheduledStopPoint` prázdný a odpovídající sloupce JDF jsou prázdné. Ty
-dodává jen `api.mhdonline.cz`.
+- **Seznam spojů** dohledá [`static/discovery.py`](../src/dpmp_gtfs/static/discovery.py)
+  procházením číselného prostoru spojů linky — `connections/{line}/{n}` pro
+  rostoucí `n`, dokud nepřijde dost po sobě jdoucích 404. Mezery v číslování
+  jsou v síti běžné (`n` je JDF číslo spoje, ne pořadí), ale nejdelší naměřená
+  mezera je 18, takže hranice 50 po sobě jdoucích chyb má bezpečnou rezervu.
+- **`direction_id`** dopočítá [`static/direction.py`](../src/dpmp_gtfs/static/direction.py)
+  z pořadí zastávek: dva spoje sdílející aspoň dvě zastávky buď jedou ve
+  stejném relativním pořadí (stejný směr), nebo v obráceném (opačný) — nic
+  třetího, dokud srovnání nevyjde nejednoznačně. To dá přesný vztah
+  „stejný/opačný" mezi každou dvojicí spojů linky, který se dvoubarevně
+  prochází jako graf; žádný representativní spoj, žádná většina, žádné
+  hádání terminálů.
+
+  Jediná skutečná nejednoznačnost jsou okružní linky: pokud se graf rozpadne
+  na víc souvislých komponent (typicky proto, že některé spoje sdílejí míň
+  než dvě zastávky se zbytkem), nemá relativní značení *mezi* komponentami
+  žádný geometrický podklad — kód to loguje a přijímá, nesnaží se hádat.
+
+**Co dohledávání nedá:** souřadnice nástupišť pořád nemá nikdo — ty dál
+zůstávají po zastávce, ne po nástupišti, viz výše.
 
 ## Na co si dát pozor
 
@@ -121,8 +136,9 @@ case-sensitive.
 Starý `ConnectionStop` nesl `index`, `distance` a per-zastávkové `codes`. Nový
 vrací jen `stopId`, `platformId` a `departureTime`/`arrivalTime`. Dopad:
 
-- **`index` živil směr spoje.** Náhrada je v NeTEx: `ServiceJourneyPattern` má
-  sufix `_out` / `_in`, který CIS index promítá do `direction_id`.
+- **`index` živil směr spoje.** Náhrada je popsaná výše: `direction_id` se
+  dopočítá z pořadí zastávek napříč spoji stejné linky, ne z pole, které API
+  publikuje.
 - **`distance`** byl už dřív příliš hrubý na `shape_dist_traveled`. Nechybí.
 - **per-zastávkové `codes`** živily „na znamení". Náhrada je `fixedCodes` na
   zastávce v `/stops` — sémantika se mírně mění, „na znamení" je nově

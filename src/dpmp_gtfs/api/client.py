@@ -12,8 +12,9 @@ Three upstream facts drive the shape of this module:
    signature.
 
 3. ``connections/{line}/{number}`` answers 404 for a trip number that does
-   not exist. That is data, not failure -- CIS and the API drift -- so it is
-   returned as ``None`` rather than raised.
+   not exist. That is data, not failure -- it is how
+   :mod:`dpmp_gtfs.static.discovery` tells where a line's trips stop -- so it
+   is returned as ``None`` rather than raised.
 """
 
 import asyncio

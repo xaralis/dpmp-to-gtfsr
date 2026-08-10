@@ -47,14 +47,16 @@ class Feed:
 class Timetable:
     """Everything needed to build a static feed.
 
-    Assembled from two sources: the CIS registry says which trips exist and
-    which way they run, the API says what each one does.
+    Built entirely from the API: which trips a line has comes from walking
+    its trip-number space, which way each one runs from the stop order of the
+    trips just fetched. See :mod:`dpmp_gtfs.static.discovery` and
+    :mod:`dpmp_gtfs.static.direction`.
     """
 
     stops: list[ApiStop]
     lines: list[Line]
     directions: dict[tuple[str, int], int] = field(default_factory=dict)
-    """``(line_id, connection_id)`` -> ``direction_id``, from CIS."""
+    """``(line_id, connection_id)`` -> ``direction_id``, derived from stop order."""
     connections: dict[tuple[str, int], Connection] = field(default_factory=dict)
     """``(line_id, connection_id)`` -> the trip's stop times, from the API."""
 

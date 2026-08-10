@@ -10,10 +10,10 @@ from typing import Any
 import typer
 
 from dpmp_gtfs.api import DpmpApiClient
-from dpmp_gtfs.cis import build_index, fetch_archives
 from dpmp_gtfs.config import settings
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
+from dpmp_gtfs.static.discovery import discover_trips
 from dpmp_gtfs.static.writer import write_feed
 
 app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
@@ -33,11 +33,8 @@ def build_static(
     """Crawl the full timetable and write a GTFS zip."""
 
     async def run() -> None:
-        paths = await fetch_archives(settings.cis_urls, settings.cis_dir)
-        index = build_index(paths, on_date=dt.date.today())
-
         async with DpmpApiClient() as api:
-            timetable = await crawl(api, index)
+            timetable = await crawl(api)
 
         destination = dest or settings.gtfs_zip_path
         feed = build_feed(timetable)
@@ -80,9 +77,6 @@ def dump_fixtures(
     """Record live API responses so tests can run against real data offline."""
 
     async def run() -> None:
-        paths = await fetch_archives(settings.cis_urls, settings.cis_dir)
-        index = build_index(paths, on_date=dt.date.today())
-
         async with DpmpApiClient() as api:
             _write(dest / "stops.json", [s.model_dump(mode="json") for s in await api.stops()])
 
@@ -90,11 +84,9 @@ def dump_fixtures(
             _write(dest / "lines.json", [line.model_dump(mode="json") for line in line_list])
 
             for line in line_list[:lines]:
-                services = index.lines.get(line.jdf_id)
-                if services is None:
-                    continue
+                numbers = await discover_trips(api, line.id)
                 # A couple of trips is enough to exercise the stop_times path.
-                for number in sorted(services.trips)[:3]:
+                for number in numbers[:3]:
                     connection = await api.connection(line.id, number)
                     if connection is None:
                         continue

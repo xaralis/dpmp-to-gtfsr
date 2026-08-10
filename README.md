@@ -4,15 +4,14 @@ GTFS a GTFS-Realtime feed pro pardubickou MHD.
 
 Dopravní podnik města Pardubic provozuje [online.dpmp.cz](https://online.dpmp.cz/), která ukazuje
 polohu spojů v reálném čase, ale nepublikuje žádný export v průmyslovém standardu. Její backend
-je `api.mhdonline.cz` — hromadný seznam spojů ale ani ten neumí, takže si ho tenhle projekt bere
-z celostátního CIS (`portal.cisjr.cz`), kam DPMP jízdní řády odevzdává jako primární zdroj. Po
-téže cestě se pardubická MHD dostává i do Mapy.cz.
+je `api.mhdonline.cz` — hromadný seznam spojů ale ani ten neumí, takže si ho tenhle projekt
+dohledává sám, spoj po spoji (podrobnosti v [`docs/upstream-api.md`](docs/upstream-api.md)).
 
 Chybí ale dvě věci: **GTFS jako standardní formát**, na kterém staví většina zahraničních
 konzumentů (Google Maps pardubickou MHD nezná), a hlavně **realtime** — polohy vozidel a
 zpoždění nejsou nikde v tomhle formátu k dispozici, přestože je DPMP ve své aplikaci ukazuje.
 
-Tahle služba ten most staví: z veřejného API aplikace a z CIS sestaví
+Tahle služba ten most staví: z veřejného API aplikace sestaví
 [GTFS](https://gtfs.org/schedule/) i [GTFS Realtime](https://gtfs.org/realtime/) a vystaví je
 přes HTTP.
 

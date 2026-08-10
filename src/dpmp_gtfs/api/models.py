@@ -8,8 +8,9 @@ Everything the upstream does oddly is normalised here, once:
 * ``fixedCodes`` appear on both trips and stops, and the same letter means
   different things at each level. Case matters: ``X`` on a trip is "runs on
   weekdays", ``x`` on a stop is "request stop".
-* ``lineId`` is a string, and ``jdfId`` is the CIS line number that joins this
-  API to the timetable registry.
+* ``lineId`` is a string, and ``jdfId`` is the line's JDF number (e.g.
+  ``655001``) -- kept only as an identifier, nothing in this project joins
+  against it any more.
 * A connection's final stop carries only ``arrivalTime`` -- there is nowhere
   left to depart to. ``ConnectionStop.departure`` falls back to it, the same
   way the old API's ``ConnectionStop.time`` did.
@@ -154,8 +155,7 @@ class Stop(BaseModel):
 class Line(BaseModel):
     id: str
     jdf_id: str = Field(alias="jdfId")
-    """The CIS line number, e.g. ``655001``. The only join between this API and
-    the timetable registry."""
+    """The line's JDF number, e.g. ``655001``. Just an identifier."""
     enabled: bool = True
 
     model_config = {"populate_by_name": True}
