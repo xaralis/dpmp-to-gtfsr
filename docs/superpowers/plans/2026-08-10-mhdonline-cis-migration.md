@@ -2335,6 +2335,90 @@ git commit -m "test: cross-validate the migrated feed against the old-API refere
 
 ---
 
+---
+
+### Task 13: Fáze buildu v logu i na mapě
+
+Studený start stahuje ~305 MB archivů, projde 3,6 GB XML a crawluje ~2 700 spojů. Dnes je to několik minut ticha, a mapa přitom ukáže `"Trasy se nepodařilo načíst"` — nepravdu, protože nic neselhalo, data se teprve načítají.
+
+Jedna fáze slouží dvěma spotřebitelům: operátorovi v logu a uživateli na mapě. Proto jeden zdroj, ne dvě nezávislé hlášky.
+
+**Files:**
+- Modify: `src/dpmp_gtfs/web/scheduler.py`, `src/dpmp_gtfs/web/app.py`, `src/dpmp_gtfs/web/static/map.js`, `src/dpmp_gtfs/cis/archive.py`, `src/dpmp_gtfs/cis/index.py`, `src/dpmp_gtfs/static/crawler.py`
+- Test: `tests/test_web.py`
+
+**Interfaces:**
+- Produces: `FeedState.static_phase: str | None` — `None` když se nestaví, jinak lidsky čitelný popis fáze. `_status()` ho vystavuje jako `status["static"]["phase"]`.
+
+- [ ] **Step 1: Napiš padající testy**
+
+```python
+# tests/test_web.py
+def test_status_reports_no_phase_when_idle(client):
+    assert client.get("/healthz").json()["static"]["phase"] is None
+
+
+def test_status_reports_the_phase_while_building(client, scheduler):
+    scheduler.state.static_phase = "stahuji rejstřík CIS"
+    assert client.get("/healthz").json()["static"]["phase"] == "stahuji rejstřík CIS"
+```
+
+- [ ] **Step 2: Spusť a ověř pád**
+
+Run: `.venv/bin/python -m pytest tests/test_web.py -v`
+Expected: FAIL — `KeyError: 'phase'`
+
+- [ ] **Step 3: Přidej fázi do stavu a do statusu**
+
+Do `FeedState` přidej pole:
+
+```python
+    static_phase: str | None = None
+    """What the static build is doing right now, or ``None`` when idle.
+
+    Read by two consumers that must not drift apart: the log an operator
+    watches and the message the map shows. A cold start is several minutes of
+    downloading and crawling, and without this the service looks hung.
+    """
+```
+
+V `_status()` do bloku `"static"` přidej `"phase": state.static_phase,`.
+
+- [ ] **Step 4: Nastavuj a loguj fáze v jednom kroku**
+
+V `scheduler.py` přidej pomocnou metodu a použij ji v `rebuild_static` kolem každé fáze:
+
+```python
+    def _phase(self, message: str) -> None:
+        """Announce a build phase to both the log and the status endpoint."""
+        self.state.static_phase = message
+        logger.info("static build: %s", message)
+```
+
+Fáze: `"stahuji rejstřík CIS"` → `"čtu rejstřík"` → `"stahuji jízdní řády"` → `"počítám trasy"`. Na konci `rebuild_static`, i při chybě, nastav `self.state.static_phase = None` (`finally`).
+
+- [ ] **Step 5: Doplň chybějící logy v dlouhých krocích**
+
+`cis/archive.py` loguje až po stažení. Přidej řádek **před** requestem: `logger.info("fetching %s", url)`. `cis/index.py` loguje až po parsování — přidej řádek před ním s počtem archivů. `crawler.py` ohlásí start a konec, ale mezi nimi je ~6 minut ticha; loguj postup po linkách (`"line %s: %d/%d trips"`).
+
+- [ ] **Step 6: Ukaž to na mapě**
+
+V `map.js` je `paintStatus()` na sekundovém intervalu a `statusEl`. Přidej dotaz na `/healthz` a když `static.phase` není `null`, zobraz ji jako průběh (`"Načítám data: " + phase`). Uprav i `.catch` větve na `/coverage.geojson` a `/vehicles.json`: když je fáze nastavená, nesmí tvrdit, že se něco nepodařilo — data prostě ještě nejsou.
+
+- [ ] **Step 7: Spusť testy a linters**
+
+Run: `.venv/bin/python -m pytest && .venv/bin/python -m mypy && .venv/bin/ruff check src tests`
+Expected: vše prochází.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add -A
+git commit -m "feat: report build phases in the log and on the map"
+```
+
+---
+
 ## Výsledek křížové validace
 
 _Vyplní Task 12._
