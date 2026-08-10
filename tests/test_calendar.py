@@ -36,6 +36,13 @@ def test_upper_and_lower_x_are_different_codes() -> None:
     assert not service_from_codes(["x"]).working_days
 
 
+def test_weekday_flags_match_gtfs_column_order() -> None:
+    assert service_from_codes(["X", "@"]).weekday_flags == (1, 1, 1, 1, 1, 0, 0)
+    assert service_from_codes(["@", "6"]).weekday_flags == (0, 0, 0, 0, 0, 1, 0)
+    assert service_from_codes(["@", "+"]).weekday_flags == (0, 0, 0, 0, 0, 0, 1)
+    assert service_from_codes(["X", "@", "6", "+"]).weekday_flags == (1, 1, 1, 1, 1, 1, 1)
+
+
 # --- movable feasts ---------------------------------------------------------
 
 # Easter is the only part of the calendar that moves, and getting it wrong
