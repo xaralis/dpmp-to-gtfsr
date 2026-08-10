@@ -150,6 +150,34 @@ změny jízdního řádu prostě končí a build to zaloguje po linkách. Feed j
 neúplný, ne špatný. Ze změřených 8 linek s návazností se takhle protáhne
 například celá 906 a 92 ze 115 spojů linky 902.
 
+### Kdy půjde CIS vyhodit
+
+Tenhle druhý zdroj je berlička, ne architektura. Drží ho jediná podmínka:
+**`fixedCodes` u spoje musí odpovídat vyvěšenému jízdnímu řádu.** Nic víc se
+po API nechce — časy, zastávky, čísla spojů i realtime jsou v pořádku už teď
+a celý rejstřík spojů si dohledáváme sami.
+
+Ověřit, že je opraveno, jde bez čtení kódu. Postav feed a porovnej ho s CIS:
+
+```bash
+DPMP_HTTP_CACHE=1 uv run dpmp-gtfs build-static
+```
+
+V logu je řádek `calendars: N trips from CIS, M fell back`. Když se u spojů
+mimo CIS začnou kódy z API shodovat s tím, co říká vyvěšený jízdní řád, je
+hotovo. Kontrolní případ, na kterém se to pozná nejrychleji, je spoj 46
+linky 1 — 06:36 ze Slovany,točna má být `X`, ne `+`.
+
+Odstranění je pak jeden commit: smazat `src/dpmp_gtfs/cis/`, volání
+`_fetch_calendars` ve [`scheduler.py`](../src/dpmp_gtfs/web/scheduler.py) a
+[`cli.py`](../src/dpmp_gtfs/cli.py), pole `calendars` z `Timetable`, větev
+`service_from_dates` v [`builder.py`](../src/dpmp_gtfs/static/builder.py),
+nastavení `cis_urls`/`cis_dir` a závislost `defusedxml`. `Service` si výjimky
+(`added`/`removed`) může nechat i tak — jsou zadarmo, když jsou prázdné.
+
+Proto je ta hranice vedená takhle ostře: kdyby se z CIS bralo cokoli dalšího,
+tenhle odstavec by přestal platit.
+
 ## Na co si dát pozor
 
 Podrobněji i s důkazy v [`upstream.py`](../src/dpmp_gtfs/upstream.py) a
