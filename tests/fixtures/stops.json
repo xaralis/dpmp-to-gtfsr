@@ -1,0 +1,2051 @@
+[
+ {
+  "id": 1,
+  "name": "Jesničánky,točna",
+  "gpsLat": 50.015428549999996,
+  "gpsLon": 15.771719950000001,
+  "_id": "67cc886f82c91421412a3617"
+ },
+ {
+  "id": 2,
+  "name": "Chrudimská",
+  "gpsLat": 50.01952555,
+  "gpsLon": 15.771461,
+  "_id": "67cc886f82c91421412a3618"
+ },
+ {
+  "id": 3,
+  "name": "Zborovské náměstí",
+  "aliases": [
+   "Zborovské nám."
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0221214,
+  "gpsLon": 15.7712197,
+  "_id": "67cc886f82c91421412a3619"
+ },
+ {
+  "id": 4,
+  "name": "Gorkého",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.025278099999994,
+  "gpsLon": 15.7709317,
+  "_id": "67cc886f82c91421412a361a"
+ },
+ {
+  "id": 5,
+  "name": "Jana Palacha",
+  "aliases": [],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.028470999999996,
+  "gpsLon": 15.7706337,
+  "_id": "67cc886f82c91421412a361b"
+ },
+ {
+  "id": 6,
+  "name": "17.listopadu",
+  "aliases": [
+   "ul.17.listopadu"
+  ],
+  "gpsLat": 50.0333805,
+  "gpsLon": 15.77018545,
+  "_id": "67cc886f82c91421412a361c"
+ },
+ {
+  "id": 7,
+  "name": "Třída Míru",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.036519999999996,
+  "gpsLon": 15.772485750000001,
+  "_id": "67cc886f82c91421412a361d"
+ },
+ {
+  "id": 8,
+  "name": "U Grandu",
+  "gpsLat": 50.0375862,
+  "gpsLon": 15.7763805,
+  "_id": "67cc886f82c91421412a361e"
+ },
+ {
+  "id": 9,
+  "name": "U Kostelíčka",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.03755565,
+  "gpsLon": 15.78666115,
+  "_id": "67cc886f82c91421412a361f"
+ },
+ {
+  "id": 10,
+  "name": "Na Okrouhlíku",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0356941,
+  "gpsLon": 15.7934556,
+  "_id": "67cc886f82c91421412a3620"
+ },
+ {
+  "id": 11,
+  "name": "Slovany,Dašická",
+  "gpsLat": 50.03343965,
+  "gpsLon": 15.797938349999999,
+  "_id": "67cc886f82c91421412a3621"
+ },
+ {
+  "id": 12,
+  "name": "Slovany,Spojilská",
+  "gpsLat": 50.031890849999996,
+  "gpsLon": 15.803667050000001,
+  "_id": "67cc886f82c91421412a3622"
+ },
+ {
+  "id": 13,
+  "name": "Slovany,točna",
+  "gpsLat": 50.03128625,
+  "gpsLon": 15.8104033,
+  "_id": "67cc886f82c91421412a3623"
+ },
+ {
+  "id": 14,
+  "name": "Krajský úřad",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.038013449999994,
+  "gpsLon": 15.7815628,
+  "_id": "67cc886f82c91421412a3624"
+ },
+ {
+  "id": 15,
+  "name": "Čacké",
+  "gpsLat": 50.0166893,
+  "gpsLon": 15.7716122,
+  "_id": "67cc886f82c91421412a3625"
+ },
+ {
+  "id": 16,
+  "name": "Hlavní nádraží",
+  "aliases": [
+   "Nádraží"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.03293172857143,
+  "gpsLon": 15.756556771428572,
+  "showPlatform": true,
+  "_id": "67cc886f82c91421412a3626"
+ },
+ {
+  "id": 17,
+  "name": "Čepí,prodejna",
+  "gpsLat": 49.98599055,
+  "gpsLon": 15.71611025,
+  "_id": "67cc886f82c91421412a3627"
+ },
+ {
+  "id": 18,
+  "name": "Palackého",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.036061534931704,
+  "gpsLon": 15.76791286468506,
+  "_id": "67cc886f82c91421412a3628"
+ },
+ {
+  "id": 19,
+  "name": "Štrossova",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.034026966666666,
+  "gpsLon": 15.788756900000001,
+  "_id": "67cc886f82c91421412a3629"
+ },
+ {
+  "id": 20,
+  "name": "Nemocnice",
+  "aliases": [
+   "nem."
+  ],
+  "gpsLat": 50.029342650000004,
+  "gpsLon": 15.790282699999999,
+  "_id": "67cc886f82c91421412a362a"
+ },
+ {
+  "id": 21,
+  "name": "Kyjevská",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0268936,
+  "gpsLon": 15.79098415,
+  "_id": "67cc886f82c91421412a362b"
+ },
+ {
+  "id": 22,
+  "name": "Pardubičky,točna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0252056,
+  "gpsLon": 15.7926903,
+  "_id": "67cc886f82c91421412a362c"
+ },
+ {
+  "id": 23,
+  "name": "U Marka",
+  "aliases": [
+   "Autobusové nádraží"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.034170149999994,
+  "gpsLon": 15.7617941,
+  "_id": "67cc886f82c91421412a362d"
+ },
+ {
+  "id": 24,
+  "name": "Masarykovo nám.",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.03753533333333,
+  "gpsLon": 15.769565266666666,
+  "showPlatform": true,
+  "_id": "67cc886f82c91421412a362e"
+ },
+ {
+  "id": 25,
+  "name": "Zimní stadion",
+  "gpsLat": 50.041200599999996,
+  "gpsLon": 15.768239999999999,
+  "_id": "67cc886f82c91421412a362f"
+ },
+ {
+  "id": 26,
+  "name": "Nemošická bytovky",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.016561499999995,
+  "gpsLon": 15.7792935,
+  "_id": "67cc886f82c91421412a3630"
+ },
+ {
+  "id": 27,
+  "name": "Živanice,odb.Nerad",
+  "aliases": [
+   "Živanice,Nerad,odb."
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0603123,
+  "gpsLon": 15.63907195,
+  "_id": "67cc886f82c91421412a3631"
+ },
+ {
+  "id": 28,
+  "name": "Poděbradská",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.05467605,
+  "gpsLon": 15.76240445,
+  "_id": "67cc886f82c91421412a3632"
+ },
+ {
+  "id": 29,
+  "name": "Trnová",
+  "aliases": [
+   "Trnová,křiž."
+  ],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.05835915,
+  "gpsLon": 15.75758265,
+  "_id": "67cc886f82c91421412a3633"
+ },
+ {
+  "id": 30,
+  "name": "Semtín,zastávka",
+  "aliases": [
+   "Semtín,žel.zast."
+  ],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.06196405,
+  "gpsLon": 15.74420595,
+  "_id": "67cc886f82c91421412a3634"
+ },
+ {
+  "id": 31,
+  "name": "Semtín,hlavní brána",
+  "aliases": [
+   "Semtín,hl.brána"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.06114770000001,
+  "gpsLon": 15.72862195,
+  "_id": "67cc886f82c91421412a3635"
+ },
+ {
+  "id": 32,
+  "name": "Semtín,vlečka",
+  "aliases": [],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.060468650000004,
+  "gpsLon": 15.72302485,
+  "_id": "67cc886f82c91421412a3636"
+ },
+ {
+  "id": 33,
+  "name": "Rybitví,závod",
+  "gpsLat": 50.059844999999996,
+  "gpsLon": 15.715453166666668,
+  "_id": "67cc886f82c91421412a3637"
+ },
+ {
+  "id": 34,
+  "name": "Rybitví,UMA továrna",
+  "aliases": [
+   "UMA továrna",
+   "Rybitví,Uma"
+  ],
+  "gpsLat": 50.062841399999996,
+  "gpsLon": 15.7106967,
+  "_id": "67cc886f82c91421412a3638"
+ },
+ {
+  "id": 35,
+  "name": "Rybitví,UMA točna",
+  "aliases": [
+   "UMA,točna"
+  ],
+  "gpsLat": 50.06554315,
+  "gpsLon": 15.708486075,
+  "_id": "67cc886f82c91421412a3639"
+ },
+ {
+  "id": 36,
+  "name": "Lázně Bohdaneč,aut.nádr.",
+  "gpsLat": 50.073093400000005,
+  "gpsLon": 15.6821995,
+  "_id": "67cc886f82c91421412a363a"
+ },
+ {
+  "id": 37,
+  "name": "Lázně Bohdaneč,náměstí",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.076160400000006,
+  "gpsLon": 15.6794052,
+  "_id": "67cc886f82c91421412a363b"
+ },
+ {
+  "id": 38,
+  "name": "Lázně Bohdaneč,točna",
+  "gpsLat": 50.079725249999996,
+  "gpsLon": 15.67482755,
+  "_id": "67cc886f82c91421412a363c"
+ },
+ {
+  "id": 39,
+  "name": "Polabiny,točna",
+  "gpsLat": 50.051708250000004,
+  "gpsLon": 15.760084599999999,
+  "_id": "67cc886f82c91421412a363d"
+ },
+ {
+  "id": 40,
+  "name": "Polabiny,Kosmonautů",
+  "gpsLat": 50.04907225,
+  "gpsLon": 15.760157549999999,
+  "_id": "67cc886f82c91421412a363e"
+ },
+ {
+  "id": 41,
+  "name": "Polabiny,hotel",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04780575,
+  "gpsLon": 15.76323605,
+  "_id": "67cc886f82c91421412a363f"
+ },
+ {
+  "id": 42,
+  "name": "Dukla,točna",
+  "gpsLat": 50.02021405,
+  "gpsLon": 15.7588849,
+  "_id": "67cc886f82c91421412a3640"
+ },
+ {
+  "id": 43,
+  "name": "Dukla,náměstí",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.02359773333333,
+  "gpsLon": 15.758653033333333,
+  "_id": "67cc886f82c91421412a3641"
+ },
+ {
+  "id": 44,
+  "name": "Teplého",
+  "gpsLat": 50.026878350000004,
+  "gpsLon": 15.76124955,
+  "_id": "67cc886f82c91421412a3642"
+ },
+ {
+  "id": 45,
+  "name": "Domov mládeže",
+  "gpsLat": 50.0270939,
+  "gpsLon": 15.7666292,
+  "_id": "67cc886f82c91421412a3643"
+ },
+ {
+  "id": 46,
+  "name": "Sakařova",
+  "gpsLat": 50.038793600000005,
+  "gpsLon": 15.786736950000002,
+  "_id": "67cc886f82c91421412a3644"
+ },
+ {
+  "id": 47,
+  "name": "Holubova",
+  "gpsLat": 50.0399952,
+  "gpsLon": 15.79098655,
+  "_id": "67cc886f82c91421412a3645"
+ },
+ {
+  "id": 48,
+  "name": "Bezdíčkova",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04132465,
+  "gpsLon": 15.7956977,
+  "_id": "67cc886f82c91421412a3646"
+ },
+ {
+  "id": 49,
+  "name": "Židov",
+  "gpsLat": 50.040996525,
+  "gpsLon": 15.799731275000001,
+  "_id": "67cc886f82c91421412a3647"
+ },
+ {
+  "id": 50,
+  "name": "Lexova",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0262833,
+  "gpsLon": 15.7584543,
+  "_id": "67cc886f82c91421412a3648"
+ },
+ {
+  "id": 51,
+  "name": "Jilemnického",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.023092250000005,
+  "gpsLon": 15.7623162,
+  "_id": "67cc886f82c91421412a3649"
+ },
+ {
+  "id": 52,
+  "name": "U Kapitána",
+  "gpsLat": 50.0232067,
+  "gpsLon": 15.77223925,
+  "_id": "67cc886f82c91421412a364a"
+ },
+ {
+  "id": 53,
+  "name": "Ulice Svobody",
+  "gpsLat": 50.0233936,
+  "gpsLon": 15.777261750000001,
+  "_id": "67cc886f82c91421412a364b"
+ },
+ {
+  "id": 54,
+  "name": "Krematorium",
+  "gpsLat": 50.020813000000004,
+  "gpsLon": 15.77634005,
+  "_id": "67cc886f82c91421412a364c"
+ },
+ {
+  "id": 55,
+  "name": "S.K.Neumanna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.025436400000004,
+  "gpsLon": 15.7787595,
+  "_id": "67cc886f82c91421412a364d"
+ },
+ {
+  "id": 56,
+  "name": "Výzkumný ústav",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.02827645,
+  "gpsLon": 15.77904895,
+  "_id": "67cc886f82c91421412a364e"
+ },
+ {
+  "id": 57,
+  "name": "Karla IV.",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.03526685,
+  "gpsLon": 15.7798662,
+  "_id": "67cc886f82c91421412a364f"
+ },
+ {
+  "id": 58,
+  "name": "Náměstí Republiky",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.037947333333335,
+  "gpsLon": 15.777181966666667,
+  "showPlatform": true,
+  "_id": "67cc886f82c91421412a3650"
+ },
+ {
+  "id": 60,
+  "name": "Polabiny,Lidická",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0414181,
+  "gpsLon": 15.75408695,
+  "_id": "67cc886f82c91421412a3651"
+ },
+ {
+  "id": 61,
+  "name": "Polabiny,Kpt.Bartoše",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04455945,
+  "gpsLon": 15.7533083,
+  "_id": "67cc886f82c91421412a3652"
+ },
+ {
+  "id": 62,
+  "name": "Kréta",
+  "gpsLat": 50.04628945,
+  "gpsLon": 15.74915075,
+  "_id": "67cc886f82c91421412a3653"
+ },
+ {
+  "id": 63,
+  "name": "Na Bukovině",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0431461,
+  "gpsLon": 15.789978999999999,
+  "_id": "67cc886f82c91421412a3654"
+ },
+ {
+  "id": 64,
+  "name": "Polabiny,Sluneční",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04867935,
+  "gpsLon": 15.7520671,
+  "_id": "67cc886f82c91421412a3655"
+ },
+ {
+  "id": 65,
+  "name": "Dukla,vozovna",
+  "gpsLat": 50.0270678,
+  "gpsLon": 15.757198333333335,
+  "_id": "67cc886f82c91421412a3656"
+ },
+ {
+  "id": 66,
+  "name": "Polabiny,Okrajová",
+  "gpsLat": 50.0477524,
+  "gpsLon": 15.7526407,
+  "_id": "67cc886f82c91421412a3657"
+ },
+ {
+  "id": 67,
+  "name": "Dubina,točna",
+  "gpsLat": 50.03960415,
+  "gpsLon": 15.80753755,
+  "_id": "67cc886f82c91421412a3658"
+ },
+ {
+  "id": 68,
+  "name": "Blahoutova",
+  "gpsLat": 50.04027175,
+  "gpsLon": 15.804661750000001,
+  "_id": "67cc886f82c91421412a3659"
+ },
+ {
+  "id": 69,
+  "name": "Na Drážce",
+  "gpsLat": 50.0372124,
+  "gpsLon": 15.7985544,
+  "_id": "67cc886f82c91421412a365a"
+ },
+ {
+  "id": 70,
+  "name": "K nemocnici",
+  "gpsLat": 50.0314884,
+  "gpsLon": 15.789687149999999,
+  "_id": "67cc886f82c91421412a365b"
+ },
+ {
+  "id": 71,
+  "name": "Nadjezd Paramo",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.0311546,
+  "gpsLon": 15.7485075,
+  "_id": "67cc886f82c91421412a365c"
+ },
+ {
+  "id": 72,
+  "name": "Svítkov,les",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0231705,
+  "gpsLon": 15.7381945,
+  "_id": "67cc886f82c91421412a365d"
+ },
+ {
+  "id": 73,
+  "name": "Svítkov,škola",
+  "gpsLat": 50.0279045,
+  "gpsLon": 15.734358799999999,
+  "_id": "67cc886f82c91421412a365e"
+ },
+ {
+  "id": 74,
+  "name": "Svítkov,Kostnická",
+  "gpsLat": 50.0270157,
+  "gpsLon": 15.72900295,
+  "_id": "67cc886f82c91421412a365f"
+ },
+ {
+  "id": 75,
+  "name": "Svítkov,park",
+  "gpsLat": 50.02507975,
+  "gpsLon": 15.72311165,
+  "_id": "67cc886f82c91421412a3660"
+ },
+ {
+  "id": 76,
+  "name": "Popkovice,křižovatka",
+  "aliases": [
+   "Popkovice,křiž."
+  ],
+  "gpsLat": 50.0213318,
+  "gpsLon": 15.7233324,
+  "_id": "67cc886f82c91421412a3661"
+ },
+ {
+  "id": 77,
+  "name": "Popkovice,školka",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.019823099999996,
+  "gpsLon": 15.7306509,
+  "_id": "67cc886f82c91421412a3662"
+ },
+ {
+  "id": 78,
+  "name": "K Letišti",
+  "aliases": [
+   "Letiště"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.02141955,
+  "gpsLon": 15.735189949999999,
+  "_id": "67cc886f82c91421412a3663"
+ },
+ {
+  "id": 79,
+  "name": "Rosice,točna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04398725,
+  "gpsLon": 15.7291007,
+  "_id": "67cc886f82c91421412a3664"
+ },
+ {
+  "id": 80,
+  "name": "Rosice,Gen.Svobody",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.04328915000001,
+  "gpsLon": 15.7305255,
+  "_id": "67cc886f82c91421412a3665"
+ },
+ {
+  "id": 81,
+  "name": "Rosice,náměstí",
+  "gpsLat": 50.0431633,
+  "gpsLon": 15.73438405,
+  "_id": "67cc886f82c91421412a3666"
+ },
+ {
+  "id": 82,
+  "name": "Rosice,sokolovna",
+  "aliases": [
+   "Rosice,pošta"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04315375,
+  "gpsLon": 15.73997545,
+  "_id": "67cc886f82c91421412a3667"
+ },
+ {
+  "id": 83,
+  "name": "Zlatá štika",
+  "gpsLat": 50.040222150000005,
+  "gpsLon": 15.7854209,
+  "_id": "67cc886f82c91421412a3668"
+ },
+ {
+  "id": 84,
+  "name": "Husova",
+  "gpsLat": 50.043859499999996,
+  "gpsLon": 15.80062625,
+  "_id": "67cc886f82c91421412a3669"
+ },
+ {
+  "id": 85,
+  "name": "Na Haldě",
+  "gpsLat": 50.0441494,
+  "gpsLon": 15.79543305,
+  "_id": "67cc886f82c91421412a366a"
+ },
+ {
+  "id": 86,
+  "name": "Globus",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.059089650000004,
+  "gpsLon": 15.754872800000001,
+  "_id": "67cc886f82c91421412a366b"
+ },
+ {
+  "id": 87,
+  "name": "Dubina,centrum",
+  "gpsLat": 50.044862725,
+  "gpsLon": 15.806745974999998,
+  "_id": "67cc886f82c91421412a366c"
+ },
+ {
+  "id": 88,
+  "name": "Řempo",
+  "aliases": [
+   "Černá za Bory,Řempo"
+  ],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.0230789,
+  "gpsLon": 15.8245296,
+  "_id": "67cc886f82c91421412a366d"
+ },
+ {
+  "id": 89,
+  "name": "Hůrka",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.04863613333333,
+  "gpsLon": 15.812250133333334,
+  "_id": "67cc886f82c91421412a366e"
+ },
+ {
+  "id": 90,
+  "name": "Spojil",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.046905499999994,
+  "gpsLon": 15.8198743,
+  "_id": "67cc886f82c91421412a366f"
+ },
+ {
+  "id": 91,
+  "name": "Spojil,točna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0427933,
+  "gpsLon": 15.822135,
+  "_id": "67cc886f82c91421412a3670"
+ },
+ {
+  "id": 92,
+  "name": "Dopravní podnik",
+  "gpsLat": 50.02698325,
+  "gpsLon": 15.756439199999999,
+  "_id": "67cc886f82c91421412a3671"
+ },
+ {
+  "id": 93,
+  "name": "Dukla,u náměstí",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.02503965,
+  "gpsLon": 15.7601042,
+  "_id": "67cc886f82c91421412a3672"
+ },
+ {
+  "id": 94,
+  "name": "Dukla,KD",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.02518655,
+  "gpsLon": 15.76364995,
+  "_id": "67cc886f82c91421412a3673"
+ },
+ {
+  "id": 95,
+  "name": "Gorkého škola",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0254326,
+  "gpsLon": 15.7695446,
+  "_id": "67cc886f82c91421412a3674"
+ },
+ {
+  "id": 96,
+  "name": "Průmyslová",
+  "gpsLat": 50.02629855000001,
+  "gpsLon": 15.798649300000001,
+  "_id": "67cc886f82c91421412a3675"
+ },
+ {
+  "id": 97,
+  "name": "ERA Zámeček",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0257187,
+  "gpsLon": 15.8029499,
+  "_id": "67cc886f82c91421412a3676"
+ },
+ {
+  "id": 98,
+  "name": "Zdravotnická škola",
+  "gpsLat": 50.02002525,
+  "gpsLon": 15.8065567,
+  "_id": "67cc886f82c91421412a3677"
+ },
+ {
+  "id": 99,
+  "name": "Zámeček",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0261917,
+  "gpsLon": 15.804110049999998,
+  "_id": "67cc886f82c91421412a3678"
+ },
+ {
+  "id": 100,
+  "name": "Černá za Bory,silo",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0270138,
+  "gpsLon": 15.81221485,
+  "_id": "67cc886f82c91421412a3679"
+ },
+ {
+  "id": 101,
+  "name": "Černá za Bory,Lipiny",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.0258198,
+  "gpsLon": 15.81573485,
+  "_id": "67cc886f82c91421412a367a"
+ },
+ {
+  "id": 102,
+  "name": "Černá za Bory,Dělnická",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.0239353,
+  "gpsLon": 15.8219347,
+  "_id": "67cc886f82c91421412a367b"
+ },
+ {
+  "id": 103,
+  "name": "Drozdice",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0194588,
+  "gpsLon": 15.8190699,
+  "_id": "67cc886f82c91421412a367c"
+ },
+ {
+  "id": 104,
+  "name": "Holandská",
+  "aliases": [
+   "Černá za Bory,Holandská"
+  ],
+  "gpsLat": 50.02480125,
+  "gpsLon": 15.82931995,
+  "_id": "67cc886f82c91421412a367d"
+ },
+ {
+  "id": 105,
+  "name": "Černá za Bory,prodejna",
+  "aliases": [
+   "Černá za Bory,točna"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0240326,
+  "gpsLon": 15.8328778,
+  "_id": "67cc886f82c91421412a367e"
+ },
+ {
+  "id": 106,
+  "name": "Mnětice,u mostu",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0151253,
+  "gpsLon": 15.83339025,
+  "_id": "67cc886f82c91421412a367f"
+ },
+ {
+  "id": 107,
+  "name": "Mnětice",
+  "gpsLat": 50.01280046666667,
+  "gpsLon": 15.833928466666668,
+  "_id": "67cc886f82c91421412a3680"
+ },
+ {
+  "id": 108,
+  "name": "Černá za Bory,Na Vsi",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0231781,
+  "gpsLon": 15.8375998,
+  "_id": "67cc886f82c91421412a3681"
+ },
+ {
+  "id": 109,
+  "name": "Černá za Bory",
+  "gpsLat": 50.02431485,
+  "gpsLon": 15.8341818,
+  "_id": "67cc886f82c91421412a3682"
+ },
+ {
+  "id": 110,
+  "name": "Dubina,sever",
+  "gpsLat": 50.046497349999996,
+  "gpsLon": 15.811111,
+  "_id": "67cc886f82c91421412a3683"
+ },
+ {
+  "id": 111,
+  "name": "Živanice,Nerad",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.061306,
+  "gpsLon": 15.6356792,
+  "_id": "67cc886f82c91421412a3684"
+ },
+ {
+  "id": 112,
+  "name": "Dubina,garáže",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04207805,
+  "gpsLon": 15.8031902,
+  "_id": "67cc886f82c91421412a3685"
+ },
+ {
+  "id": 113,
+  "name": "Polabiny,Jiřího Potůčka",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.05262945,
+  "gpsLon": 15.75560615,
+  "_id": "67cc886f82c91421412a3686"
+ },
+ {
+  "id": 114,
+  "name": "Trnová,náměstí",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0572414,
+  "gpsLon": 15.757569799999999,
+  "_id": "67cc886f82c91421412a3687"
+ },
+ {
+  "id": 115,
+  "name": "Ohrazenice,škola",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.06197926666667,
+  "gpsLon": 15.75741063333333,
+  "_id": "67cc886f82c91421412a3688"
+ },
+ {
+  "id": 116,
+  "name": "Ohrazenice,Semtínská",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0620289,
+  "gpsLon": 15.7538834,
+  "_id": "67cc886f82c91421412a3689"
+ },
+ {
+  "id": 117,
+  "name": "Ohrazenice,točna",
+  "gpsLat": 50.06157685,
+  "gpsLon": 15.750665649999998,
+  "_id": "67cc886f82c91421412a368a"
+ },
+ {
+  "id": 118,
+  "name": "Závodiště",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.025187730960006,
+  "gpsLon": 15.747131109237673,
+  "_id": "67cc886f82c91421412a368b"
+ },
+ {
+  "id": 119,
+  "name": "Popkovice,hostinec",
+  "gpsLat": 50.02072335,
+  "gpsLon": 15.72248695,
+  "_id": "67cc886f82c91421412a368c"
+ },
+ {
+  "id": 120,
+  "name": "Staré Čívice,Přeloučská",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.01877210000001,
+  "gpsLon": 15.70472715,
+  "_id": "67cc886f82c91421412a368d"
+ },
+ {
+  "id": 121,
+  "name": "Staré Čívice,hostinec",
+  "aliases": [
+   "Staré Čívice,host."
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.01831435,
+  "gpsLon": 15.6984429,
+  "_id": "67cc886f82c91421412a368e"
+ },
+ {
+  "id": 122,
+  "name": "Staré Čívice,Ke Mlýnu",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.017511400000004,
+  "gpsLon": 15.69033715,
+  "_id": "67cc886f82c91421412a368f"
+ },
+ {
+  "id": 123,
+  "name": "Staré Čívice,točna",
+  "aliases": [
+   "Staré Čívice,točna MHD"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.015369449999994,
+  "gpsLon": 15.6885252,
+  "_id": "67cc886f82c91421412a3690"
+ },
+ {
+  "id": 124,
+  "name": "Rybitví,zadní brána",
+  "gpsLat": 50.0541992,
+  "gpsLon": 15.7170334,
+  "_id": "67cc886f82c91421412a3691"
+ },
+ {
+  "id": 125,
+  "name": "Rybitví,léčebna",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0586586,
+  "gpsLon": 15.705377599999998,
+  "_id": "67cc886f82c91421412a3692"
+ },
+ {
+  "id": 126,
+  "name": "Rybitví,křižovatka",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.05796625,
+  "gpsLon": 15.70101165,
+  "_id": "67cc886f82c91421412a3693"
+ },
+ {
+  "id": 129,
+  "name": "Svítkov,stadion",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.02353095,
+  "gpsLon": 15.71618795,
+  "_id": "67cc886f82c91421412a3694"
+ },
+ {
+  "id": 130,
+  "name": "Rybitví,Stavební škola",
+  "gpsLat": 50.0586205,
+  "gpsLon": 15.6981821,
+  "_id": "67cc886f82c91421412a3695"
+ },
+ {
+  "id": 131,
+  "name": "Karla Šípka",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0518875,
+  "gpsLon": 15.7557821,
+  "_id": "67cc886f82c91421412a3696"
+ },
+ {
+  "id": 134,
+  "name": "Černá za Bory,pošta",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.025699599999996,
+  "gpsLon": 15.82302665,
+  "_id": "67cc886f82c91421412a3697"
+ },
+ {
+  "id": 137,
+  "name": "Polabiny,Bělehradská",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0470009,
+  "gpsLon": 15.755746349999999,
+  "_id": "67cc886f82c91421412a3698"
+ },
+ {
+  "id": 141,
+  "name": "Nové Srnojedy",
+  "aliases": [
+   "Srnojedy,Nové Srnojedy"
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.03840065,
+  "gpsLon": 15.7052307,
+  "_id": "67cc886f82c91421412a3699"
+ },
+ {
+  "id": 142,
+  "name": "Staré Srnojedy",
+  "aliases": [
+   "Srnojedy,Staré Srnojedy"
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.03777315,
+  "gpsLon": 15.6967597,
+  "_id": "67cc886f82c91421412a369a"
+ },
+ {
+  "id": 143,
+  "name": "Lány na Důlku,Krchleby",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.03606605,
+  "gpsLon": 15.68558405,
+  "_id": "67cc886f82c91421412a369b"
+ },
+ {
+  "id": 144,
+  "name": "Lány na Důlku",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0400429,
+  "gpsLon": 15.67602825,
+  "_id": "67cc886f82c91421412a369c"
+ },
+ {
+  "id": 145,
+  "name": "Lány na Důlku,Na Cihelně",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.03873825,
+  "gpsLon": 15.66663125,
+  "_id": "67cc886f82c91421412a369d"
+ },
+ {
+  "id": 146,
+  "name": "Opočínek",
+  "gpsLat": 50.037838,
+  "gpsLon": 15.6555152,
+  "_id": "67cc886f82c91421412a369e"
+ },
+ {
+  "id": 148,
+  "name": "Univerzita",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.04859735,
+  "gpsLon": 15.770638949999999,
+  "_id": "67cc886f82c91421412a369f"
+ },
+ {
+  "id": 149,
+  "name": "Staré Hradiště,ObÚ",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0651054,
+  "gpsLon": 15.7747116,
+  "_id": "67cc886f82c91421412a36a0"
+ },
+ {
+  "id": 150,
+  "name": "Doubravice",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.065784449999995,
+  "gpsLon": 15.745941649999999,
+  "_id": "67cc886f82c91421412a36a1"
+ },
+ {
+  "id": 151,
+  "name": "Nemošice,točna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.008695599999996,
+  "gpsLon": 15.8086567,
+  "_id": "67cc886f82c91421412a36a2"
+ },
+ {
+  "id": 152,
+  "name": "Fáblovka",
+  "aliases": [
+   "Staré Hradiště,Fáblovka"
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.05956845,
+  "gpsLon": 15.7746043,
+  "_id": "67cc886f82c91421412a36a3"
+ },
+ {
+  "id": 153,
+  "name": "Fáblovka,točna",
+  "gpsLat": 50.0609856,
+  "gpsLon": 15.7706938,
+  "_id": "67cc886f82c91421412a36a4"
+ },
+ {
+  "id": 156,
+  "name": "Ráby,Kunětická hora",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0821495,
+  "gpsLon": 15.8050518,
+  "_id": "67cc886f82c91421412a36a5"
+ },
+ {
+  "id": 157,
+  "name": "Staré Hradiště,Na Hledíku",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.06302265,
+  "gpsLon": 15.76638745,
+  "_id": "67cc886f82c91421412a36a6"
+ },
+ {
+  "id": 158,
+  "name": "Staré Hradiště,hostinec",
+  "aliases": [
+   "Staré Hradiště,host."
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.06403843333334,
+  "gpsLon": 15.775554666666665,
+  "_id": "67cc886f82c91421412a36a7"
+ },
+ {
+  "id": 159,
+  "name": "Staré Hradiště,Brozany",
+  "gpsLat": 50.06492615,
+  "gpsLon": 15.79672575,
+  "_id": "67cc886f82c91421412a36a8"
+ },
+ {
+  "id": 160,
+  "name": "Ráby,křižovatka",
+  "aliases": [
+   "Ráby,křiž."
+  ],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.07064245,
+  "gpsLon": 15.80202675,
+  "_id": "67cc886f82c91421412a36a9"
+ },
+ {
+  "id": 162,
+  "name": "Nemošice,škola",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0112419,
+  "gpsLon": 15.79628325,
+  "_id": "67cc886f82c91421412a36aa"
+ },
+ {
+  "id": 163,
+  "name": "Ostřešany,škola",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 49.9944458,
+  "gpsLon": 15.79839895,
+  "_id": "67cc886f82c91421412a36ab"
+ },
+ {
+  "id": 164,
+  "name": "Ostřešany,park",
+  "gpsLat": 49.9931126,
+  "gpsLon": 15.80639985,
+  "_id": "67cc886f82c91421412a36ac"
+ },
+ {
+  "id": 165,
+  "name": "Ostřešany,točna",
+  "gpsLat": 49.9893303,
+  "gpsLon": 15.8274698,
+  "_id": "67cc886f82c91421412a36ad"
+ },
+ {
+  "id": 167,
+  "name": "Hlaváčova",
+  "gpsLat": 50.03169445,
+  "gpsLon": 15.7752585,
+  "_id": "67cc886f82c91421412a36ae"
+ },
+ {
+  "id": 168,
+  "name": "Ráby,prodejna",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0747833,
+  "gpsLon": 15.803407199999999,
+  "_id": "67cc886f82c91421412a36af"
+ },
+ {
+  "id": 169,
+  "name": "Staré Hradiště,Psinek",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0667133,
+  "gpsLon": 15.78345015,
+  "_id": "67cc886f82c91421412a36b0"
+ },
+ {
+  "id": 170,
+  "name": "Srch,Hrádek",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.07865715,
+  "gpsLon": 15.731688049999999,
+  "_id": "67cc886f82c91421412a36b1"
+ },
+ {
+  "id": 171,
+  "name": "Srch,Pohránov",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.07884215,
+  "gpsLon": 15.73811915,
+  "_id": "67cc886f82c91421412a36b2"
+ },
+ {
+  "id": 172,
+  "name": "Srch,obecní úřad",
+  "aliases": [
+   "Srch,ObÚ"
+  ],
+  "gpsLat": 50.085195549999995,
+  "gpsLon": 15.762767799999999,
+  "_id": "67cc886f82c91421412a36b3"
+ },
+ {
+  "id": 173,
+  "name": "Srch,točna",
+  "gpsLat": 50.0829811,
+  "gpsLon": 15.7729578,
+  "_id": "67cc886f82c91421412a36b4"
+ },
+ {
+  "id": 174,
+  "name": "Němčice,rybníček",
+  "aliases": [
+   "Němčice"
+  ],
+  "gpsLat": 50.0907421,
+  "gpsLon": 15.8065848,
+  "_id": "67cc886f82c91421412a36b5"
+ },
+ {
+  "id": 176,
+  "name": "Nemošice,5.května",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0096817,
+  "gpsLon": 15.8037071,
+  "_id": "67cc886f82c91421412a36b6"
+ },
+ {
+  "id": 177,
+  "name": "Dražkovice",
+  "gpsLat": 50.0004514,
+  "gpsLon": 15.771794,
+  "_id": "67cc886f82c91421412a36b7"
+ },
+ {
+  "id": 178,
+  "name": "Mikulovice",
+  "aliases": [
+   "Mikulovice,škola"
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 49.98994635,
+  "gpsLon": 15.774822700000001,
+  "_id": "67cc886f82c91421412a36b8"
+ },
+ {
+  "id": 179,
+  "name": "Mikulovice,Staňkova",
+  "gpsLat": 49.9899406,
+  "gpsLon": 15.7789574,
+  "_id": "67cc886f82c91421412a36b9"
+ },
+ {
+  "id": 180,
+  "name": "Stavařov",
+  "gpsLat": 50.0451889,
+  "gpsLon": 15.766845700000001,
+  "_id": "67cc886f82c91421412a36ba"
+ },
+ {
+  "id": 181,
+  "name": "Terminál Univerzita",
+  "aliases": [
+   "Polabiny,Hradecká"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.049509528750306,
+  "gpsLon": 15.76567590236664,
+  "showPlatform": true,
+  "_id": "67cc886f82c91421412a36bb"
+ },
+ {
+  "id": 182,
+  "name": "Němčice,chaloupky",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0875244,
+  "gpsLon": 15.804946900000001,
+  "_id": "67cc886f82c91421412a36bc"
+ },
+ {
+  "id": 183,
+  "name": "Dříteč",
+  "gpsLat": 50.1053371,
+  "gpsLon": 15.80880785,
+  "_id": "67cc886f82c91421412a36bd"
+ },
+ {
+  "id": 185,
+  "name": "Dubina,penzion",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.041729000000004,
+  "gpsLon": 15.8134351,
+  "_id": "67cc886f82c91421412a36be"
+ },
+ {
+  "id": 186,
+  "name": "Nemošice,Nábřežní",
+  "gpsLat": 50.0102196,
+  "gpsLon": 15.7998962,
+  "_id": "67cc886f82c91421412a36bf"
+ },
+ {
+  "id": 187,
+  "name": "Sukova",
+  "gpsLat": 50.039155949999994,
+  "gpsLon": 15.77155875,
+  "_id": "67cc886f82c91421412a36c0"
+ },
+ {
+  "id": 188,
+  "name": "Starý Mateřov,náves",
+  "aliases": [
+   "Starý Mateřov"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.00182725,
+  "gpsLon": 15.715886099999999,
+  "_id": "67cc886f82c91421412a36c1"
+ },
+ {
+  "id": 189,
+  "name": "Starý Mateřov,točna",
+  "aliases": [
+   "Starý Mateřov,křižovatka"
+  ],
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0012474,
+  "gpsLon": 15.7236729,
+  "_id": "67cc886f82c91421412a36c2"
+ },
+ {
+  "id": 190,
+  "name": "Živanice,sokolovna",
+  "aliases": [
+   "Živanice"
+  ],
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.06334685,
+  "gpsLon": 15.64768215,
+  "_id": "67cc886f82c91421412a36c3"
+ },
+ {
+  "id": 191,
+  "name": "Živanice,Dědek",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.07025145,
+  "gpsLon": 15.65667105,
+  "_id": "67cc886f82c91421412a36c4"
+ },
+ {
+  "id": 192,
+  "name": "Černá u Bohdanče,bytovky",
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.05625915,
+  "gpsLon": 15.68126345,
+  "_id": "67cc886f82c91421412a36c5"
+ },
+ {
+  "id": 193,
+  "name": "Černá u Bohdanče,obecní úřad",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0561752,
+  "gpsLon": 15.67229985,
+  "_id": "67cc886f82c91421412a36c6"
+ },
+ {
+  "id": 194,
+  "name": "Cihelna,točna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0534706,
+  "gpsLon": 15.7710419,
+  "_id": "67cc886f82c91421412a36c7"
+ },
+ {
+  "id": 195,
+  "name": "Globus parkoviště",
+  "gpsLat": 50.0587311,
+  "gpsLon": 15.753541,
+  "_id": "67cc886f82c91421412a36c8"
+ },
+ {
+  "id": 196,
+  "name": "Staré Čívice,KYB",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.024484650000005,
+  "gpsLon": 15.681463699999998,
+  "_id": "67cc886f82c91421412a36c9"
+ },
+ {
+  "id": 197,
+  "name": "Závodu míru",
+  "gpsLat": 50.037302049999994,
+  "gpsLon": 15.75584505,
+  "_id": "67cc886f82c91421412a36ca"
+ },
+ {
+  "id": 198,
+  "name": "Závodu míru,sídliště",
+  "gpsLat": 50.0382118,
+  "gpsLon": 15.763104949999999,
+  "_id": "67cc886f82c91421412a36cb"
+ },
+ {
+  "id": 199,
+  "name": "K Polabinám",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.03799055,
+  "gpsLon": 15.76627305,
+  "_id": "67cc886f82c91421412a36cc"
+ },
+ {
+  "id": 200,
+  "name": "Staré Čívice,Na Štěpnici",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.01807975,
+  "gpsLon": 15.6867614,
+  "_id": "67cc886f82c91421412a36cd"
+ },
+ {
+  "id": 201,
+  "name": "Staré Čívice,Panasonic",
+  "gpsLat": 50.01996805,
+  "gpsLon": 15.687089449999998,
+  "_id": "67cc886f82c91421412a36ce"
+ },
+ {
+  "id": 202,
+  "name": "Staré Čívice,JTEKT",
+  "gpsLat": 50.0234928,
+  "gpsLon": 15.6854291,
+  "_id": "67cc886f82c91421412a36cf"
+ },
+ {
+  "id": 203,
+  "name": "Staré Čívice,Průmyslová zóna",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0277824,
+  "gpsLon": 15.680755600000001,
+  "_id": "67cc886f82c91421412a36d0"
+ },
+ {
+  "id": 204,
+  "name": "Žižín",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.01914215,
+  "gpsLon": 15.846707349999999,
+  "_id": "67cc886f82c91421412a36d1"
+ },
+ {
+  "id": 205,
+  "name": "Hostovice",
+  "gpsLat": 50.002868649999996,
+  "gpsLon": 15.86671735,
+  "_id": "67cc886f82c91421412a36d2"
+ },
+ {
+  "id": 206,
+  "name": "Slovany,u přejezdu",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.03123665,
+  "gpsLon": 15.8082552,
+  "_id": "67cc886f82c91421412a36d3"
+ },
+ {
+  "id": 207,
+  "name": "Polabiny,Albert HM",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0350723,
+  "gpsLon": 15.7544451,
+  "_id": "67cc886f82c91421412a36d4"
+ },
+ {
+  "id": 208,
+  "name": "Albert HM",
+  "gpsLat": 50.0334015,
+  "gpsLon": 15.7523994,
+  "_id": "67cc886f82c91421412a36d5"
+ },
+ {
+  "id": 209,
+  "name": "Kpt.Nálepky",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.02064705,
+  "gpsLon": 15.761409749999999,
+  "_id": "67cc886f82c91421412a36d6"
+ },
+ {
+  "id": 210,
+  "name": "Demokratické mládeže",
+  "gpsLat": 50.020940800000005,
+  "gpsLon": 15.769578899999999,
+  "_id": "67cc886f82c91421412a36d7"
+ },
+ {
+  "id": 212,
+  "name": "Sezemice,Počaply,Chalupy",
+  "aliases": [
+   "Sezemice,Počaply"
+  ],
+  "gpsLat": 50.05595395,
+  "gpsLon": 15.83711435,
+  "_id": "67cc886f82c91421412a36d8"
+ },
+ {
+  "id": 213,
+  "name": "Sezemice,zámostí",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.0599518,
+  "gpsLon": 15.848673349999999,
+  "_id": "67cc886f82c91421412a36d9"
+ },
+ {
+  "id": 214,
+  "name": "Sezemice,pošta",
+  "gpsLat": 50.06644,
+  "gpsLon": 15.852906,
+  "_id": "67cc886f82c91421412a36da"
+ },
+ {
+  "id": 215,
+  "name": "Tuněchody,kovárna",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 49.9843903,
+  "gpsLon": 15.8426309,
+  "_id": "67cc886f82c91421412a36db"
+ },
+ {
+  "id": 216,
+  "name": "Tuněchody,kostel",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 49.979227050000006,
+  "gpsLon": 15.841084949999999,
+  "_id": "67cc886f82c91421412a36dc"
+ },
+ {
+  "id": 219,
+  "name": "Mnětice,Tuněchodská",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.010891,
+  "gpsLon": 15.8343163,
+  "_id": "67cc886f82c91421412a36dd"
+ },
+ {
+  "id": 220,
+  "name": "Staročernsko,střed",
+  "gpsLat": 50.0342178,
+  "gpsLon": 15.837162,
+  "_id": "67cc886f82c91421412a36de"
+ },
+ {
+  "id": 221,
+  "name": "Dubina,Dubinská",
+  "gpsLat": 50.046323799999996,
+  "gpsLon": 15.81306315,
+  "_id": "67cc886f82c91421412a36df"
+ },
+ {
+  "id": 222,
+  "name": "Dražkovice,dolní",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 50.00446895,
+  "gpsLon": 15.77281955,
+  "_id": "67cc886f82c91421412a36e0"
+ },
+ {
+  "id": 224,
+  "name": "Černá za Bory,odb.žel.zast.",
+  "gpsLat": 50.02809525,
+  "gpsLon": 15.82964995,
+  "_id": "67cc886f82c91421412a36e1"
+ },
+ {
+  "id": 225,
+  "name": "Dašice,Zminný",
+  "gpsLat": 50.028259,
+  "gpsLon": 15.8662128,
+  "_id": "67cc886f82c91421412a36e2"
+ },
+ {
+  "id": 226,
+  "name": "Dašice,Pod Dubem",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0267944,
+  "gpsLon": 15.8550014,
+  "_id": "67cc886f82c91421412a36e3"
+ },
+ {
+  "id": 227,
+  "name": "Sezemice,Veská,most",
+  "aliases": [
+   "Sezemice,Veská"
+  ],
+  "gpsLat": 50.039710766666666,
+  "gpsLon": 15.859509500000001,
+  "_id": "67cc886f82c91421412a36e4"
+ },
+ {
+  "id": 235,
+  "name": "Úhřetice",
+  "gpsLat": 49.9787369,
+  "gpsLon": 15.8668594,
+  "_id": "67cc886f82c91421412a36e5"
+ },
+ {
+  "id": 241,
+  "name": "Tuněchody,cihelna",
+  "fixedCodes": [
+   "x"
+  ],
+  "gpsLat": 49.97969245,
+  "gpsLon": 15.8537898,
+  "_id": "67cc886f82c91421412a36e6"
+ },
+ {
+  "id": 242,
+  "name": "Ostřešany,hřiště",
+  "aliases": [
+   "Ostřešany"
+  ],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 49.9984894,
+  "gpsLon": 15.7985678,
+  "_id": "67cc886f82c91421412a36e7"
+ },
+ {
+  "id": 243,
+  "name": "Rokycanova",
+  "gpsLat": 50.0291214,
+  "gpsLon": 15.7748604,
+  "_id": "67cc886f82c91421412a36e8"
+ },
+ {
+  "id": 244,
+  "name": "Staňkova škola",
+  "gpsLat": 50.0231323,
+  "gpsLon": 15.76497795,
+  "_id": "67cc886f82c91421412a36e9"
+ },
+ {
+  "id": 245,
+  "name": "Letiště terminál",
+  "fixedCodes": [
+   "@",
+   "J"
+  ],
+  "gpsLat": 50.0178604,
+  "gpsLon": 15.72501805,
+  "_id": "67cc886f82c91421412a36ea"
+ },
+ {
+  "id": 247,
+  "name": "Sezemice,Havlíčkova",
+  "aliases": [
+   "Sezemice,škola"
+  ],
+  "gpsLat": 50.06495475,
+  "gpsLon": 15.85327485,
+  "_id": "67cc886f82c91421412a36eb"
+ },
+ {
+  "id": 248,
+  "name": "Dašice,Zminný,odb.Veská",
+  "aliases": [
+   "Dašice"
+  ],
+  "fixedCodes": [
+   "x",
+   "@"
+  ],
+  "gpsLat": 50.0286064,
+  "gpsLon": 15.8635769,
+  "_id": "67cc886f82c91421412a36ec"
+ },
+ {
+  "id": 249,
+  "name": "Černá u Bohdanče,sever",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.0608902,
+  "gpsLon": 15.6731701,
+  "_id": "67cc886f82c91421412a36ed"
+ },
+ {
+  "id": 251,
+  "name": "Staročernsko",
+  "fixedCodes": [
+   "@"
+  ],
+  "gpsLat": 50.03424394,
+  "gpsLon": 15.83719432,
+  "_id": "67cc886f82c91421412a36ee"
+ },
+ {
+  "id": 147,
+  "name": "Opočínek,rozvodna",
+  "_id": "67cc9f0875b402dcacd90ca5"
+ },
+ {
+  "id": 250,
+  "name": "Svítkov,západ",
+  "gpsLat": 50.025582339229516,
+  "gpsLon": 15.719705522060396,
+  "_id": "67cca04575b402dcacd90ca6"
+ },
+ {
+  "id": 252,
+  "name": "Vápenka",
+  "gpsLat": 50.03003998127849,
+  "gpsLon": 15.754394531250002,
+  "showPlatform": true,
+  "_id": "67cca2da75b402dcacd90ca7"
+ }
+]

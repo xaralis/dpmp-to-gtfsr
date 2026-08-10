@@ -12,15 +12,20 @@ def load(name: str) -> Any:
 
 
 @pytest.fixture
-def buses_payload() -> list[dict[str, Any]]:
-    return load("buses.json")
+def vehicles_payload() -> dict[str, Any]:
+    return load("vehicles.json")
 
 
 @pytest.fixture
-def stations_payload() -> list[dict[str, Any]]:
-    return load("stations.json")
+def stops_payload() -> list[dict[str, Any]]:
+    return load("stops.json")
 
 
 @pytest.fixture
-def detail_payload() -> dict[str, Any]:
-    return load("detail-1-1.json")
+def lines_payload() -> list[dict[str, Any]]:
+    return load("lines.json")
+
+
+@pytest.fixture
+def connection_payload() -> dict[str, Any]:
+    return load("connection-1-1.json")

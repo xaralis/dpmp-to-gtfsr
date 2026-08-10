@@ -1,0 +1,80 @@
+{
+ "lineId": "1",
+ "connectionId": 1,
+ "fixedCodes": [
+  "X",
+  "@"
+ ],
+ "stops": [
+  {
+   "stopId": 65,
+   "platformId": "2",
+   "departureTime": "04:12:00"
+  },
+  {
+   "stopId": 44,
+   "platformId": "1",
+   "departureTime": "04:13:00"
+  },
+  {
+   "stopId": 45,
+   "platformId": "1",
+   "departureTime": "04:14:00"
+  },
+  {
+   "stopId": 5,
+   "platformId": "1",
+   "departureTime": "04:16:00"
+  },
+  {
+   "stopId": 6,
+   "platformId": "1",
+   "departureTime": "04:17:00"
+  },
+  {
+   "stopId": 24,
+   "platformId": "3",
+   "departureTime": "04:18:00"
+  },
+  {
+   "stopId": 58,
+   "platformId": "1",
+   "departureTime": "04:20:00"
+  },
+  {
+   "stopId": 14,
+   "platformId": "2",
+   "departureTime": "04:21:00"
+  },
+  {
+   "stopId": 9,
+   "platformId": "1",
+   "departureTime": "04:22:00"
+  },
+  {
+   "stopId": 10,
+   "platformId": "1",
+   "departureTime": "04:23:00"
+  },
+  {
+   "stopId": 11,
+   "platformId": "1",
+   "departureTime": "04:24:00"
+  },
+  {
+   "stopId": 12,
+   "platformId": "1",
+   "departureTime": "04:25:00"
+  },
+  {
+   "stopId": 206,
+   "platformId": "1",
+   "departureTime": "04:26:00"
+  },
+  {
+   "stopId": 13,
+   "platformId": "1",
+   "arrivalTime": "04:27:00"
+  }
+ ]
+}
