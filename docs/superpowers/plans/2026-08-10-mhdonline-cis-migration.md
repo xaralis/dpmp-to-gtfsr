@@ -891,10 +891,11 @@ can no longer answer.
 """
 
 from .archive import CisUnavailable, fetch_archives
-from .index import ServiceIndex, build_index
 
-__all__ = ["CisUnavailable", "ServiceIndex", "build_index", "fetch_archives"]
+__all__ = ["CisUnavailable", "fetch_archives"]
 ```
+
+Task 6 rozšíří `__all__` o `ServiceIndex` a `build_index`. Nezakládej `index.py` dopředu ani nenechávej zakomentovaný import — prázdný modul a mrtvý kód by prošly review jen proto, že to řekl plán.
 
 ```python
 # src/dpmp_gtfs/cis/archive.py
@@ -971,15 +972,6 @@ async def _fetch_one(client: httpx.AsyncClient, url: str, dest: Path) -> Path:
             return target
         raise CisUnavailable(f"{url} is unreachable and nothing is cached: {exc!r}") from exc
 ```
-
-Aby import `cis/__init__.py` prošel před Taskem 6, vytvoř zatím prázdný `src/dpmp_gtfs/cis/index.py` s:
-
-```python
-# src/dpmp_gtfs/cis/index.py
-"""Placeholder, filled in by the next task."""
-```
-
-a v `__init__.py` dočasně zakomentuj import `index`. Task 6 ho vrátí.
 
 - [ ] **Step 4: Spusť testy**
 
@@ -1326,7 +1318,14 @@ def _valid_from(line: Element) -> dt.date | None:
     return dt.datetime.fromisoformat(raw).date()
 ```
 
-Vrať do `src/dpmp_gtfs/cis/__init__.py` import z Tasku 5 (odkomentuj `from .index import ServiceIndex, build_index`).
+Rozšiř `src/dpmp_gtfs/cis/__init__.py` o nová jména:
+
+```python
+from .archive import CisUnavailable, fetch_archives
+from .index import ServiceIndex, build_index
+
+__all__ = ["CisUnavailable", "ServiceIndex", "build_index", "fetch_archives"]
+```
 
 - [ ] **Step 5: Spusť testy**
 
