@@ -166,6 +166,10 @@ def test_a_vehicle_on_an_unlisted_platform_still_gets_predictions() -> None:
     updates with no stop_time_update at all and their positions with no
     current_stop_sequence -- while the map page, which had the station
     fallback, showed them correctly. The two must not disagree.
+
+    Also: the *published* stop_id must be the trip's own resolvable stop
+    (``S2P1``), never the vehicle's raw, unlisted claim (``S2P9``) -- that
+    number is not in ``stops.txt`` and a consumer could not join on it.
     """
     index = _index()
     # Station 2 is on the trip, but as platform 1; the vehicle claims 9.
@@ -174,36 +178,86 @@ def test_a_vehicle_on_an_unlisted_platform_still_gets_predictions() -> None:
     msg = build_feed_message([vehicle], index, NOW)
 
     positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
+    assert positions[0].stop_id == "S2P1"
     assert positions[0].current_stop_sequence == 1
 
     updates = [e.trip_update for e in msg.entity if e.HasField("trip_update")]
     assert [u.stop_id for u in updates[0].stop_time_update] == ["S2P1", "S3P1"]
 
 
-def test_an_unknown_platform_falls_back_to_the_parent_station_id() -> None:
-    """Regression: when the upstream does not name a platform at all, the
-    published stop_id must still resolve against the static feed -- so it is
-    the parent station, not an empty guess or a fabricated platform."""
+def test_a_station_the_trip_does_not_serve_falls_back_to_the_parent_station_id() -> None:
+    """Regression: when the vehicle's reported station is not on this trip at
+    all (so the trip cannot be located), and no platform is named either, the
+    published stop_id must still be something -- the parent station, not an
+    empty guess or a fabricated platform. Station 5 is not one of L9C115's
+    stops (1, 2, 3)."""
     index = _index()
-    vehicle = _line9(nextStopId=2, nextStopPlatformId=None)
+    vehicle = _line9(nextStopId=5, nextStopPlatformId=None)
 
     msg = build_feed_message([vehicle], index, NOW)
 
     position = next(e.vehicle for e in msg.entity if e.HasField("vehicle"))
-    assert position.stop_id == "S2"
-    assert position.current_stop_sequence == 1
+    assert position.stop_id == "S5"
 
 
-def test_the_unknown_platform_fallback_resolves_in_a_real_feed(static_index: StaticIndex) -> None:
-    """The parent-station id the unknown-platform fallback publishes must
-    actually appear in a built static feed, not just satisfy the in-memory
-    :class:`ScheduledTrip` check that the other tests use."""
+def test_a_known_stop_without_an_exact_platform_resolves_in_a_real_feed(
+    static_index: StaticIndex,
+) -> None:
+    """When the platform is unnamed but the station is on the trip, the
+    published stop_id is the trip's own platform from the schedule -- proven
+    against a static feed built and read back through the real pipeline, not
+    just the in-memory :class:`ScheduledTrip` the other tests use."""
     vehicle = _vehicle(nextStopId=1, nextStopPlatformId=None)
     msg = build_feed_message([vehicle], static_index)
 
     position = next(e.vehicle for e in msg.entity if e.HasField("vehicle"))
-    assert position.stop_id == "S1"
+    assert position.stop_id == "S1P1"
     assert static_index.stop_name(position.stop_id) != ""
+
+
+def test_one_malformed_vehicle_does_not_discard_the_snapshot() -> None:
+    """Regression: ``currentDelay`` is typed as a plain ``str`` by the upstream,
+    so a garbage value passes pydantic validation and used to reach
+    ``parse_iso_duration`` unguarded, raising out of the loop and discarding
+    every other vehicle in the snapshot along with it.
+
+    A present-but-garbage value is a deliberate product decision, distinct
+    from an absent one: it is treated as zero delay (a ``TripUpdate`` is
+    still published, with ``delay == 0``) rather than as "no evidence either
+    way" -- having the trip present beats it disappearing from the feed.
+    """
+    index = _index()
+    good = _line9(vid="1", nextStopId=2, nextStopPlatformId=1, currentDelay="PT10S")
+    bad = _line9(vid="2", nextStopId=2, nextStopPlatformId=1, currentDelay="n/a")
+    other = _line9(vid="3", nextStopId=2, nextStopPlatformId=1, currentDelay=None)
+
+    msg = build_feed_message([good, bad, other], index, NOW)
+
+    vehicle_ids = [e.vehicle.vehicle.id for e in msg.entity if e.HasField("vehicle")]
+    assert vehicle_ids == ["1", "2", "3"]
+
+    updates = {
+        e.trip_update.vehicle.id: e.trip_update
+        for e in msg.entity
+        if e.HasField("trip_update")
+    }
+    # The absent-delay vehicle (3) gets no TripUpdate at all; the malformed
+    # one (2) gets one, pinned to zero.
+    assert set(updates) == {"1", "2"}
+    assert updates["2"].delay == 0
+
+
+def test_an_absent_delay_still_gets_no_trip_update_even_among_malformed_peers() -> None:
+    """Pins the absent/null case against the present-but-garbage one so a
+    future refactor cannot quietly merge the two: absence must keep meaning
+    "no evidence either way", not "zero"."""
+    index = _index()
+    absent = _line9(vid="3", nextStopId=2, nextStopPlatformId=1, currentDelay=None)
+
+    msg = build_feed_message([absent], index, NOW)
+
+    assert any(e.HasField("vehicle") for e in msg.entity)
+    assert not any(e.HasField("trip_update") for e in msg.entity)
 
 
 def test_a_trip_running_past_midnight_reports_the_day_it_started() -> None:

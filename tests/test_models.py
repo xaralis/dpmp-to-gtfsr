@@ -2,7 +2,14 @@ import datetime as dt
 
 import pytest
 
-from dpmp_gtfs.api.models import Connection, Line, Stop, VehiclesResponse, parse_iso_duration
+from dpmp_gtfs.api.models import (
+    Connection,
+    Line,
+    Stop,
+    Vehicle,
+    VehiclesResponse,
+    parse_iso_duration,
+)
 
 
 def test_vehicles_parse(vehicles_payload):
@@ -23,6 +30,41 @@ def test_delay_is_a_real_signed_duration():
 def test_delay_rejects_nonsense():
     with pytest.raises(ValueError):
         parse_iso_duration("1M43S")
+
+
+def _vehicle(**over: object) -> Vehicle:
+    payload: dict[str, object] = {
+        "vid": "1",
+        "lineId": "9",
+        "connectionId": 1,
+        "gpsLat": 50.0,
+        "gpsLon": 15.0,
+    }
+    payload.update(over)
+    return Vehicle.model_validate(payload)
+
+
+def test_an_unparseable_delay_is_zero_not_a_raise():
+    """``currentDelay`` is typed as a plain ``str`` by the upstream, so a
+    garbage value passes pydantic validation. ``Vehicle.delay`` must absorb
+    that rather than raise, or one bad vehicle takes the whole snapshot's
+    feed-building loop down with it.
+
+    Zero, not ``None``, is a deliberate product decision: the upstream did
+    try to describe this vehicle, just badly, and a trip published with no
+    delay beats one that vanishes from the feed. Do not "fix" this back to
+    ``None`` -- see the case right below, which is the one that actually
+    means "no evidence either way".
+    """
+    assert _vehicle(currentDelay="n/a").delay == dt.timedelta(0)
+
+
+def test_an_absent_delay_is_none_not_zero():
+    """Absent is not zero: publishing zero would assert punctuality for every
+    vehicle the upstream declined to describe. This is the case the previous
+    test must not be collapsed into."""
+    assert _vehicle(currentDelay=None).delay is None
+    assert _vehicle().delay is None
 
 
 def test_stop_flags_come_from_fixed_codes():

@@ -24,6 +24,7 @@ from types import TracebackType
 from typing import Any, Self
 
 import httpx
+from pydantic import ValidationError
 
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
@@ -68,7 +69,7 @@ class DpmpApiClient:
     Use as an async context manager so the connection pool is closed:
 
         async with DpmpApiClient() as api:
-            vehicles = await api.vehicles()
+            snapshot = await api.vehicles()  # VehiclesResponse: .time, .vehicles
     """
 
     def __init__(
@@ -168,9 +169,25 @@ class DpmpApiClient:
         lines = [Line.model_validate(line) for line in await self._get("lines")]
         return sorted(lines, key=lambda line: line.jdf_id)
 
-    async def vehicles(self) -> list[Vehicle]:
-        payload = VehiclesResponse.model_validate(await self._get("vehicles"))
-        return payload.vehicles
+    async def vehicles(self) -> VehiclesResponse:
+        """The current snapshot, tolerant of individual bad records.
+
+        ``VehiclesResponse.model_validate`` on the whole payload would reject
+        every vehicle in the response over one malformed entry -- the same
+        failure shape the ``/stops`` missing-coordinate case had. A stray
+        vehicle is data, not an outage, so it is logged and dropped rather
+        than taking the rest of the fleet down with it.
+        """
+        payload = await self._get("vehicles")
+        vehicles: list[Vehicle] = []
+        for raw in payload.get("vehicles", []):
+            try:
+                vehicles.append(Vehicle.model_validate(raw))
+            except ValidationError as exc:
+                logger.warning(
+                    "skipping vehicle %r that failed validation: %s", raw.get("vid"), exc
+                )
+        return VehiclesResponse.model_validate({**payload, "vehicles": vehicles})
 
     async def connection(self, line: str, number: int) -> Connection | None:
         """One trip's stop times, or ``None`` if the upstream has no such trip."""

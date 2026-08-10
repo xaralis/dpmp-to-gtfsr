@@ -56,7 +56,7 @@ async def test_refreshes_the_signature_once_on_401(vehicles_payload):
         result = await api.vehicles()
 
     assert len(seen) == 2
-    assert len(result) > 0
+    assert len(result.vehicles) > 0
 
 
 async def test_connection_returns_none_on_404():
@@ -69,6 +69,35 @@ async def test_connection_returns_none_on_404():
         DpmpApiClient(settings=_settings(), client=raw) as api,
     ):
         assert await api.connection("1", 999) is None
+
+
+async def test_one_structurally_invalid_vehicle_does_not_discard_the_snapshot(vehicles_payload):
+    """Regression: ``VehiclesResponse.model_validate`` on the whole payload
+    rejects every vehicle over one bad record -- the same failure shape the
+    ``/stops`` missing-coordinate case had, except here it is a genuine
+    production blocker: the realtime feed would freeze on the last good
+    snapshot until the upstream happened to fix the one bad record."""
+    good_count = len(vehicles_payload["vehicles"])
+    broken = {
+        **vehicles_payload,
+        "vehicles": [
+            *vehicles_payload["vehicles"],
+            {"vid": "999", "lineId": "9", "connectionId": 1},  # missing gpsLat/gpsLon
+        ],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=broken)
+
+    transport = httpx.MockTransport(handler)
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=API) as raw,
+        DpmpApiClient(settings=_settings(), client=raw) as api,
+    ):
+        result = await api.vehicles()
+
+    assert len(result.vehicles) == good_count
+    assert "999" not in {v.vid for v in result.vehicles}
 
 
 async def test_raises_after_exhausting_retries():

@@ -16,9 +16,12 @@ Everything the upstream does oddly is normalised here, once:
 """
 
 import datetime as dt
+import logging
 import re
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 _DURATION = re.compile(
     r"^(?P<sign>-?)P(?:(?P<d>\d+)D)?"
@@ -90,9 +93,30 @@ class Vehicle(BaseModel):
         """The vehicle's delay, or ``None`` when the upstream reports none.
 
         Absent is not zero: publishing zero would assert punctuality for every
-        vehicle the upstream declined to describe.
+        vehicle the upstream declined to describe -- that distinction is the
+        whole reason this returns ``None`` rather than ``timedelta(0)`` for a
+        missing value, and it stays load-bearing here.
+
+        ``currentDelay`` is typed as a plain ``str``, so a value that is
+        *present* but not a valid ISO-8601 duration reaches here too. That is
+        a different case from absence: the upstream did try to describe this
+        vehicle, it just did so badly, so this is treated as zero delay
+        (logged as a warning) rather than as "no evidence either way" --
+        a deliberate product decision, not the more cautious ``None`` the
+        absent/null case gets. Having the trip present with no delay beats
+        having it disappear from the feed entirely.
         """
-        return parse_iso_duration(self.current_delay) if self.current_delay else None
+        if not self.current_delay:
+            return None
+        try:
+            return parse_iso_duration(self.current_delay)
+        except ValueError:
+            logger.warning(
+                "vehicle %s has an unparseable currentDelay: %r -- treating as zero delay",
+                self.vid,
+                self.current_delay,
+            )
+            return dt.timedelta(0)
 
 
 class VehiclesResponse(BaseModel):

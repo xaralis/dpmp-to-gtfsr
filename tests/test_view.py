@@ -111,6 +111,16 @@ def test_a_reported_delay_is_marked_as_measured() -> None:
     assert v.delay_measured is True
 
 
+def test_an_unparseable_delay_shows_as_zero_not_a_raise() -> None:
+    """Regression: ``build_vehicle_views`` reads ``vehicle.delay`` on the same
+    path ``build_feed_message`` does; a garbage ``currentDelay`` must not take
+    the whole view-building loop down either. Zero, not ``None``, per the
+    same product decision as the realtime feed."""
+    v = _view(_vehicle(currentDelay="n/a"))
+    assert v.delay_seconds == 0
+    assert v.delay_measured is True
+
+
 def test_an_early_vehicle_has_a_negative_delay() -> None:
     v = _view(_vehicle(currentDelay="-PT1M0S"))
     assert v.delay_seconds == -60

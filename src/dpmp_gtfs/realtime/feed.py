@@ -62,8 +62,19 @@ def build_feed_message(
 
         # Where the vehicle is along this trip, resolved once and used by both
         # the position and the predictions so they cannot disagree.
-        current = _current_stop_id(vehicle)
-        position_now = trip.locate(current or None, vehicle.next_stop_id)
+        locate_key = _locate_key(vehicle)
+        position_now = trip.locate(locate_key or None, vehicle.next_stop_id)
+
+        # The id actually published is the trip's own stop once located, not
+        # the vehicle's raw report: an unlisted platform (a real number the
+        # trip just doesn't call at) would otherwise reach a consumer as a
+        # stop_id absent from stops.txt.
+        if position_now is not None:
+            published_stop_id = trip.stops[position_now].stop_id
+        elif vehicle.next_stop_id is not None:
+            published_stop_id = station_id(vehicle.next_stop_id)
+        else:
+            published_stop_id = ""
 
         # --- vehicle position ---
         position = gtfsr.Position(latitude=vehicle.gps_latitude, longitude=vehicle.gps_longitude)
@@ -73,7 +84,7 @@ def build_feed_message(
             vehicle=vehicle_descriptor,
             position=position,
             timestamp=reported_at,
-            stop_id=current,
+            stop_id=published_stop_id,
             current_status=(
                 gtfsr.VehiclePosition.STOPPED_AT
                 if vehicle.on_station
@@ -121,13 +132,15 @@ def build_feed_message(
     return message
 
 
-def _current_stop_id(vehicle: Vehicle) -> str:
-    """The stop id to publish for where a vehicle is heading.
+def _locate_key(vehicle: Vehicle) -> str:
+    """The id to search the trip for, given what the vehicle itself reports.
 
-    The platform when the upstream names one; otherwise the parent station,
-    which is still a real, resolvable id in the static feed -- unlike a
-    fabricated platform or an empty string, either of which a consumer could
-    not join back to anything.
+    Only used to *locate* the vehicle along its trip -- ``ScheduledTrip.locate``
+    tries this as an exact platform match before falling back to the station.
+    The id actually published for the vehicle's position is never this value
+    directly; see ``published_stop_id`` in :func:`build_feed_message`, which
+    takes it from the trip once located so an unlisted platform never reaches
+    a consumer.
     """
     if vehicle.next_stop_id is None:
         return ""
