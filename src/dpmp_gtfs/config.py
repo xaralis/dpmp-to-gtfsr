@@ -55,9 +55,20 @@ class Settings(BaseSettings):
     # --- output -------------------------------------------------------------
     data_dir: Path = Path("data")
 
+    http_cache: bool = False
+    """Replay API responses from disk -- see :mod:`dpmp_gtfs.api.cache`.
+
+    A development aid: a full crawl is ~20 minutes, so investigating anything
+    that surfaces late in a build is unaffordable without it. Off by default
+    because a scheduled rebuild must fetch the timetable that exists now."""
+
     @property
     def gtfs_zip_path(self) -> Path:
         return self.data_dir / "gtfs.zip"
+
+    @property
+    def http_cache_dir(self) -> Path:
+        return self.data_dir / "http-cache"
 
 
 settings = Settings()

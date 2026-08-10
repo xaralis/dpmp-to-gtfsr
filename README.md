@@ -96,6 +96,19 @@ uv run pytest
 uv run ruff check .
 ```
 
+Úplná přestavba statického feedu je zhruba 4 400 requestů a asi dvacet minut —
+většinu z toho spolkne hledání konce každé linky, které potřebuje padesát 404
+za sebou, aby si bylo jisté. Pro cokoliv, co se projeví až na konci buildu, se
+proto hodí zapnout cache odpovědí:
+
+```bash
+DPMP_HTTP_CACHE=1 uv run dpmp-gtfs build-static
+```
+
+Ukládá i ty 404. Jízdní řády platí 12 hodin, `vehicles` a `events` pět minut,
+neznámý endpoint taky pět minut. **V produkci zůstává vypnutá** — noční
+přestavba musí vidět jízdní řád, který platí teď.
+
 ## Poznámky k datům
 
 Několik vlastností zdrojového API, které nejsou zřejmé a stály za ověření:

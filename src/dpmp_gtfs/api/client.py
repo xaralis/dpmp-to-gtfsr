@@ -32,6 +32,7 @@ from dpmp_gtfs.config import settings as default_settings
 from dpmp_gtfs.exceptions import DpmpApiError
 from dpmp_gtfs.protocol import app_protocol
 
+from .cache import MISS, ResponseCache
 from .models import Connection, Line, Stop, Vehicle, VehiclesResponse
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,9 @@ class DpmpApiClient:
         )
         self._gate = asyncio.Semaphore(self.settings.crawl_concurrency)
         self._limiter = RateLimiter(self.settings.crawl_rate_limit)
+        self._cache = (
+            ResponseCache(self.settings.http_cache_dir) if self.settings.http_cache else None
+        )
 
     async def __aenter__(self) -> Self:
         return self
@@ -121,9 +125,7 @@ class DpmpApiClient:
             logger.debug("%s got %d, retrying with a new signature", path, response.status_code)
             async with self._gate:
                 await self._limiter.acquire()
-                response = await self._client.get(
-                    f"{self._prefix}/{path}", headers=self._headers()
-                )
+                response = await self._client.get(f"{self._prefix}/{path}", headers=self._headers())
         return response
 
     async def _get(self, path: str, *, missing_ok: bool = False) -> Any:
@@ -133,6 +135,11 @@ class DpmpApiClient:
         docstring. Raises :class:`DpmpApiError` once retries are exhausted, so
         callers can tell "upstream is down" from a bug.
         """
+        if self._cache is not None:
+            hit = self._cache.get(path)
+            if hit is not MISS:
+                return hit
+
         last: Exception | None = None
 
         for attempt in range(self.settings.max_retries):
@@ -151,11 +158,17 @@ class DpmpApiClient:
             try:
                 response = await self._send(path)
                 if missing_ok and response.status_code == 404:
-                    return None
-                response.raise_for_status()
-                return response.json()
+                    payload = None
+                else:
+                    response.raise_for_status()
+                    payload = response.json()
             except (httpx.HTTPError, json.JSONDecodeError) as exc:
                 last = exc
+                continue
+
+            if self._cache is not None:
+                self._cache.put(path, payload)
+            return payload
 
         raise DpmpApiError(
             f"{path} failed after {self.settings.max_retries} attempts: {last!r}"
