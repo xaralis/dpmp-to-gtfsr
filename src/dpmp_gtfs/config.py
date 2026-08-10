@@ -21,6 +21,15 @@ class Settings(BaseSettings):
 
     user_agent: str = "dpmp-to-gtfsr/0.1 (+https://github.com/xaralis/dpmp-to-gtfsr)"
 
+    # --- CIS JŘ registry ----------------------------------------------------
+    cis_urls: tuple[str, ...] = (
+        "https://portal.cisjr.cz/pub/netex/NeTEx_DrahyMestske.zip",
+        "https://portal.cisjr.cz/pub/netex/NeTEx_VerejnaLinkovaDoprava.zip",
+    )
+    """Trolejbusy jsou v prvním archivu, autobusy ve druhém. Oba jsou potřeba."""
+
+    cis_dir: Path = Path("data/cis")
+
     # --- politeness ---------------------------------------------------------
     request_timeout: float = 15.0
     max_retries: int = 4
