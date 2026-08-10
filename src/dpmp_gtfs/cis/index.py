@@ -9,8 +9,11 @@ Version selection is the subtle part. A line is usually present several times
 over, and more than one version is typically valid *today*: line 655001 ships
 as a 283-trip version valid from 2026-01-01 and a 206-trip version valid from
 2026-07-01, and the API agrees with the latter exactly. Unioning them would
-invent 77 trips that do not run, so the rule is the latest ``FromDate`` that
-has already started -- not merely one whose window covers the date.
+invent 141 trips that do not run, so the rule is: among versions whose window
+actually covers the build date (``FromDate <= on_date`` and ``ToDate`` absent
+or ``>= on_date``), the latest ``FromDate`` wins; a tie goes to the longer
+``ToDate``; a further tie is broken by source file name, purely so the result
+is deterministic rather than an accident of zip entry order.
 """
 
 import datetime as dt
@@ -46,6 +49,17 @@ class LineServices:
     """Trip number -> direction_id. The trip number is the JDF "spoj", which
     the API reports as ``connectionId`` -- the join between the two sources."""
 
+    valid_to: dt.date | None = None
+    """Upper end of this version's validity window, or ``None`` if the source
+    left ``ToDate`` unset (open-ended). Used only to rank versions that share
+    a ``FromDate`` -- the longer window wins."""
+
+    source: str = ""
+    """Archive file name + zip entry the version was read from, e.g.
+    ``"linky.zip:655001_2026.xml"``. Exists purely to make version selection
+    deterministic when two versions still tie on ``FromDate`` and ``ToDate``
+    -- it is a tiebreaker, not something meant for display."""
+
 
 @dataclass(frozen=True, slots=True)
 class ServiceIndex:
@@ -76,13 +90,13 @@ def build_index(
                 # the rest would cost seconds of XML for nothing.
                 if needle not in blob:
                     continue
-                parsed = _parse(blob, operator)
+                parsed = _parse(blob, operator, source=f"{path.name}:{name}")
                 if parsed is None:
                     continue
-                if parsed.valid_from > on_date:
+                if not _covers(parsed, on_date):
                     continue
                 current = best.get(parsed.jdf_id)
-                if current is None or parsed.valid_from > current.valid_from:
+                if current is None or _sort_key(parsed) > _sort_key(current):
                     best[parsed.jdf_id] = parsed
 
     logger.info(
@@ -94,7 +108,22 @@ def build_index(
     return ServiceIndex(lines=best)
 
 
-def _parse(blob: bytes, operator: str) -> LineServices | None:
+def _covers(line: LineServices, on_date: dt.date) -> bool:
+    """Whether ``line``'s validity window has started and not yet ended."""
+    if line.valid_from > on_date:
+        return False
+    return line.valid_to is None or line.valid_to >= on_date
+
+
+def _sort_key(line: LineServices) -> tuple[dt.date, dt.date, str]:
+    """Rank versions of the same line: latest ``FromDate`` wins; tied, the
+    longer ``ToDate`` (open-ended sorts as infinitely long); still tied, the
+    source name -- so the winner does not depend on zip iteration order."""
+    valid_to = line.valid_to if line.valid_to is not None else dt.date.max
+    return (line.valid_from, valid_to, line.source)
+
+
+def _parse(blob: bytes, operator: str, source: str) -> LineServices | None:
     # defusedxml, not the stdlib parser: this is bulk third-party XML parsed
     # unattended, and entity-expansion attacks are exactly what it is exposed
     # to. Returns an ordinary ElementTree Element, so nothing else changes.
@@ -111,6 +140,7 @@ def _parse(blob: bytes, operator: str) -> LineServices | None:
     valid_from = _valid_from(line)
     if jdf_id is None or valid_from is None:
         return None
+    valid_to = _valid_to(line)
 
     directions = _pattern_directions(root)
 
@@ -121,11 +151,25 @@ def _parse(blob: bytes, operator: str) -> LineServices | None:
         if name is None or not name.isdigit() or ref is None:
             continue
         key = _pattern_key(ref.get("ref") or "") or ""
+        if key not in directions:
+            logger.warning(
+                "line %s trip %s: unresolved ServiceJourneyPatternRef %r, "
+                "defaulting to OUTBOUND",
+                jdf_id,
+                name,
+                ref.get("ref"),
+            )
         trips[int(name)] = directions.get(key, OUTBOUND)
 
     if not trips:
         return None
-    return LineServices(jdf_id=jdf_id, valid_from=valid_from, trips=trips)
+    return LineServices(
+        jdf_id=jdf_id,
+        valid_from=valid_from,
+        trips=trips,
+        valid_to=valid_to,
+        source=source,
+    )
 
 
 def _pattern_directions(root: Element) -> dict[str, int]:
@@ -159,6 +203,13 @@ def _line_number(ref: str) -> str | None:
 
 def _valid_from(line: Element) -> dt.date | None:
     raw = line.findtext("n:ValidBetween/n:FromDate", namespaces=NS)
+    if not raw:
+        return None
+    return dt.datetime.fromisoformat(raw).date()
+
+
+def _valid_to(line: Element) -> dt.date | None:
+    raw = line.findtext("n:ValidBetween/n:ToDate", namespaces=NS)
     if not raw:
         return None
     return dt.datetime.fromisoformat(raw).date()
