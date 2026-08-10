@@ -30,9 +30,11 @@ _DURATION = re.compile(
 )
 _HHMMSS = re.compile(r"^(\d{2}):(\d{2}):(\d{2})$")
 
-# Trip-level fixed codes, from the JDF 1.10 table of fixed codes (Ministerstvo
-# dopravy, Odbor veřejné dopravy). The old API published these meanings at
-# ``/api/codes``; the new one does not, so they are spelled out here.
+# Trip-level fixed codes. The old API published their meanings at
+# ``/api/codes``; the new one does not. Rather than infer them from the JDF
+# 1.10 spec, they are taken verbatim from DPMP's own app, which ships the whole
+# table in its bundle -- see docs/upstream-api.md for the extract and how to
+# find it again.
 WORKING_DAYS = "X"
 SATURDAY = "6"
 SUNDAY_AND_HOLIDAYS = "+"

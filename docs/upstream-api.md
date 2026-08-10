@@ -21,8 +21,28 @@ všechno podstatné:
   `trips.txt`, `stop_times.txt` i `calendar.txt`. Náhrada v API neexistuje —
   ověřeno proti jejich vlastnímu JS bundlu, jejich frontend celý jízdní řád
   nikdy nezobrazuje.
-- **Zmizel endpoint `codes`.** Význam kalendářních kódů se musí zadrátovat
-  (viz níž).
+- **Zmizel endpoint `codes`.** Význam kódů se musí zadrátovat — ale ne odhadem
+  z normy: jejich vlastní aplikace nese celou tabulku v bundlu
+  (`online.dpmp.cz/assets/index-*.js`, hledej `description:"zastávka na
+  znamení"`). Ověřeno proti ní doslova:
+
+  | kód | význam | úroveň |
+  |-----|--------|--------|
+  | `X` | jede v pracovních dnech | spoj |
+  | `6` | jede v sobotu | spoj |
+  | `+` | jede v neděli a ve státem uznané svátky | spoj |
+  | `1`–`5`, `7` | jede v pondělí … pátek, v neděli | spoj |
+  | `@` | garantovaný nízkopodlažní spoj | spoj |
+  | `@` | zastávka je bezbariérově přístupná | zastávka |
+  | `x` | zastávka na znamení | zastávka |
+  | `J` | zastávka u veřejného letiště | zastávka |
+
+  Číselné kódy `1`–`7` používá jen linka 90 (letištní shuttle), která jezdí ve
+  dnech, kdy se létá. Než se doplnily, shodily celý build.
+
+  Tištěný jízdní řád DPMP má vlastní, jinou sadu značek (`Q` bezbariérovost,
+  `J` jízdenkový automat) a dny provozu tam nejsou kódy, ale sloupce tabulky.
+  Na data z API se ta legenda nevztahuje.
 - **Zmizely souřadnice nástupišť.** `/stops` vrací 219 plochých zastávek
   s jedním bodem; nástupiště dědí souřadnice od své stanice.
 
