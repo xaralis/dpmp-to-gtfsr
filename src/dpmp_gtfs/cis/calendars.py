@@ -15,23 +15,30 @@ bitmap is the whole point, because DPMP runs three different weekday patterns
 depending on whether schools are in session, and a weekly pattern cannot say
 that.
 
-Version selection is the subtle part. A line is usually present several times
-over, and more than one version is typically valid *today*: line 655001 ships
-as a 283-trip version valid from 2026-01-01 and a 206-trip version valid from
-2026-07-01, and the API agrees with the latter exactly. So the rule is: among
-versions whose window actually covers the build date (``FromDate <= on_date``
-and ``ToDate`` absent or ``>= on_date``), the latest ``FromDate`` wins; a tie
-goes to the longer ``ToDate``; a further tie is broken by source file name,
-purely so the result is deterministic rather than an accident of zip entry
-order.
+Version selection is the subtle part, and it is decided **per date, not per
+line**. A line ships several times over: line 655002 has a year-round version
+valid 2026-01-01..2035-12-31 alongside a school-holiday supplement valid
+2026-07-01..2026-08-31. Both cover a build date in August, but they do not
+compete for the year -- they tile it. Letting the supplement win the whole
+window (it has the later ``FromDate``) throws away every day after 31 August
+and takes seven routes, lines 2 and 6 among them, dark for ten months of a
+feed that claims to be valid for twelve.
+
+So for each date in the window, the version in force *on that date* supplies
+that day's bits, and the days are unioned per trip number. Where several
+versions still cover the same date, the latest ``FromDate`` wins; a tie goes
+to the longer ``ToDate``; a further tie is broken by source file name, purely
+so the result does not depend on zip entry order. A trip number the next
+version does not carry simply stops running when its own version's turn ends
+-- which is exactly what a summer-only trip is.
 """
 
 import datetime as dt
 import logging
 import re
 import zipfile
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from xml.etree.ElementTree import Element
 
@@ -44,6 +51,10 @@ DPMP_OPERATOR = "63217066"
 
 _LINE_NUMBER = re.compile(r":Line:(\d+)")
 
+type Timings = tuple[str, ...]
+"""A journey's call times in travel order -- what makes it that journey rather
+than another one that happens to carry the same trip number."""
+
 
 @dataclass(frozen=True, slots=True)
 class LineCalendars:
@@ -55,6 +66,10 @@ class LineCalendars:
     """Trip number -> the days it runs. The trip number is the JDF "spoj",
     which the API reports as ``connectionId`` -- the join between the two
     sources."""
+
+    timings: dict[int, Timings] = field(default_factory=dict)
+    """Trip number -> its call times. Only used to decide whether the next
+    version still means the same journey by that number."""
 
     valid_to: dt.date | None = None
     """Upper end of this version's validity window, or ``None`` if the source
@@ -74,7 +89,7 @@ def build_calendars(
 
     Restricted to ``[on_date, horizon]``; a longer bitmap is clipped.
     """
-    best: dict[str, LineCalendars] = {}
+    versions: dict[str, list[LineCalendars]] = {}
     needle = DPMP_OPERATOR.encode()
 
     for path in paths:
@@ -88,18 +103,20 @@ def build_calendars(
                 if needle not in blob:
                     continue
                 parsed = _parse(blob, on_date, horizon, source=f"{path.name}:{name}")
-                if parsed is None or not _covers(parsed, on_date):
+                if parsed is None or not _overlaps(parsed, on_date, horizon):
                     continue
-                current = best.get(parsed.jdf_id)
-                if current is None or _sort_key(parsed) > _sort_key(current):
-                    best[parsed.jdf_id] = parsed
+                versions.setdefault(parsed.jdf_id, []).append(parsed)
 
-    calendars = {
-        (line.jdf_id, number): days for line in best.values() for number, days in line.trips.items()
-    }
+    calendars: dict[tuple[str, int], frozenset[dt.date]] = {}
+    for jdf_id, line in sorted(versions.items()):
+        days_by_trip = _days_in_force(line, on_date, horizon)
+        _warn_if_coverage_ends_early(jdf_id, days_by_trip, horizon)
+        for number, days in days_by_trip.items():
+            calendars[(jdf_id, number)] = days
+
     logger.info(
         "CIS calendars: %d lines, %d trips over %s..%s",
-        len(best),
+        len(versions),
         len(calendars),
         on_date,
         horizon,
@@ -107,9 +124,111 @@ def build_calendars(
     return calendars
 
 
-def _covers(line: LineCalendars, on_date: dt.date) -> bool:
-    """Whether ``line``'s validity window has started and not yet ended."""
-    if line.valid_from > on_date:
+GRACE = dt.timedelta(days=7)
+"""How close to the horizon a trip's last day has to be to count as covered.
+
+A trip that only runs on Sundays legitimately stops several days short of an
+arbitrary horizon; one that stops months short means CIS has no timetable for
+it that far ahead."""
+
+
+def _warn_if_coverage_ends_early(
+    jdf_id: str, days_by_trip: dict[int, frozenset[dt.date]], horizon: dt.date
+) -> None:
+    """Say so when a line's timetable runs out inside the feed's window.
+
+    It happens whenever the next timetable renumbers its trips: DPMP has filed
+    one, but under trip numbers this feed's journeys cannot be matched to, so
+    those journeys simply have no days past the changeover. The feed is then
+    honestly incomplete rather than wrong, but it is incomplete quietly, and
+    an operator watching a line go dark deserves to be told which and when.
+    """
+    ends = [max(days) for days in days_by_trip.values() if days and max(days) < horizon - GRACE]
+    if ends:
+        logger.warning(
+            "line %s: %d of %d trips have no CIS days after %s -- the next "
+            "timetable renumbers them",
+            jdf_id,
+            len(ends),
+            len(days_by_trip),
+            max(ends),
+        )
+
+
+def _days_in_force(
+    versions: list[LineCalendars], on_date: dt.date, horizon: dt.date
+) -> dict[int, frozenset[dt.date]]:
+    """Merge one line's versions, letting each own the dates it is in force on.
+
+    Only trip numbers the *current* version has are reported, and a later
+    version may extend one only when it still means the same journey by that
+    number. Both restrictions are load-bearing: a trip number is not a stable
+    identifier across versions. On line 2 the September timetable shares 103
+    trip numbers with the August one and gives 45 of them different times, so
+    an unconditional union would publish August's departure times running on
+    September's days -- a passenger standing at a stop the bus never reaches,
+    which is worse than a trip the feed admits it cannot see past.
+    """
+    winners = [(date, _in_force_on(versions, date)) for date in _days_between(on_date, horizon)]
+
+    owned: dict[int, set[dt.date]] = {}
+    for date, index in winners:
+        if index is not None:
+            owned.setdefault(index, set()).add(date)
+
+    # The version in force at the start of the window is the one whose trip
+    # numbering the API is currently serving, so it decides which trips this
+    # feed is about at all.
+    first = next((index for _, index in winners if index is not None), None)
+    if first is None:
+        return {}
+    current = versions[first]
+
+    # Present even when a trip runs on none of the days it is offered: "CIS
+    # knows this trip and says it does not run" is a different answer from
+    # "CIS has never heard of it", and only the second sends the builder back
+    # to the API's fixed codes.
+    trips: dict[int, set[dt.date]] = {number: set() for number in current.trips}
+    for index, dates in owned.items():
+        version = versions[index]
+        for number, days in version.trips.items():
+            if number not in trips:
+                continue
+            if version is not current and version.timings.get(number) != current.timings.get(
+                number
+            ):
+                continue
+            trips[number].update(days & dates)
+
+    return {number: frozenset(days) for number, days in trips.items()}
+
+
+def _in_force_on(versions: list[LineCalendars], date: dt.date) -> int | None:
+    """Index of the version that governs ``date``, or ``None`` if none does."""
+    best: int | None = None
+    for index, version in enumerate(versions):
+        if not _covers(version, date):
+            continue
+        if best is None or _sort_key(version) > _sort_key(versions[best]):
+            best = index
+    return best
+
+
+def _days_between(start: dt.date, end: dt.date) -> Iterator[dt.date]:
+    for offset in range((end - start).days + 1):
+        yield start + dt.timedelta(days=offset)
+
+
+def _covers(line: LineCalendars, date: dt.date) -> bool:
+    """Whether ``line``'s validity window includes ``date``."""
+    if line.valid_from > date:
+        return False
+    return line.valid_to is None or line.valid_to >= date
+
+
+def _overlaps(line: LineCalendars, on_date: dt.date, horizon: dt.date) -> bool:
+    """Whether ``line``'s validity window touches the feed's window at all."""
+    if line.valid_from > horizon:
         return False
     return line.valid_to is None or line.valid_to >= on_date
 
@@ -143,6 +262,7 @@ def _parse(blob: bytes, on_date: dt.date, horizon: dt.date, source: str) -> Line
     day_types = _day_type_dates(root, on_date, horizon)
 
     trips: dict[int, frozenset[dt.date]] = {}
+    timings: dict[int, Timings] = {}
     for journey in root.iterfind(".//n:ServiceJourney", NS):
         name = journey.findtext("n:Name", namespaces=NS)
         if name is None or not name.isdigit():
@@ -151,6 +271,7 @@ def _parse(blob: bytes, on_date: dt.date, horizon: dt.date, source: str) -> Line
         for ref in journey.iterfind("n:dayTypes/n:DayTypeRef", NS):
             days |= day_types.get(ref.get("ref") or "", frozenset())
         trips[int(name)] = frozenset(days)
+        timings[int(name)] = _timings(journey)
 
     if not trips:
         return None
@@ -158,9 +279,28 @@ def _parse(blob: bytes, on_date: dt.date, horizon: dt.date, source: str) -> Line
         jdf_id=jdf_id,
         valid_from=valid_from,
         trips=trips,
+        timings=timings,
         valid_to=_date(line.findtext("n:ValidBetween/n:ToDate", namespaces=NS)),
         source=source,
     )
+
+
+def _timings(journey: Element) -> Timings:
+    """Every time a journey calls at something, in travel order.
+
+    The only handle on whether two versions mean the same journey by a trip
+    number. Both times are taken where both exist: the first stop publishes
+    only a departure and the last only an arrival, so taking one kind would
+    make two journeys that differ at a terminus look identical.
+    """
+    times: list[str] = []
+    for passing in journey.iterfind("n:passingTimes/n:TimetabledPassingTime", NS):
+        times.extend(
+            text
+            for tag in ("ArrivalTime", "DepartureTime")
+            if (text := passing.findtext(f"n:{tag}", namespaces=NS))
+        )
+    return tuple(times)
 
 
 def _day_type_dates(

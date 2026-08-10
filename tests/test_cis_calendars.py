@@ -1,22 +1,36 @@
 """Tests for reading days of operation out of the NeTEx archives.
 
-The fixtures are slices of the real archive published on 2026-08-07: line
-655001 (trolleybus 1) in both the version in force from 2026-07-01 and the
-superseded one from 2026-01-01, cut down to a few journeys each but with their
-``ValidDayBits`` untouched. Everything asserted below was checked against the
-whole file first, so a fixture that drifts from reality fails here rather than
-quietly agreeing with itself.
+The fixtures are slices of the real archive published on 2026-08-07, cut down
+to a few journeys each but with their ``ValidDayBits`` and passing times
+untouched:
+
+* line 655001 (trolleybus 1) in the version in force from 2026-07-01 and the
+  superseded one from 2026-01-01, which compete for the same dates;
+* line 655002 (trolleybus 2) in the school-holiday supplement that expires on
+  2026-08-31 and the year-round version that takes over from it, which *tile*
+  the timeline instead. Its trip 9 leaves at 04:32 in both; its trip 21 leaves
+  at 05:15 in one and 05:20 in the other, so the number means a different
+  journey either side of the changeover.
+
+Everything asserted below was checked against the whole archive first, so a
+fixture that drifts from reality fails here rather than quietly agreeing with
+itself.
 """
 
 import datetime as dt
+import logging
 import zipfile
 from pathlib import Path
+
+import pytest
 
 from dpmp_gtfs.cis.calendars import build_calendars
 
 FIXTURES = Path(__file__).parent / "fixtures" / "netex"
 CURRENT = FIXTURES / "line-655001-2026-07-01.xml"
 SUPERSEDED = FIXTURES / "line-655001-2026-01-01.xml"
+SUMMER = FIXTURES / "line-655002-2026-07-27.xml"
+YEAR_ROUND = FIXTURES / "line-655002-2026-01-01.xml"
 
 # A fortnight starting on a Monday, so a weekday pattern and a weekend one are
 # each visible twice over and cannot be confused with an off-by-one.
@@ -97,3 +111,63 @@ def test_another_operators_lines_are_not_read(tmp_path: Path) -> None:
     someone_else.write_bytes(CURRENT.read_bytes().replace(b"63217066", b"12345678"))
 
     assert build_calendars([archive(tmp_path, someone_else)], START, END) == {}
+
+
+# --- versions that tile rather than compete ----------------------------------
+#
+# A line ships a year-round version alongside a supplement covering the school
+# holidays. Both are valid on a build date in August, but the supplement runs
+# out on the 31st and the year-round one takes over. Letting the supplement win
+# the whole window -- it has the later FromDate -- took lines 2 and 6 dark from
+# 1 September to the end of a feed claiming to be valid for a year.
+
+SEPTEMBER = dt.date(2026, 9, 30)
+
+
+def test_a_trip_keeps_running_when_the_next_version_still_means_it(tmp_path: Path) -> None:
+    """Trip 9 leaves at 04:32 in both versions, so it is the same journey and
+    the year-round version's days after 31 August are its days."""
+    calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+
+    days = calendars[("655002", 9)]
+    assert max(days) == SEPTEMBER
+    assert dt.date(2026, 9, 1) in days
+
+
+def test_a_renumbered_trip_stops_rather_than_borrowing_another_journeys_days(
+    tmp_path: Path,
+) -> None:
+    """Trip 21 leaves at 05:15 before the changeover and 05:20 after it, so the
+    number means a different journey in September. This feed publishes the
+    05:15 one; giving it September's days would send a passenger to a stop five
+    minutes after the only bus that calls there."""
+    calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+
+    days = calendars[("655002", 21)]
+    assert days, "the trip still runs while its own version is in force"
+    assert max(days) < dt.date(2026, 9, 1)
+
+
+def test_only_the_trips_of_the_version_in_force_are_reported(tmp_path: Path) -> None:
+    """The API serves the timetable in force today, so its trip numbers are
+    that version's. A number only a later version has belongs to a journey this
+    feed does not carry."""
+    calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+    only_later = build_calendars(
+        [archive(tmp_path, YEAR_ROUND, name="later.zip")], START, SEPTEMBER
+    )
+
+    assert set(calendars) == {("655002", 9), ("655002", 21)}
+    assert set(only_later) == set(calendars), "with nothing in force, the later one is"
+
+
+def test_a_line_whose_timetable_runs_out_says_so(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The feed is then honestly incomplete rather than wrong, but it is
+    incomplete quietly, and an operator watching a line go dark deserves to be
+    told which and when."""
+    with caplog.at_level(logging.WARNING):
+        build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+
+    assert "line 655002: 1 of 2 trips have no CIS days after" in caplog.text
