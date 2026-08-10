@@ -1,11 +1,16 @@
-"""Service calendars, derived from the API's per-trip "codes".
+"""Service calendars, derived from each trip's JDF fixed codes.
 
-The upstream has no notion of a service calendar: each trip just carries a set
-of small integers. What those integers mean -- including the two pairs that are
-duplicates of each other -- is recorded in :mod:`dpmp_gtfs.upstream`.
+The upstream has no notion of a service calendar: a trip carries a set of
+one-character codes inherited from JDF. The old API published their meanings
+at ``/api/codes``; the new one does not, so the mapping is spelled out here
+against the JDF convention.
 
-Across the whole network only five distinct service patterns occur, so the
-generated ``calendar.txt`` stays small and legible.
+Case is significant. Upper-case ``X`` on a trip means "runs on weekdays";
+lower-case ``x`` is a *stop*-level marker meaning "request stop" and must
+never be read as a calendar code.
+
+Across the whole network only a handful of distinct service patterns occur, so
+the generated ``calendar.txt`` stays small and legible.
 """
 
 import datetime as dt
@@ -13,22 +18,23 @@ from collections.abc import Iterable, Iterator
 
 import holidays
 
+from dpmp_gtfs.api.models import SATURDAY, SUNDAY_AND_HOLIDAYS, WORKING_DAYS
 from dpmp_gtfs.types import CalendarException, Service
-from dpmp_gtfs.upstream import SATURDAY, SUNDAY_AND_HOLIDAYS, WORKING_DAY
 
 
-def service_from_codes(codes: Iterable[int]) -> Service:
-    """Read a trip's codes as the days it runs.
+def service_from_codes(codes: Iterable[str]) -> Service:
+    """Read a trip's fixed codes as the days it runs.
 
-    The duplicate code pairs are merged by construction: ``SATURDAY`` and
-    ``SUNDAY_AND_HOLIDAYS`` are sets, so both spellings land on one service
-    rather than splitting identical trips across two calendars.
+    Codes that describe the vehicle rather than the calendar (``@`` for a
+    low-floor trip) are simply not matched here; a trip carrying only those
+    yields a service that runs on no days, and ``Service.service_id`` raises
+    rather than emitting an empty calendar entry.
     """
     present = set(codes)
     return Service(
-        working_days=WORKING_DAY in present,
-        saturday=bool(present & SATURDAY),
-        sunday=bool(present & SUNDAY_AND_HOLIDAYS),
+        working_days=WORKING_DAYS in present,
+        saturday=SATURDAY in present,
+        sunday=SUNDAY_AND_HOLIDAYS in present,
     )
 
 

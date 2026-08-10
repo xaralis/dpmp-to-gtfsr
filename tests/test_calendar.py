@@ -12,38 +12,28 @@ from dpmp_gtfs.static.calendar import (
 # --- code -> service --------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("codes", "service_id"),
-    [
-        ([2, 3], "wd"),
-        ([3, 4, 5], "sa-su"),
-        ([3, 6, 7], "sa-su"),  # 6/7 are duplicates of 4/5
-        ([2, 3, 4, 5], "wd-sa-su"),
-        ([3, 5], "su"),
-        ([3, 4], "sa"),
-    ],
-)
-def test_the_six_observed_code_combinations(codes: list[int], service_id: str) -> None:
-    """These are every combination that occurs across all 2728 trips."""
-    assert service_from_codes(codes).service_id == service_id
+def test_weekday_trips() -> None:
+    service = service_from_codes(["X", "@"])
+    assert service.working_days and not service.saturday and not service.sunday
+    assert service.service_id == "wd"
 
 
-def test_duplicate_code_pairs_collapse_to_one_service() -> None:
-    """Codes 4/6 and 5/7 mean the same thing, so they must not produce two
-    different services -- that would split identical trips across calendars."""
-    assert service_from_codes([3, 4, 5]) == service_from_codes([3, 6, 7])
+def test_weekend_trips() -> None:
+    service = service_from_codes(["6", "+", "@"])
+    assert not service.working_days and service.saturday and service.sunday
+    assert service.service_id == "sa-su"
 
 
-def test_service_with_no_operating_days_is_rejected() -> None:
-    with pytest.raises(ValueError, match="no days at all"):
-        _ = service_from_codes([3]).service_id  # only the low-floor flag
+def test_low_floor_is_not_a_calendar_code() -> None:
+    # "@" alone would leave a service running on no days at all.
+    with pytest.raises(ValueError):
+        _ = service_from_codes(["@"]).service_id
 
 
-def test_weekday_flags_match_gtfs_column_order() -> None:
-    assert service_from_codes([2, 3]).weekday_flags == (1, 1, 1, 1, 1, 0, 0)
-    assert service_from_codes([3, 4]).weekday_flags == (0, 0, 0, 0, 0, 1, 0)
-    assert service_from_codes([3, 5]).weekday_flags == (0, 0, 0, 0, 0, 0, 1)
-    assert service_from_codes([2, 3, 4, 5]).weekday_flags == (1, 1, 1, 1, 1, 1, 1)
+def test_upper_and_lower_x_are_different_codes() -> None:
+    # "x" is a stop-level "on request" marker and must never mean weekdays.
+    assert service_from_codes(["X"]).working_days
+    assert not service_from_codes(["x"]).working_days
 
 
 # --- movable feasts ---------------------------------------------------------
@@ -118,8 +108,8 @@ def test_holidays_between_spans_years() -> None:
 
 
 def test_holiday_takes_the_sunday_timetable() -> None:
-    weekday = service_from_codes([2, 3])
-    sunday_only = service_from_codes([3, 5])
+    weekday = service_from_codes(["X", "@"])
+    sunday_only = service_from_codes(["@", "+"])
     # 2026-05-01 (Svátek práce) is a Friday.
     labour_day = dt.date(2026, 5, 1)
     assert labour_day.weekday() == 4
@@ -134,7 +124,7 @@ def test_holiday_takes_the_sunday_timetable() -> None:
 
 
 def test_holiday_on_a_weekday_removes_and_adds_the_right_services() -> None:
-    services = [service_from_codes([2, 3]), service_from_codes([3, 5])]
+    services = [service_from_codes(["X", "@"]), service_from_codes(["@", "+"])]
     labour_day = dt.date(2026, 5, 1)  # Friday
 
     got = {(e.service_id, e.added) for e in calendar_exceptions(services, labour_day, labour_day)}
@@ -143,7 +133,7 @@ def test_holiday_on_a_weekday_removes_and_adds_the_right_services() -> None:
 
 def test_a_holiday_falling_on_a_sunday_needs_no_exceptions() -> None:
     """The regular calendar already runs the Sunday service that day."""
-    services = [service_from_codes([2, 3]), service_from_codes([3, 5])]
+    services = [service_from_codes(["X", "@"]), service_from_codes(["@", "+"])]
     # 2027-03-28 is Easter Sunday.
     easter = dt.date(2027, 3, 28)
     assert easter.weekday() == 6
@@ -153,13 +143,13 @@ def test_a_holiday_falling_on_a_sunday_needs_no_exceptions() -> None:
 def test_a_daily_service_is_untouched_by_holidays() -> None:
     """Night lines 98 and 99 run every day, so no holiday changes anything for
     them -- and emitting spurious exceptions would be a validator warning."""
-    daily = service_from_codes([2, 3, 4, 5])
+    daily = service_from_codes(["X", "@", "6", "+"])
     labour_day = dt.date(2026, 5, 1)
     assert list(calendar_exceptions([daily], labour_day, labour_day)) == []
 
 
 def test_saturday_holiday_swaps_saturday_for_sunday() -> None:
-    services = [service_from_codes([3, 4]), service_from_codes([3, 5])]
+    services = [service_from_codes(["@", "6"]), service_from_codes(["@", "+"])]
     # 2026-08-08 is not a holiday; use 2026-12-26 (Saturday, 2. svátek vánoční).
     boxing_day = dt.date(2026, 12, 26)
     assert boxing_day.weekday() == 5
