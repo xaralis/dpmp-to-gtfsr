@@ -7,5 +7,6 @@ can no longer answer.
 """
 
 from .archive import CisUnavailable, fetch_archives
+from .index import ServiceIndex, build_index
 
-__all__ = ["CisUnavailable", "fetch_archives"]
+__all__ = ["CisUnavailable", "ServiceIndex", "build_index", "fetch_archives"]
