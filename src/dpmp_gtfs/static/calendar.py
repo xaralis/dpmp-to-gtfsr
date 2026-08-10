@@ -80,6 +80,38 @@ def service_from_dates(dates: frozenset[dt.date], start: dt.date, end: dt.date) 
     return replace(pattern, added=frozenset(added), removed=frozenset(removed))
 
 
+def numbered_services(services: Iterable[Service]) -> dict[Service, Service]:
+    """Each service, mapped to the same service with a distinct ``service_id``.
+
+    Several services usually share a weekly pattern -- term time and the school
+    holidays are both ``wd``, and differ only in which days they take off -- so
+    something has to tell them apart. That something is a number rather than a
+    digest of their exception days, because the days themselves are not stable:
+    the feed's window slides forward every night, and a hash over dates inside
+    it would rename a service every time one of its days fell off the back. A
+    number derived from the *order* of the variants survives that, so a feed
+    diff shows the days that changed rather than every trip on the network.
+
+    The variant with no exceptions at all, if there is one, keeps the bare name
+    -- it is the ordinary case and deserves the ordinary id.
+    """
+    groups: dict[str, list[Service]] = {}
+    for service in services:
+        groups.setdefault(service.base_id, []).append(service)
+
+    numbered: dict[Service, Service] = {}
+    for group in groups.values():
+        variants = sorted(
+            (s for s in group if s.added or s.removed),
+            key=lambda s: (sorted(s.added), sorted(s.removed)),
+        )
+        numbered.update({s: s for s in group if not (s.added or s.removed)})
+        numbered.update(
+            {s: replace(s, variant=number) for number, s in enumerate(variants, start=1)}
+        )
+    return numbered
+
+
 def calendar_exceptions(
     services: Iterable[Service], start: dt.date, end: dt.date
 ) -> Iterator[CalendarException]:

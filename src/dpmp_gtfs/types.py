@@ -7,7 +7,6 @@ behaviour lives with the module that owns it.
 """
 
 import datetime as dt
-import hashlib
 from dataclasses import dataclass, field
 
 from dpmp_gtfs.api.models import Connection, Line
@@ -124,23 +123,33 @@ class Service:
     and DPMP runs three different weekday timetables depending on whether
     schools are in session -- a difference no set of seven weekdays can carry.
     """
+    variant: int = 0
+    """Which of several services sharing a weekly pattern this one is.
+
+    Assigned across the whole feed by
+    :func:`dpmp_gtfs.static.calendar.numbered_services`, not derived here: term
+    time and school holidays are both ``wd`` and neither can be told from the
+    other by looking at itself. ``0`` means there is nothing to tell it apart
+    from and the id stays bare.
+    """
 
     @property
-    def service_id(self) -> str:
-        """A legible name, e.g. ``wd``, ``sa-su+h``, ``mo-fr``, ``wd-a3f21c``.
+    def runs_at_all(self) -> bool:
+        """Whether anything at all puts this service on the road."""
+        return bool(self.days or self.holidays or self.added)
+
+    @property
+    def base_id(self) -> str:
+        """The weekly pattern as a name: ``wd``, ``sa-su+h``, ``mo-fr``.
 
         The whole working week collapses to ``wd`` however it was spelled, so a
         trip marked ``X`` and one marked ``1,2,3,4,5`` share a calendar row
         rather than producing two rows saying the same thing.
 
-        A service with exceptions carries a digest of them, because otherwise
-        the school-term and school-holiday variants of the same weekday pattern
-        would collapse onto one id and each would get the other's days off.
-
-        Named after the weekdays it is ever on the road, which for a service
-        with no weekly pattern at all -- the trips that run only for the last
-        weeks of the summer holidays -- means the weekdays of its added days.
-        Otherwise those would all be called nothing but a digest.
+        A service with no weekly pattern -- the trips that run only for the
+        last weeks of the summer holidays, too few days for any weekday to
+        carry a majority -- is named after the weekdays its added days land on.
+        Otherwise every one of them would be called nothing at all.
         """
         remaining = set(self.days) or {date.weekday() for date in self.added}
         parts = []
@@ -156,24 +165,12 @@ class Service:
             name = f"{name}+h" if name else "h"
         if not name:
             raise ValueError("service runs on no days at all")
-        if self.added or self.removed:
-            return f"{name}-{self._exception_digest}"
         return name
 
     @property
-    def _exception_digest(self) -> str:
-        """A short, stable hash of the exception days.
-
-        Built from the sorted dates rather than from anything iteration-ordered,
-        and from a named algorithm rather than ``hash()``, so that two runs of
-        the same build produce the same ``service_id`` and a feed diff shows
-        only what actually changed.
-        """
-        material = " ".join(
-            [f"+{date}" for date in sorted(self.added)]
-            + [f"-{date}" for date in sorted(self.removed)]
-        )
-        return hashlib.blake2s(material.encode(), digest_size=3).hexdigest()
+    def service_id(self) -> str:
+        """A legible name, e.g. ``wd``, ``sa-su+h``, ``mo-fr``, ``wd-2``."""
+        return f"{self.base_id}-{self.variant}" if self.variant else self.base_id
 
     @property
     def weekday_flags(self) -> tuple[int, int, int, int, int, int, int]:

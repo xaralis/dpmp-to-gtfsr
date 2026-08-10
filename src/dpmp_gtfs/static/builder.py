@@ -23,7 +23,12 @@ from dpmp_gtfs.types import (
 )
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
-from .calendar import calendar_exceptions, service_from_codes, service_from_dates
+from .calendar import (
+    calendar_exceptions,
+    numbered_services,
+    service_from_codes,
+    service_from_dates,
+)
 from .shapes import ShapeCache, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
@@ -233,14 +238,18 @@ def build_trips_and_stop_times(
     timetable: Timetable, start: dt.date, end: dt.date
 ) -> tuple[list[Trip], list[StopTime], list[Service]]:
     trips: list[Trip] = []
+    trip_services: list[Service] = []
+    """One per entry in ``trips``. The service ids cannot be handed out until
+    every service is known, because what distinguishes two services sharing a
+    weekly pattern is the other ones -- see :func:`numbered_services`."""
     stop_times: list[StopTime] = []
-    services: dict[str, Service] = {}
     names = {s.id: s.name for s in timetable.stops}
     on_request_stops = {s.id for s in timetable.stops if s.on_request}
     missing_coords = stops_without_coordinates(timetable)
     jdf_ids = {line.id: line.jdf_id for line in timetable.lines}
     from_cis = 0
     from_codes = 0
+    no_weekly_pattern = 0
 
     for key, connection in sorted(timetable.connections.items()):
         line_id, connection_number = key
@@ -299,7 +308,6 @@ def build_trips_and_stop_times(
             # CIS does not know this trip. Its fixed codes are the weaker
             # source -- that is the whole reason CIS is consulted first -- but
             # for a trip with no calendar at all they beat dropping it.
-            from_codes += 1
             logger.warning(
                 "line %s trip %s is not in CIS, falling back to its fixed codes %r",
                 line_id,
@@ -308,12 +316,9 @@ def build_trips_and_stop_times(
             )
             service = service_from_codes(connection.fixed_codes)
         else:
-            from_cis += 1
             service = service_from_dates(dates, start, end)
 
-        try:
-            sid = service.service_id
-        except ValueError:
+        if not service.runs_at_all:
             # Nothing places this trip in the year: either it carries no
             # calendar code at all, or CIS says it runs on no day between now
             # and the feed's horizon. Dropping one trip beats the alternative:
@@ -325,19 +330,34 @@ def build_trips_and_stop_times(
                 connection_number,
             )
             continue
-        services.setdefault(sid, service)
+
+        # Counted here rather than where the service was chosen, so that the
+        # summaries below add up to the trips the feed actually carries.
+        if dates is None:
+            from_codes += 1
+        else:
+            from_cis += 1
+        if not service.days and not service.holidays:
+            no_weekly_pattern += 1
 
         trips.append(
             Trip(
                 route_id=route_id(line_id),
-                service_id=sid,
+                service_id="",
                 trip_id=tid,
                 trip_headsign=names.get(surviving_stops[-1].stop_id, ""),
                 direction_id=timetable.directions.get(key, 0),
                 wheelchair_accessible=1 if connection.low_floor else 0,
             )
         )
+        trip_services.append(service)
         stop_times.extend(trip_stop_times)
+
+    numbering = numbered_services(set(trip_services))
+    named = [
+        replace(trip, service_id=numbering[service].service_id)
+        for trip, service in zip(trips, trip_services, strict=True)
+    ]
 
     total = from_cis + from_codes
     logger.log(
@@ -350,7 +370,16 @@ def build_trips_and_stop_times(
         from_cis,
         from_codes,
     )
-    return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
+    logger.log(
+        # A trip whose CIS days are too few for any weekday to carry a majority
+        # is described entirely by calendar_dates.txt. That is normal for the
+        # weeks either side of a timetable change; at a tenth of the network it
+        # means the timetable this feed describes is running out.
+        logging.ERROR if no_weekly_pattern > len(named) * MAX_FALLBACK_SHARE else logging.INFO,
+        "calendars: %d trips run on too few days to have a weekly pattern",
+        no_weekly_pattern,
+    )
+    return named, stop_times, sorted(numbering.values(), key=lambda s: s.service_id)
 
 
 def prune_unserved_stops(

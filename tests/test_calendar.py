@@ -7,6 +7,7 @@ from dpmp_gtfs.static.calendar import (
     czech_holidays,
     days_between,
     holidays_between,
+    numbered_services,
     observed_holidays,
     service_from_codes,
     service_from_dates,
@@ -293,8 +294,11 @@ def test_a_seasonal_service_is_named_after_the_weekdays_it_appears_on() -> None:
     summer = service_from_dates(PATTERNS["school holidays only"], *YEAR)
 
     assert summer.days == frozenset()
-    assert summer.service_id.startswith("wd-")
+    assert summer.base_id == "wd"
     assert summer.added == PATTERNS["school holidays only"]
+
+
+# --- naming services --------------------------------------------------------
 
 
 def test_two_variants_of_the_same_weekly_pattern_keep_separate_ids() -> None:
@@ -306,20 +310,56 @@ def test_two_variants_of_the_same_weekly_pattern_keep_separate_ids() -> None:
     other = service_from_dates(
         PATTERNS["weekdays but not holidays"] - {dt.date(2026, 10, 30)}, *YEAR
     )
-
     assert term.days == other.days == frozenset({0, 1, 2, 3, 4})
-    assert term.service_id != other.service_id
+
+    named = numbered_services([term, other])
+
+    assert named[term].service_id != named[other].service_id
+    assert {s.service_id for s in named.values()} == {"wd-1", "wd-2"}
 
 
-def test_the_same_exceptions_always_produce_the_same_id() -> None:
-    """The id is written into every trip row, so a digest that moved between
-    runs would rewrite the whole feed for nothing."""
-    dates = PATTERNS["weekdays but not holidays"] - {dt.date(2026, 10, 29)}
+def test_a_pattern_and_its_exception_only_twin_do_not_share_an_id() -> None:
+    """Both are called ``wd`` -- one because it runs every weekday, the other
+    because the days it does run are weekdays. Sharing an id would give the
+    second one the first one's calendar row and put it on the road all year."""
+    weekdays = PATTERNS["weekdays but not holidays"]
+    extras = frozenset(sorted(HOLIDAYS)[:5])
 
-    first = service_from_dates(dates, *YEAR)
-    again = service_from_dates(dates, *YEAR)
+    every_weekday_and_then_some = service_from_dates(weekdays | extras, *YEAR)
+    only_the_extras = service_from_dates(extras, *YEAR)
+    assert every_weekday_and_then_some.base_id == only_the_extras.base_id == "wd"
 
-    assert first.service_id == again.service_id
+    named = numbered_services([every_weekday_and_then_some, only_the_extras])
+
+    assert named[every_weekday_and_then_some].service_id != named[only_the_extras].service_id
+
+
+def test_the_ordinary_service_keeps_the_bare_name() -> None:
+    """``wd`` is most of the network; it should not be renamed ``wd-2``
+    because a seasonal variant turned up beside it."""
+    plain = service_from_dates(PATTERNS["weekdays but not holidays"], *YEAR)
+    seasonal = service_from_dates(PATTERNS["school holidays only"], *YEAR)
+
+    named = numbered_services([seasonal, plain])
+
+    assert named[plain].service_id == "wd"
+    assert named[seasonal].service_id == "wd-1"
+
+
+def test_ids_survive_the_window_sliding_forward() -> None:
+    """The feed's window moves a day every night. An id built from the dates
+    inside it would be rewritten every time one fell off the back, and the
+    whole of trips.txt with it."""
+    rule = PATTERNS["school holidays only"]
+    start, end = (day + dt.timedelta(days=1) for day in YEAR)
+    later = frozenset(d for d in days_between(start, end) if d in rule)
+
+    today_named = numbered_services([service_from_dates(rule, *YEAR)])
+    tomorrow_named = numbered_services([service_from_dates(later, start, end)])
+
+    assert {s.service_id for s in today_named.values()} == {
+        s.service_id for s in tomorrow_named.values()
+    }
 
 
 def test_an_exception_outranks_the_holiday_rule() -> None:
@@ -336,5 +376,8 @@ def test_an_exception_outranks_the_holiday_rule() -> None:
 def test_a_trip_that_runs_on_no_day_of_the_window_has_no_id() -> None:
     """CIS keeps trips whose bitmap has run out. The builder drops them, and
     this is how it finds out."""
+    nothing = service_from_dates(frozenset(), *YEAR)
+
+    assert nothing.runs_at_all is False
     with pytest.raises(ValueError):
-        _ = service_from_dates(frozenset(), *YEAR).service_id
+        _ = nothing.service_id
