@@ -28,9 +28,11 @@ async def test_sends_the_protocol_header_and_uses_get(vehicles_payload):
         return httpx.Response(200, json=vehicles_payload)
 
     transport = httpx.MockTransport(handler)
-    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
-        async with DpmpApiClient(settings=_settings(), client=raw) as api:
-            await api.vehicles()
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=API) as raw,
+        DpmpApiClient(settings=_settings(), client=raw) as api,
+    ):
+        await api.vehicles()
 
     assert seen[0].method == "GET"
     assert seen[0].url.path == "/pardubice/vehicles"
@@ -47,9 +49,11 @@ async def test_refreshes_the_signature_once_on_401(vehicles_payload):
         return httpx.Response(code, json=vehicles_payload if code == 200 else {})
 
     transport = httpx.MockTransport(handler)
-    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
-        async with DpmpApiClient(settings=_settings(), client=raw) as api:
-            result = await api.vehicles()
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=API) as raw,
+        DpmpApiClient(settings=_settings(), client=raw) as api,
+    ):
+        result = await api.vehicles()
 
     assert len(seen) == 2
     assert len(result) > 0
@@ -60,9 +64,11 @@ async def test_connection_returns_none_on_404():
         return httpx.Response(404, text="")
 
     transport = httpx.MockTransport(handler)
-    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
-        async with DpmpApiClient(settings=_settings(), client=raw) as api:
-            assert await api.connection("1", 999) is None
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=API) as raw,
+        DpmpApiClient(settings=_settings(), client=raw) as api,
+    ):
+        assert await api.connection("1", 999) is None
 
 
 async def test_raises_after_exhausting_retries():
@@ -70,7 +76,9 @@ async def test_raises_after_exhausting_retries():
         return httpx.Response(500, text="boom")
 
     transport = httpx.MockTransport(handler)
-    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
-        async with DpmpApiClient(settings=_settings(), client=raw) as api:
-            with pytest.raises(DpmpApiError):
-                await api.vehicles()
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=API) as raw,
+        DpmpApiClient(settings=_settings(), client=raw) as api,
+    ):
+        with pytest.raises(DpmpApiError):
+            await api.vehicles()
