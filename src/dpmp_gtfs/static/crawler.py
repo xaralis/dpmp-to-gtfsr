@@ -78,7 +78,7 @@ async def _crawl_once(api: SupportsTimetable) -> Timetable:
 
     timetable = Timetable(stops=stops, lines=lines)
 
-    for line in lines:
+    for index, line in enumerate(lines, start=1):
         connections = await discover_trips(api, line.id)
 
         for number, connection in connections.items():
@@ -86,7 +86,12 @@ async def _crawl_once(api: SupportsTimetable) -> Timetable:
         for number, direction in assign_directions(connections).items():
             timetable.directions[(line.id, number)] = direction
 
-        logger.info("line %s: %d trips", line.id, len(connections))
+        # The six minutes between the start and completion lines are
+        # otherwise silent -- this is what lets an operator tell a crawl in
+        # progress from one that has stalled.
+        logger.info(
+            "line %s: %d trips (%d/%d lines)", line.id, len(connections), index, len(lines)
+        )
 
     logger.info("crawl complete: %d trips", timetable.trip_count)
     return timetable

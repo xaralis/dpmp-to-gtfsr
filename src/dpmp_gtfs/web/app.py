@@ -212,6 +212,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "trips": state.trip_count,
                 "stops_without_service": len(state.unserved_stops),
                 "error": state.static_error,
+                "phase": state.static_phase,
             },
         }
 

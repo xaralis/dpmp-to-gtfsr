@@ -68,6 +68,13 @@
   var feedTime = null;
   var failure = null;
   var nextRefreshAt = 0;
+  // Set from /healthz while the static feed is (re)building. A cold start
+  // fetches ~2,700 trips over several minutes -- during that window
+  // /coverage.geojson and /vehicles.json both 404, and that is not a
+  // failure, just data that does not exist yet.
+  var buildPhase = null;
+  var coverageError = null;
+  var buildPollTimer = null;
   // Which vehicle's popup is open, if any. Markers are rebuilt from scratch on
   // every refresh and on every selection, so without remembering this the
   // popup would close by itself every fifteen seconds -- and clicking a
@@ -299,8 +306,38 @@
     // age climbing rather than freezing on a stale number.
     setInterval(paintStatus, 1000);
   }).catch(function (err) {
-    statusEl.textContent = "Trasy se nepodařilo načíst: " + err.message;
+    // Indistinguishable from a real failure by status code alone: a cold
+    // start 404s here for as long as the crawl takes. /healthz tells the
+    // difference, so hold off blaming anything until it has answered once.
+    coverageError = err;
+    startBuildPoll();
   });
+
+  // --- build progress ---------------------------------------------------
+
+  function pollBuildStatus() {
+    fetch("/healthz").then(function (r) { return r.json(); }).then(function (data) {
+      var phase = (data.static && data.static.phase) || null;
+      var wasBuilding = buildPhase !== null;
+      buildPhase = phase;
+      paintStatus();
+      // The coverage fetch above failed only because the build was not done
+      // yet; once the phase clears, the new file exists but nothing here
+      // will look at it again unless asked to.
+      if (coverageError && wasBuilding && phase === null) location.reload();
+    }).catch(function () {
+      // /healthz itself unreachable is a real failure, not "still building".
+      if (coverageError) {
+        statusEl.textContent = "Trasy se nepodařilo načíst: " + coverageError.message;
+      }
+    });
+  }
+
+  function startBuildPoll() {
+    if (buildPollTimer) return;
+    pollBuildStatus();
+    buildPollTimer = setInterval(pollBuildStatus, 2000);
+  }
 
   function buildChips() {
     // Numeric sort, so 2 comes before 10 and the night lines land at the end.
@@ -437,6 +474,9 @@
       describe();
       paintStatus();
     }).catch(function (err) {
+      // While the static build runs, the realtime loop has not made its
+      // first pass yet either -- that is not a failure, just not ready.
+      if (buildPhase) return;
       failure = err.message;
       paintStatus();
     });
@@ -445,6 +485,12 @@
   // --- status line ----------------------------------------------------------
 
   function paintStatus() {
+    if (buildPhase) {
+      statusEl.innerHTML = '<i class="pulse"></i><span>Načítám data: ' +
+        escapeHtml(buildPhase) + "</span>";
+      return;
+    }
+
     var shown = lastVehicles.filter(function (v) {
       return selected === null || v.line === selected;
     }).length;

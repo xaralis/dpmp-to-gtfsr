@@ -127,6 +127,20 @@ async def test_healthz_is_healthy_with_a_feed_loaded_from_disk(
     assert response.json()["healthy"] is True
 
 
+async def test_status_reports_no_phase_when_idle(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/healthz")).json()["static"]["phase"] is None
+
+
+async def test_status_reports_the_phase_while_building(client: httpx.AsyncClient) -> None:
+    """Read by two consumers that must not drift apart: the log an operator
+    watches and the message the map shows during a cold start."""
+    state = client.app.state.scheduler.state  # type: ignore[attr-defined]
+    state.static_phase = "stahuji jízdní řády"
+
+    response = await client.get("/healthz")
+    assert response.json()["static"]["phase"] == "stahuji jízdní řády"
+
+
 async def test_a_stale_realtime_feed_is_unhealthy(
     client: httpx.AsyncClient, tmp_path: Path
 ) -> None:

@@ -8,6 +8,8 @@ and directions assigned, with nothing left to reconcile against a second
 source.
 """
 
+import logging
+
 import pytest
 
 from dpmp_gtfs.api.models import Connection, Line, Stop
@@ -124,3 +126,15 @@ async def test_a_line_with_no_trips_yields_none_for_it():
 
     assert table.trip_count == 0
     assert table.directions == {}
+
+
+async def test_crawl_logs_progress_per_line(caplog: pytest.LogCaptureFixture) -> None:
+    """The start and completion lines already logged bracket several minutes
+    of silence on a real crawl; an operator needs something in between to
+    tell progress from a stall."""
+    api = FakeApi(present={1, 2})
+
+    with caplog.at_level(logging.INFO, logger="dpmp_gtfs.static.crawler"):
+        await crawl(api)
+
+    assert "line 1: 2 trips (1/1 lines)" in caplog.text

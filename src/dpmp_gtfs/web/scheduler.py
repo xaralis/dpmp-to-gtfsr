@@ -96,8 +96,19 @@ class Scheduler:
             self.state.static_version,
         )
 
+    def _phase(self, message: str) -> None:
+        """Announce a build phase to both the log and the status endpoint.
+
+        One string for both consumers on purpose -- an operator watching the
+        log and a user watching the map must never be told two different
+        things about the same build.
+        """
+        self.state.static_phase = message
+        logger.info("static build: %s", message)
+
     async def rebuild_static(self) -> None:
         try:
+            self._phase("stahuji jízdní řády")
             async with DpmpApiClient(self.settings) as api:
                 timetable = await crawl(api)
             feed = build_feed(timetable)
@@ -105,6 +116,7 @@ class Scheduler:
             if self.settings.shapes_enabled:
                 # Routing reaches the network, so it runs in a worker thread to
                 # keep the realtime loop ticking through a slow first build.
+                self._phase("počítám trasy")
                 feed = await asyncio.to_thread(
                     with_shapes, feed, self.settings.data_dir / "shape-cache.json"
                 )
@@ -131,6 +143,10 @@ class Scheduler:
             # The previous feed stays in place and keeps being served.
             logger.exception("static rebuild failed")
             self.state.static_error = repr(exc)
+        finally:
+            # Whether this succeeded, failed, or is about to be retried
+            # tonight, nothing is being built right now.
+            self.state.static_phase = None
 
     async def _static_loop(self) -> None:
         while True:
@@ -197,6 +213,14 @@ class FeedState:
     static_version: str | None = None
     static_built_at: dt.datetime | None = None
     static_error: str | None = None
+    static_phase: str | None = None
+    """What the static build is doing right now, or ``None`` when idle.
+
+    Read by two consumers that must not drift apart: the log an operator
+    watches and the message the map shows. A cold start is several minutes of
+    discovering and downloading trips over the network, and without this the
+    service looks hung.
+    """
     trip_count: int = 0
     unserved_stops: dict[str, str] = field(default_factory=dict)
 
