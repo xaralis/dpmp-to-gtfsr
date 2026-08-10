@@ -93,6 +93,13 @@ class TripGeometry:
 
 DAY_NAMES = ("mo", "tu", "we", "th", "fr", "sa", "su")
 WORKING_WEEK = frozenset({0, 1, 2, 3, 4})
+LISTED_DAYS = "dates"
+"""What a service with no weekly pattern is called.
+
+Deliberately says nothing about weekdays. Such a service is described entirely
+by the dates in ``calendar_dates.txt``, and those are whatever part of it still
+falls inside the feed's window -- naming it after them would rename it every
+night as the window slid forward and the earliest of them dropped off."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,13 +130,13 @@ class Service:
     and DPMP runs three different weekday timetables depending on whether
     schools are in session -- a difference no set of seven weekdays can carry.
     """
-    variant: int = 0
+    variant: str = ""
     """Which of several services sharing a weekly pattern this one is.
 
     Assigned across the whole feed by
-    :func:`dpmp_gtfs.static.calendar.numbered_services`, not derived here: term
+    :func:`dpmp_gtfs.static.calendar.named_services`, not derived here: term
     time and school holidays are both ``wd`` and neither can be told from the
-    other by looking at itself. ``0`` means there is nothing to tell it apart
+    other by looking at itself. Empty means there is nothing to tell it apart
     from and the id stays bare.
     """
 
@@ -147,18 +154,18 @@ class Service:
         rather than producing two rows saying the same thing.
 
         A service with no weekly pattern -- the trips that run only for the
-        last weeks of the summer holidays, too few days for any weekday to
-        carry a majority -- is named after the weekdays its added days land on.
-        Otherwise every one of them would be called nothing at all.
+        last weeks of a timetable period, too few days for any weekday to carry
+        a majority -- is :data:`LISTED_DAYS`, and nothing more. Everything
+        those services have to be named after moves with the feed's window.
         """
-        remaining = set(self.days) or {date.weekday() for date in self.added}
+        remaining = set(self.days)
         parts = []
         if remaining >= WORKING_WEEK:
             parts.append("wd")
             remaining -= WORKING_WEEK
         parts.extend(DAY_NAMES[day] for day in sorted(remaining))
 
-        name = "-".join(parts)
+        name = "-".join(parts) or (LISTED_DAYS if self.added else "")
         if self.holidays:
             # Always marked, so that "+" and "7" can never land on one id while
             # meaning different things.
@@ -169,7 +176,7 @@ class Service:
 
     @property
     def service_id(self) -> str:
-        """A legible name, e.g. ``wd``, ``sa-su+h``, ``mo-fr``, ``wd-2``."""
+        """A legible name: ``wd``, ``sa-su+h``, ``mo-fr``, ``dates-20260828``."""
         return f"{self.base_id}-{self.variant}" if self.variant else self.base_id
 
     @property

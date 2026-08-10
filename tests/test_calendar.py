@@ -7,7 +7,7 @@ from dpmp_gtfs.static.calendar import (
     czech_holidays,
     days_between,
     holidays_between,
-    numbered_services,
+    named_services,
     observed_holidays,
     service_from_codes,
     service_from_dates,
@@ -287,14 +287,16 @@ def test_the_ordinary_patterns_need_no_exceptions_at_all() -> None:
     assert not weekends.added and not weekends.removed
 
 
-def test_a_seasonal_service_is_named_after_the_weekdays_it_appears_on() -> None:
+def test_a_seasonal_service_says_it_is_described_by_dates() -> None:
     """Summer-only weekday trips are on the road too few days to give any
-    weekday a majority, so the pattern is empty -- but "runs on no days" is
-    the one thing the id must not say, because the trip does run."""
+    weekday a majority, so the pattern is empty. The name says exactly that
+    and nothing about weekdays: the days it does run are whatever part of the
+    season is still inside the window, so a name drawn from them would change
+    every night."""
     summer = service_from_dates(PATTERNS["school holidays only"], *YEAR)
 
     assert summer.days == frozenset()
-    assert summer.base_id == "wd"
+    assert summer.base_id == "dates"
     assert summer.added == PATTERNS["school holidays only"]
 
 
@@ -312,54 +314,127 @@ def test_two_variants_of_the_same_weekly_pattern_keep_separate_ids() -> None:
     )
     assert term.days == other.days == frozenset({0, 1, 2, 3, 4})
 
-    named = numbered_services([term, other])
+    named = named_services([term, other])
 
-    assert named[term].service_id != named[other].service_id
-    assert {s.service_id for s in named.values()} == {"wd-1", "wd-2"}
+    assert named[term].service_id == "wd-20261029"
+    assert named[other].service_id == "wd-20261030"
+
+
+def test_variants_ending_on_the_same_day_are_still_told_apart() -> None:
+    """The last day is usually enough, because it is a timetable changeover.
+    Two variants ending on one still have to get two ids."""
+    weekdays = PATTERNS["weekdays but not holidays"]
+    last = dt.date(2026, 10, 30)
+
+    one = service_from_dates(weekdays - {dt.date(2026, 10, 29), last}, *YEAR)
+    two = service_from_dates(weekdays - {last}, *YEAR)
+
+    named = named_services([one, two])
+    ids = {named[one].service_id, named[two].service_id}
+
+    assert len(ids) == 2
+    assert ids == {"wd-20261030", "wd-20261030-2"}
 
 
 def test_a_pattern_and_its_exception_only_twin_do_not_share_an_id() -> None:
-    """Both are called ``wd`` -- one because it runs every weekday, the other
-    because the days it does run are weekdays. Sharing an id would give the
-    second one the first one's calendar row and put it on the road all year."""
+    """Every weekday plus five holidays, against those five holidays and
+    nothing else. Two different services; sharing an id would give the second
+    one the first one's calendar row and put it on the road all year."""
     weekdays = PATTERNS["weekdays but not holidays"]
     extras = frozenset(sorted(HOLIDAYS)[:5])
 
     every_weekday_and_then_some = service_from_dates(weekdays | extras, *YEAR)
     only_the_extras = service_from_dates(extras, *YEAR)
-    assert every_weekday_and_then_some.base_id == only_the_extras.base_id == "wd"
 
-    named = numbered_services([every_weekday_and_then_some, only_the_extras])
+    named = named_services([every_weekday_and_then_some, only_the_extras])
 
     assert named[every_weekday_and_then_some].service_id != named[only_the_extras].service_id
 
 
 def test_the_ordinary_service_keeps_the_bare_name() -> None:
-    """``wd`` is most of the network; it should not be renamed ``wd-2``
-    because a seasonal variant turned up beside it."""
-    plain = service_from_dates(PATTERNS["weekdays but not holidays"], *YEAR)
-    seasonal = service_from_dates(PATTERNS["school holidays only"], *YEAR)
+    """``wd`` is most of the network; it should not pick up a suffix because a
+    variant of it turned up beside it."""
+    weekdays = PATTERNS["weekdays but not holidays"]
+    plain = service_from_dates(weekdays, *YEAR)
+    with_a_day_off = service_from_dates(weekdays - {dt.date(2026, 10, 30)}, *YEAR)
 
-    named = numbered_services([seasonal, plain])
+    named = named_services([with_a_day_off, plain])
 
     assert named[plain].service_id == "wd"
-    assert named[seasonal].service_id == "wd-1"
+    assert named[with_a_day_off].service_id == "wd-20261030"
 
 
-def test_ids_survive_the_window_sliding_forward() -> None:
-    """The feed's window moves a day every night. An id built from the dates
-    inside it would be rewritten every time one fell off the back, and the
-    whole of trips.txt with it."""
-    rule = PATTERNS["school holidays only"]
-    start, end = (day + dt.timedelta(days=1) for day in YEAR)
-    later = frozenset(d for d in days_between(start, end) if d in rule)
+# --- ids across nightly rebuilds ---------------------------------------------
+#
+# The window slides forward a day every night, so the elapsed days drop out of
+# `added` and `removed`. Anything computed from all of those dates -- a hash, or
+# a position in a list ordered by them -- renames services that have not
+# changed; both cost a few hundred renamed trips a night on the real network,
+# and the run below is what catches it.
 
-    today_named = numbered_services([service_from_dates(rule, *YEAR)])
-    tomorrow_named = numbered_services([service_from_dates(later, start, end)])
+BOUNDARY = dt.date(2026, 8, 31)
+"""The end of a timetable period, of the kind that ends a seasonal service."""
 
-    assert {s.service_id for s in today_named.values()} == {
-        s.service_id for s in tomorrow_named.values()
+NIGHTLY_RULES = {
+    # Term time: every weekday except the school holidays running to the
+    # boundary. Ends up as `wd` with those days removed.
+    "term time": lambda d: d.weekday() < 5 and not (YEAR[0] <= d <= BOUNDARY),
+    # The supplement that replaces it, and a second one that stops three days
+    # earlier -- two variants that must not be confused for one another.
+    "supplement": lambda d: d.weekday() < 5 and YEAR[0] <= d <= BOUNDARY,
+    "short supplement": lambda d: d.weekday() < 5 and YEAR[0] <= d <= BOUNDARY - dt.timedelta(3),
+}
+
+
+def _ids_on(start: dt.date) -> dict[str, tuple[str, Service]]:
+    """What a build starting on ``start`` would call each of the rules above."""
+    end = start + dt.timedelta(days=365)
+    services = {
+        name: service_from_dates(
+            frozenset(d for d in days_between(start, end) if rule(d)), start, end
+        )
+        for name, rule in NIGHTLY_RULES.items()
     }
+    live = {name: s for name, s in services.items() if s.runs_at_all}
+    naming = named_services(set(live.values()))
+    return {name: (naming[s].service_id, s) for name, s in live.items()}
+
+
+def test_nightly_rebuilds_do_not_rename_services_across_a_period_boundary() -> None:
+    """A fortnight of builds walking over 31 August. A service may be renamed
+    when what it does changes -- a supplement that has run out really is a
+    different service -- but never merely because the window moved or because
+    some *other* service disappeared from beside it."""
+    previous: dict[str, tuple[str, Service]] | None = None
+
+    for offset in range(15):
+        start = BOUNDARY - dt.timedelta(days=8) + dt.timedelta(days=offset)
+        current = _ids_on(start)
+
+        if previous is not None:
+            for name in previous.keys() & current.keys():
+                was, before = previous[name]
+                now, after = current[name]
+                if before.base_id == after.base_id and _last_exception(before) == _last_exception(
+                    after
+                ):
+                    assert was == now, f"{name} renamed {was} -> {now} on {start}"
+        previous = current
+
+
+def test_the_two_supplements_never_share_an_id_on_any_night() -> None:
+    """They end three days apart, which is the whole reason the id is built on
+    the last day: it is the one thing about them the window cannot erode."""
+    for offset in range(15):
+        start = BOUNDARY - dt.timedelta(days=8) + dt.timedelta(days=offset)
+        ids = {name: pair[0] for name, pair in _ids_on(start).items()}
+
+        assert len(set(ids.values())) == len(ids), f"{ids} collide on {start}"
+
+
+def _last_exception(service: Service) -> dt.date | None:
+    exceptions = service.added | service.removed
+    return max(exceptions) if exceptions else None
 
 
 def test_an_exception_outranks_the_holiday_rule() -> None:

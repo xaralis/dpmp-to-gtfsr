@@ -80,17 +80,24 @@ def service_from_dates(dates: frozenset[dt.date], start: dt.date, end: dt.date) 
     return replace(pattern, added=frozenset(added), removed=frozenset(removed))
 
 
-def numbered_services(services: Iterable[Service]) -> dict[Service, Service]:
+def named_services(services: Iterable[Service]) -> dict[Service, Service]:
     """Each service, mapped to the same service with a distinct ``service_id``.
 
     Several services usually share a weekly pattern -- term time and the school
     holidays are both ``wd``, and differ only in which days they take off -- so
-    something has to tell them apart. That something is a number rather than a
-    digest of their exception days, because the days themselves are not stable:
-    the feed's window slides forward every night, and a hash over dates inside
-    it would rename a service every time one of its days fell off the back. A
-    number derived from the *order* of the variants survives that, so a feed
-    diff shows the days that changed rather than every trip on the network.
+    something has to tell them apart, and every trip row in the feed carries the
+    answer. The hard part is that it must not move between nightly builds when
+    nothing about the service has: the feed's window slides forward every night
+    and the elapsed days drop out of ``added`` and ``removed``, so anything
+    computed from all of those dates -- a hash of them, or a position in a list
+    ordered by them -- renames services for no reason. Measured on this network,
+    both cost a few hundred renamed trips a night.
+
+    What does hold still is the **last** day a variant says anything about: that
+    is a timetable changeover, and changeovers are fixed dates. So the variant
+    is named after it, in date order, and only variants that end on the very
+    same day need a further tiebreak. A service whose last exception day is
+    unchanged keeps its id, whatever else the sliding window did to it.
 
     The variant with no exceptions at all, if there is one, keeps the bare name
     -- it is the ordinary case and deserves the ordinary id.
@@ -99,17 +106,36 @@ def numbered_services(services: Iterable[Service]) -> dict[Service, Service]:
     for service in services:
         groups.setdefault(service.base_id, []).append(service)
 
-    numbered: dict[Service, Service] = {}
+    named: dict[Service, Service] = {}
     for group in groups.values():
-        variants = sorted(
-            (s for s in group if s.added or s.removed),
-            key=lambda s: (sorted(s.added), sorted(s.removed)),
-        )
-        numbered.update({s: s for s in group if not (s.added or s.removed)})
-        numbered.update(
-            {s: replace(s, variant=number) for number, s in enumerate(variants, start=1)}
-        )
-    return numbered
+        named.update({s: s for s in group if not _exceptions(s)})
+
+        ending: dict[dt.date, list[Service]] = {}
+        for service in group:
+            if _exceptions(service):
+                ending.setdefault(max(_exceptions(service)), []).append(service)
+
+        for last, sharing in ending.items():
+            sharing.sort(key=_tiebreak)
+            for index, service in enumerate(sharing, start=1):
+                suffix = last.strftime("%Y%m%d") + ("" if index == 1 else f"-{index}")
+                named[service] = replace(service, variant=suffix)
+
+    return named
+
+
+def _exceptions(service: Service) -> frozenset[dt.date]:
+    return service.added | service.removed
+
+
+def _tiebreak(service: Service) -> tuple[list[dt.date], list[dt.date]]:
+    """Order variants that end on the same day, latest exception first.
+
+    Only reached by variants already sharing a last day, so it decides very
+    little -- but it decides it the same way every time rather than by set
+    iteration order.
+    """
+    return (sorted(service.added, reverse=True), sorted(service.removed, reverse=True))
 
 
 def calendar_exceptions(

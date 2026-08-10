@@ -25,7 +25,7 @@ from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
 from .calendar import (
     calendar_exceptions,
-    numbered_services,
+    named_services,
     service_from_codes,
     service_from_dates,
 )
@@ -241,7 +241,7 @@ def build_trips_and_stop_times(
     trip_services: list[Service] = []
     """One per entry in ``trips``. The service ids cannot be handed out until
     every service is known, because what distinguishes two services sharing a
-    weekly pattern is the other ones -- see :func:`numbered_services`."""
+    weekly pattern is the other ones -- see :func:`named_services`."""
     stop_times: list[StopTime] = []
     names = {s.id: s.name for s in timetable.stops}
     on_request_stops = {s.id for s in timetable.stops if s.on_request}
@@ -353,9 +353,9 @@ def build_trips_and_stop_times(
         trip_services.append(service)
         stop_times.extend(trip_stop_times)
 
-    numbering = numbered_services(set(trip_services))
+    naming = named_services(set(trip_services))
     named = [
-        replace(trip, service_id=numbering[service].service_id)
+        replace(trip, service_id=naming[service].service_id)
         for trip, service in zip(trips, trip_services, strict=True)
     ]
 
@@ -379,7 +379,7 @@ def build_trips_and_stop_times(
         "calendars: %d trips run on too few days to have a weekly pattern",
         no_weekly_pattern,
     )
-    return named, stop_times, sorted(numbering.values(), key=lambda s: s.service_id)
+    return named, stop_times, sorted(naming.values(), key=lambda s: s.service_id)
 
 
 def prune_unserved_stops(

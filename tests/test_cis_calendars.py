@@ -6,11 +6,12 @@ untouched:
 
 * line 655001 (trolleybus 1) in the version in force from 2026-07-01 and the
   superseded one from 2026-01-01, which compete for the same dates;
-* line 655002 (trolleybus 2) in the school-holiday supplement that expires on
+* line 655009 (bus 9) in the school-holiday supplement that expires on
   2026-08-31 and the year-round version that takes over from it, which *tile*
-  the timeline instead. Its trip 9 leaves at 04:32 in both; its trip 21 leaves
-  at 05:15 in one and 05:20 in the other, so the number means a different
-  journey either side of the changeover.
+  the timeline instead. Its three journeys cover all three ways a trip number
+  can behave across the changeover: trip 1 is the same journey in both
+  versions, trip 31 leaves three minutes later in the second, and trip 23
+  leaves at the same minute and then diverges from the eighth stop onwards.
 
 Everything asserted below was checked against the whole archive first, so a
 fixture that drifts from reality fails here rather than quietly agreeing with
@@ -19,6 +20,7 @@ itself.
 
 import datetime as dt
 import logging
+import re
 import zipfile
 from pathlib import Path
 
@@ -29,8 +31,8 @@ from dpmp_gtfs.cis.calendars import build_calendars
 FIXTURES = Path(__file__).parent / "fixtures" / "netex"
 CURRENT = FIXTURES / "line-655001-2026-07-01.xml"
 SUPERSEDED = FIXTURES / "line-655001-2026-01-01.xml"
-SUMMER = FIXTURES / "line-655002-2026-07-27.xml"
-YEAR_ROUND = FIXTURES / "line-655002-2026-01-01.xml"
+SUMMER = FIXTURES / "line-655009-2026-07-22.xml"
+YEAR_ROUND = FIXTURES / "line-655009-2026-07-01.xml"
 
 # A fortnight starting on a Monday, so a weekday pattern and a weekend one are
 # each visible twice over and cannot be confused with an off-by-one.
@@ -122,30 +124,41 @@ def test_another_operators_lines_are_not_read(tmp_path: Path) -> None:
 # 1 September to the end of a feed claiming to be valid for a year.
 
 SEPTEMBER = dt.date(2026, 9, 30)
+CHANGEOVER = dt.date(2026, 9, 1)
 
 
 def test_a_trip_keeps_running_when_the_next_version_still_means_it(tmp_path: Path) -> None:
-    """Trip 9 leaves at 04:32 in both versions, so it is the same journey and
-    the year-round version's days after 31 August are its days."""
+    """Trip 1 calls at the same minute at every stop in both versions, so it is
+    the same journey and the year-round version's days after 31 August are
+    its."""
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    days = calendars[("655002", 9)]
+    days = calendars[("655009", 1)]
     assert max(days) == SEPTEMBER
-    assert dt.date(2026, 9, 1) in days
+    assert CHANGEOVER in days
 
 
-def test_a_renumbered_trip_stops_rather_than_borrowing_another_journeys_days(
-    tmp_path: Path,
-) -> None:
-    """Trip 21 leaves at 05:15 before the changeover and 05:20 after it, so the
-    number means a different journey in September. This feed publishes the
-    05:15 one; giving it September's days would send a passenger to a stop five
-    minutes after the only bus that calls there."""
+def test_a_trip_renumbered_at_its_first_stop_stops_at_the_changeover(tmp_path: Path) -> None:
+    """Trip 31 leaves at 07:50 before the changeover and 07:53 after it. Giving
+    it September's days would publish a departure three minutes before the only
+    bus that calls there."""
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    days = calendars[("655002", 21)]
+    days = calendars[("655009", 31)]
     assert days, "the trip still runs while its own version is in force"
-    assert max(days) < dt.date(2026, 9, 1)
+    assert max(days) < CHANGEOVER
+
+
+def test_a_trip_that_diverges_only_later_in_its_run_also_stops(tmp_path: Path) -> None:
+    """Trip 23 leaves at 07:08 either side of the changeover and is a minute
+    apart from the eighth stop onwards. Comparing only the first departure
+    would call it the same journey and hand it September's days -- so this is
+    the test that says the comparison has to be every call time."""
+    calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+
+    days = calendars[("655009", 23)]
+    assert days
+    assert max(days) < CHANGEOVER
 
 
 def test_only_the_trips_of_the_version_in_force_are_reported(tmp_path: Path) -> None:
@@ -153,12 +166,8 @@ def test_only_the_trips_of_the_version_in_force_are_reported(tmp_path: Path) -> 
     that version's. A number only a later version has belongs to a journey this
     feed does not carry."""
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
-    only_later = build_calendars(
-        [archive(tmp_path, YEAR_ROUND, name="later.zip")], START, SEPTEMBER
-    )
 
-    assert set(calendars) == {("655002", 9), ("655002", 21)}
-    assert set(only_later) == set(calendars), "with nothing in force, the later one is"
+    assert set(calendars) == {("655009", 1), ("655009", 23), ("655009", 31)}
 
 
 def test_a_line_whose_timetable_runs_out_says_so(
@@ -170,4 +179,26 @@ def test_a_line_whose_timetable_runs_out_says_so(
     with caplog.at_level(logging.WARNING):
         build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    assert "line 655002: 1 of 2 trips have no CIS days after" in caplog.text
+    assert "line 655009: 2 of 3 trips have no CIS days after" in caplog.text
+
+
+def test_a_journey_with_no_times_at_all_is_not_extended(tmp_path: Path) -> None:
+    """Nothing then shows it is the same journey as the one in force, and the
+    burden of proof sits on extending a trip rather than on stopping it. A file
+    whose passing times went missing must not quietly restore a blind union."""
+    stripped = []
+    for source in (SUMMER, YEAR_ROUND):
+        body = re.sub(
+            r"\s*<passingTimes.*?</passingTimes>",
+            "",
+            source.read_text(encoding="utf8"),
+            flags=re.DOTALL,
+        )
+        assert body.count("<ServiceJourney ") == 3, "the journeys themselves must survive"
+        target = tmp_path / f"timeless-{source.name}"
+        target.write_text(body, encoding="utf8")
+        stripped.append(target)
+
+    calendars = build_calendars([archive(tmp_path, *stripped)], START, SEPTEMBER)
+
+    assert max(calendars[("655009", 1)]) < CHANGEOVER

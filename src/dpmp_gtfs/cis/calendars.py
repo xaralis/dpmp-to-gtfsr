@@ -194,13 +194,24 @@ def _days_in_force(
         for number, days in version.trips.items():
             if number not in trips:
                 continue
-            if version is not current and version.timings.get(number) != current.timings.get(
-                number
-            ):
+            if version is not current and not _same_journey(version, current, number):
                 continue
             trips[number].update(days & dates)
 
     return {number: frozenset(days) for number, days in trips.items()}
+
+
+def _same_journey(later: LineCalendars, current: LineCalendars, number: int) -> bool:
+    """Whether two versions still mean the same journey by one trip number.
+
+    Every call time has to match, not just the first: line 9's trip 23 leaves
+    at 07:08 either side of the changeover and is a minute apart from the
+    eighth stop onwards. A journey with no times at all cannot be shown to be
+    the same one, so it is not treated as one -- the whole point of this check
+    is that the burden of proof sits on extending a trip, not on stopping it.
+    """
+    times = later.timings.get(number)
+    return bool(times) and times == current.timings.get(number)
 
 
 def _in_force_on(versions: list[LineCalendars], date: dt.date) -> int | None:
