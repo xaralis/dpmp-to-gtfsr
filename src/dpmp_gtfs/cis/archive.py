@@ -10,16 +10,19 @@ silently produces a feed for last week's timetable.
 """
 
 import logging
+import os
 from pathlib import Path
 
 import httpx
+
+from dpmp_gtfs.exceptions import DpmpGtfsError
 
 logger = logging.getLogger(__name__)
 
 CHUNK = 1 << 20
 
 
-class CisUnavailable(RuntimeError):  # noqa: N818 -- name fixed by the task interface
+class CisUnavailable(DpmpGtfsError):  # noqa: N818 -- name fixed by the task interface
     """CIS could not be reached and nothing usable was cached."""
 
 
@@ -42,6 +45,7 @@ async def fetch_archives(
 async def _fetch_one(client: httpx.AsyncClient, url: str, dest: Path) -> Path:
     target = dest / url.rsplit("/", 1)[-1]
     meta = target.with_suffix(target.suffix + ".meta")
+    tmp = target.with_suffix(target.suffix + ".tmp")
 
     headers: dict[str, str] = {}
     if target.exists() and meta.exists():
@@ -53,9 +57,17 @@ async def _fetch_one(client: httpx.AsyncClient, url: str, dest: Path) -> Path:
                 logger.info("%s unchanged, using the cached copy", target.name)
                 return target
             response.raise_for_status()
-            with target.open("wb") as fh:
-                async for chunk in response.aiter_bytes(CHUNK):
-                    fh.write(chunk)
+            # Stream into a temp file and only replace the cached copy once the
+            # download has fully succeeded -- a stream that dies mid-transfer
+            # (ReadError, ReadTimeout, ...) must leave the last good archive
+            # byte-identical, not truncated.
+            try:
+                with tmp.open("wb") as fh:
+                    async for chunk in response.aiter_bytes(CHUNK):
+                        fh.write(chunk)
+                os.replace(tmp, target)
+            finally:
+                tmp.unlink(missing_ok=True)
             if last_modified := response.headers.get("Last-Modified"):
                 meta.write_text(last_modified, encoding="utf8")
         logger.info("downloaded %s (%d bytes)", target.name, target.stat().st_size)

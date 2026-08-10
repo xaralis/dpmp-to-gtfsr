@@ -57,3 +57,22 @@ async def test_raises_when_down_with_no_cache(tmp_path):
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as c:
         with pytest.raises(CisUnavailable):
             await fetch_archives([URL], tmp_path, client=c)
+
+
+async def test_keeps_the_original_cache_intact_when_the_stream_dies_mid_download(tmp_path, caplog):
+    (tmp_path / "Test.zip").write_bytes(b"cached-good-copy")
+
+    class DyingStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"some-but-not-all-of-the-new-archive"
+            raise httpx.ReadError("connection dropped mid-transfer")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=DyingStream())
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as c:
+        paths = await fetch_archives([URL], tmp_path, client=c)
+
+    assert paths[0].read_bytes() == b"cached-good-copy"
+    assert not (tmp_path / "Test.zip.tmp").exists()
+    assert "falling back" in caplog.text.lower()
