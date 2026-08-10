@@ -13,7 +13,7 @@ import pytest
 
 from dpmp_gtfs.cis.index import LineServices, ServiceIndex
 from dpmp_gtfs.exceptions import DpmpApiError
-from dpmp_gtfs.static.crawler import crawl
+from dpmp_gtfs.static.crawler import MISSING_TRIP_LIMIT, crawl
 
 
 class FakeApi:
@@ -73,11 +73,53 @@ async def test_a_few_missing_trips_are_skipped():
     assert table.trip_count == 39
 
 
-async def test_too_many_missing_trips_fails_the_build():
-    trips = {n: 0 for n in range(1, 41)}
-    api = FakeApi(present={("1", n) for n in range(1, 31)})  # 25% missing
-    with pytest.raises(DpmpApiError, match="655001"):
+async def test_missing_at_exactly_the_limit_is_tolerated():
+    """The threshold is a ``>``, not a ``>=``: a line sitting exactly on the
+    limit is real drift, not evidence of the wrong version, and must build."""
+    total = 100
+    missing = int(total * MISSING_TRIP_LIMIT)
+    trips = {n: 0 for n in range(1, total + 1)}
+    api = FakeApi(present={("1", n) for n in range(1, total + 1 - missing)})
+
+    table = await crawl(api, _index(trips))
+
+    assert table.trip_count == total - missing
+
+
+async def test_missing_just_over_the_limit_fails_the_build():
+    total = 100
+    missing = int(total * MISSING_TRIP_LIMIT) + 1
+    trips = {n: 0 for n in range(1, total + 1)}
+    api = FakeApi(present={("1", n) for n in range(1, total + 1 - missing)})
+
+    with pytest.raises(DpmpApiError, match=r"655001.*100.*tolerated"):
         await crawl(api, _index(trips), attempts=1)
+
+
+async def test_failure_message_reports_only_what_was_observed():
+    """The message must not claim the version is wrong -- it may well be the
+    correct one, just showing genuine upstream drift. State only the line,
+    the counts, the version, and that the tolerance was exceeded."""
+    trips = {n: 0 for n in range(1, 101)}
+    api = FakeApi(present=set())  # all 100 missing
+
+    with pytest.raises(DpmpApiError) as exc_info:
+        await crawl(api, _index(trips), attempts=1)
+
+    message = str(exc_info.value)
+    assert "655001" in message
+    assert "100 of 100" in message
+    assert "2026-07-01" in message
+    assert "20%" in message
+    assert "probably not" not in message
+
+
+async def test_a_line_with_no_registry_trips_does_not_divide_by_zero():
+    api = FakeApi(present=set())
+    table = await crawl(api, _index({}))
+
+    assert table.trip_count == 0
+    assert api.asked == []
 
 
 async def test_lines_the_registry_does_not_know_are_skipped():

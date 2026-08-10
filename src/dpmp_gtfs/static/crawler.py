@@ -28,9 +28,24 @@ DEFAULT_BACKOFF = 30.0
 upstream outages last minutes, and a crawl is a nightly job with nobody
 waiting on it."""
 
-MISSING_TRIP_LIMIT = 0.05
+MISSING_TRIP_LIMIT = 0.20
 """How much of one line's registry may be missing from the API before the
-build is treated as wrong rather than merely out of date."""
+build is treated as wrong rather than merely out of date.
+
+Measured against live data for line 655003, whose selected CIS version (the
+correct one -- confirmed by cross-checking all three versions against the
+live API) still showed drift between the current CIS archive (published
+2026-08-07) and the live API on 2026-08-10 -- three days apart, not stale:
+
+    2026-01-01  154 trips   57% absent from the API (wrong version)
+    2026-07-01  141 trips   32% absent from the API (wrong version)
+    2026-07-27  141 trips    7% absent from the API (correct version, real drift)
+
+CIS republishes roughly weekly, so drift just before a new batch could run
+considerably higher than the 7% seen three days in. 20% sits comfortably
+above that and well below a genuinely wrong version, with margin on both
+sides; a tighter limit such as 10% would risk failing builds during normal
+operation."""
 
 
 class SupportsTimetable(Protocol):
@@ -108,8 +123,8 @@ async def _crawl_once(api: SupportsTimetable, index: ServiceIndex) -> Timetable:
         if wanted and missing / len(wanted) > MISSING_TRIP_LIMIT:
             raise DpmpApiError(
                 f"line {line.id} ({line.jdf_id}): {missing} of {len(wanted)} registry trips "
-                f"are absent from the API -- the CIS version in force is probably not "
-                f"{services.valid_from}"
+                f"(version valid from {services.valid_from}) are absent from the API, "
+                f"more than the {MISSING_TRIP_LIMIT:.0%} tolerated for drift"
             )
         if missing:
             logger.info("line %s: skipped %d of %d trips", line.id, missing, len(wanted))
