@@ -9,16 +9,27 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DPMP_", env_file=".env", extra="ignore")
 
     # --- upstream API -------------------------------------------------------
-    api_root: str = "https://online.dpmp.cz/api"
-    api_key: str = ""
-    """Access key for the DPMP API.
+    api_root: str = "https://api.mhdonline.cz"
+    provider: str = "pardubice"
+    """Path prefix the new API groups everything under. They also publish
+    ``kromeriz`` and an aggregate ``global``; we only ever want Pardubice."""
 
-    The public web app ships this value hardcoded in its JS bundle, so it is not
-    a secret in any meaningful sense -- but it stays out of the source tree
-    anyway, so that rotating it does not require a code change.
-    """
+    protocol_seed: str = "your-public-protocol-seed"
+    """HMAC seed for the ``X-App-Protocol`` header -- see
+    :mod:`dpmp_gtfs.protocol`. Public, but kept in settings so it can be
+    swapped without a code change."""
 
     user_agent: str = "dpmp-to-gtfsr/0.1 (+https://github.com/xaralis/dpmp-to-gtfsr)"
+
+    # --- CIS ----------------------------------------------------------------
+    cis_urls: tuple[str, ...] = (
+        "https://portal.cisjr.cz/pub/netex/NeTEx_DrahyMestske.zip",
+        "https://portal.cisjr.cz/pub/netex/NeTEx_VerejnaLinkovaDoprava.zip",
+    )
+    """Trolleybus lines live in the first archive, buses in the second. Both
+    are needed: JDF alone covers only 19 of the 32 lines."""
+
+    cis_dir: Path = Path("data/cis")
 
     # --- politeness ---------------------------------------------------------
     request_timeout: float = 15.0
@@ -26,12 +37,11 @@ class Settings(BaseSettings):
     retry_backoff: float = 2.0
     """Base for exponential backoff, in seconds: 2, 4, 8, 16..."""
 
-    crawl_concurrency: int = 4
-    """Kept deliberately low. Eight parallel connections made the upstream
-    time out during exploration."""
-
-    crawl_delay: float = 0.1
-    """Pause between crawl requests, in seconds."""
+    crawl_concurrency: int = 8
+    crawl_rate_limit: float = 8.0
+    """Sustained requests per second. Expressed as a rate rather than as a
+    sleep between requests: with N concurrent workers a fixed sleep makes the
+    real rate depend on latency."""
 
     # --- refresh cadence ----------------------------------------------------
     realtime_interval: float = 15.0
