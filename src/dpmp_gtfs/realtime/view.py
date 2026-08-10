@@ -19,56 +19,56 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from dpmp_gtfs.api.models import Bus
+from dpmp_gtfs.api.models import Vehicle
+from dpmp_gtfs.ids import station_id, stop_id
 from dpmp_gtfs.timeutil import PRAGUE, format_clock
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
 from .index import ScheduledStop, StaticIndex
-from .tracker import DelayTracker
 
 
 def build_vehicle_views(
-    buses: list[Bus],
+    vehicles: list[Vehicle],
     index: StaticIndex,
-    tracker: DelayTracker,
     now: dt.datetime | None = None,
 ) -> list[VehicleView]:
     """Join live vehicles against the timetable into something displayable."""
     now = now or dt.datetime.now(dt.UTC)
     views: list[VehicleView] = []
 
-    for bus in buses:
-        trip = index.lookup(bus.line, bus.connection_no)
+    for vehicle in vehicles:
+        trip = index.lookup(vehicle.line_id, vehicle.connection_id)
         if trip is None:
             continue
 
-        # ``current_stop_number`` is the stop being approached, so its index is
-        # also the boundary: everything before it has been served.
-        position = trip.locate(bus.current_stop, bus.current_station)
+        # ``next_stop_id`` is the stop being approached, so its index is also
+        # the boundary: everything before it has been served.
+        current = _current_stop_id(vehicle)
+        position = trip.locate(current or None, vehicle.next_stop_id)
         previous = trip.stops[position - 1] if position is not None and position > 0 else None
         upcoming = (
             trip.stops[position] if position is not None and position < len(trip.stops) else None
         )
 
-        delay = tracker.delay_for(bus, now)
+        delay = vehicle.delay
+        line_number = int(vehicle.line_id) if vehicle.line_id.isdigit() else None
 
         views.append(
             VehicleView(
-                vehicle_id=bus.vid,
-                line=bus.line_name,
-                trolleybus=bus.line in TROLLEYBUS_LINES,
+                vehicle_id=vehicle.vid,
+                line=vehicle.line_id,
+                trolleybus=line_number in TROLLEYBUS_LINES,
                 trip_id=trip.trip_id,
                 route_id=trip.route_id,
-                destination=bus.destination_name,
-                latitude=bus.gps_latitude,
-                longitude=bus.gps_longitude,
-                bearing=bus.gps_course,
-                reported_at=bus.state_dtime.astimezone(PRAGUE).isoformat(timespec="seconds"),
-                delay_seconds=delay.seconds if delay else None,
-                delay_measured=bool(delay and delay.measured),
+                destination=vehicle.destination_name,
+                latitude=vehicle.gps_latitude,
+                longitude=vehicle.gps_longitude,
+                reported_at=now.astimezone(PRAGUE).isoformat(timespec="seconds"),
+                delay_seconds=int(delay.total_seconds()) if delay is not None else None,
+                delay_measured=delay is not None,
                 previous_stop=_stop_view(previous) if previous else None,
                 next_stop=_stop_view(upcoming) if upcoming else None,
-                heading=_bearing((bus.gps_latitude, bus.gps_longitude), upcoming.position)
+                heading=_bearing((vehicle.gps_latitude, vehicle.gps_longitude), upcoming.position)
                 if upcoming
                 else None,
                 headsign=trip.headsign,
@@ -98,24 +98,25 @@ class VehicleView:
     destination: str
     latitude: float
     longitude: float
-    bearing: float | None
     reported_at: str
     delay_seconds: int | None
-    """Positive when late. ``None`` when nothing supports a claim either way --
-    typically a vehicle waiting at its first stop, which is a large share of
-    them at any moment."""
+    """Positive when late. ``None`` when the upstream reports no delay at all
+    for this vehicle -- typically one waiting at its first stop, which is a
+    large share of them at any moment."""
     delay_measured: bool
-    """True when observed from a stop-to-stop transition, false when it is the
-    conservative lower bound derived from the countdown."""
+    """True whenever ``delay_seconds`` is not ``None``. The upstream's
+    ``currentDelay`` is a real signed delay rather than a countdown, so unlike
+    the old API there is no separate conservative lower-bound estimate to tell
+    apart from an actual measurement."""
     previous_stop: StopView | None
     next_stop: StopView | None
     heading: float | None
     """Compass bearing towards the next stop, degrees clockwise from north.
 
-    Worked out from the timetable rather than taken from the vehicle: the
-    upstream has a ``gps_course`` field but it is null on every vehicle in
-    every snapshot recorded so far, so the direction has to come from where
-    the trip goes next."""
+    Worked out from the timetable rather than taken from the vehicle: neither
+    the old API's ``gps_course`` (always null in practice) nor the new one has
+    a usable bearing field, so the direction has to come from where the trip
+    goes next."""
     headsign: str
     """The trip's final stop -- the direction as a passenger reads it, which
     is not always what the vehicle's own destination sign says."""
@@ -130,6 +131,20 @@ class StopView:
     scheduled: str
     """Timetabled time at this stop, ``HH:MM``. May read past 24:00 on a trip
     that crosses midnight, as GTFS does."""
+
+
+def _current_stop_id(vehicle: Vehicle) -> str:
+    """The stop id the vehicle is heading to, as an id the static feed knows.
+
+    The platform when the upstream names one; otherwise the parent station,
+    which is still a real, resolvable id in the static feed -- unlike a
+    fabricated platform or an empty string.
+    """
+    if vehicle.next_stop_id is None:
+        return ""
+    if vehicle.next_stop_platform_id is not None:
+        return stop_id(vehicle.next_stop_id, vehicle.next_stop_platform_id)
+    return station_id(vehicle.next_stop_id)
 
 
 def _bearing(origin: tuple[float, float], target: tuple[float, float] | None) -> float | None:

@@ -10,9 +10,8 @@ from typing import Any
 
 import pytest
 
-from dpmp_gtfs.api.models import Bus
+from dpmp_gtfs.api.models import Vehicle
 from dpmp_gtfs.realtime.index import ScheduledStop, ScheduledTrip, StaticIndex
-from dpmp_gtfs.realtime.tracker import DelayTracker
 from dpmp_gtfs.realtime.view import as_payload, build_vehicle_views
 
 NOW = dt.datetime(2026, 8, 7, 17, 0, tzinfo=dt.UTC)  # 19:00 Prague
@@ -31,29 +30,24 @@ def _index() -> StaticIndex:
     return StaticIndex({"L9C115": trip})
 
 
-def _bus(**overrides: Any) -> Bus:
-    base = {
+def _vehicle(**over: Any) -> Vehicle:
+    base: dict[str, object] = {
         "vid": "105",
-        "state_dtime": "2026-08-07 17:00:00",
-        "line_name": "9",
-        "line_direction": "S12",
-        "destination_name": "Spojil,točna",
-        "last_stop_number": "0",
-        "last_stop_name": None,
-        "current_stop_number": "201",  # station 2, platform 1
-        "current_stop_name": "x",
-        "current_stop_scheduled_departure": "19:05:00",
-        "time_difference": None,
-        "connection_no": 115,
-        "gps_latitude": 50.03,
-        "gps_longitude": 15.77,
+        "lineId": "9",
+        "connectionId": 115,
+        "gpsLat": 50.03,
+        "gpsLon": 15.77,
+        "destinationName": "Spojil,točna",
+        "currentDelay": None,
+        "onStation": False,
     }
-    return Bus.model_validate(base | overrides)
+    base.update(over)
+    return Vehicle.model_validate(base)
 
 
-def _view(bus: Bus, tracker: DelayTracker | None = None) -> Any:
+def _view(vehicle: Vehicle) -> Any:
     index = _index()
-    views = build_vehicle_views([bus], index, tracker or DelayTracker(index), NOW)
+    views = build_vehicle_views([vehicle], index, NOW)
     return views[0]
 
 
@@ -61,27 +55,27 @@ def _view(bus: Bus, tracker: DelayTracker | None = None) -> Any:
 
 
 def test_next_stop_is_the_one_being_approached() -> None:
-    v = _view(_bus(current_stop_number="201"))
+    v = _view(_vehicle(nextStopId=2, nextStopPlatformId=1))
     assert v.next_stop.id == "S2P1"
     assert v.next_stop.name == "Masarykovo nám."
     assert v.next_stop.scheduled == "19:05"
 
 
 def test_previous_stop_is_the_one_already_served() -> None:
-    v = _view(_bus(current_stop_number="201"))
+    v = _view(_vehicle(nextStopId=2, nextStopPlatformId=1))
     assert v.previous_stop.id == "S1P1"
     assert v.previous_stop.name == "Hlavní nádraží"
 
 
 def test_a_vehicle_at_the_first_stop_has_no_previous() -> None:
     """It has not been anywhere yet; inventing a stop would be a lie."""
-    v = _view(_bus(current_stop_number="101"))
+    v = _view(_vehicle(nextStopId=1, nextStopPlatformId=1))
     assert v.previous_stop is None
     assert v.next_stop.id == "S1P1"
 
 
 def test_stop_position_is_reported_for_progress() -> None:
-    v = _view(_bus(current_stop_number="301"))
+    v = _view(_vehicle(nextStopId=3, nextStopPlatformId=1))
     assert (v.stop_index, v.stops_total) == (2, 3)
 
 
@@ -89,54 +83,66 @@ def test_an_unknown_platform_falls_back_to_the_station() -> None:
     """A vehicle can report a platform the trip does not use while the station
     itself is on the route; losing the vehicle over that would be worse than
     naming the station."""
-    v = _view(_bus(current_stop_number="209"))  # station 2, platform 9
+    v = _view(_vehicle(nextStopId=2, nextStopPlatformId=9))  # station 2, platform 9
     assert v.next_stop.id == "S2P1"
 
 
-# --- delay ------------------------------------------------------------------
+def test_a_vehicle_with_no_next_stop_still_produces_a_view() -> None:
+    """The upstream can decline to name a next stop at all; that must not be
+    confused with the vehicle running off the trip entirely."""
+    v = _view(_vehicle(nextStopId=None, nextStopPlatformId=None))
+    assert v.previous_stop is None
+    assert v.next_stop is None
+    assert v.stop_index is None
 
 
-def test_delay_is_none_when_nothing_supports_a_claim() -> None:
-    v = _view(_bus(time_difference=None))
+# --- delay --------------------------------------------------------------
+
+
+def test_delay_is_none_when_the_upstream_reports_none() -> None:
+    v = _view(_vehicle(currentDelay=None))
     assert v.delay_seconds is None
     assert v.delay_measured is False
 
 
-def test_measured_delay_is_marked_as_such() -> None:
-    index = _index()
-    tracker = DelayTracker(index)
-    tracker.observe([_bus(last_stop_number="0")])
-    moved = _bus(state_dtime="2026-08-07 17:02:00", last_stop_number="1")
-    tracker.observe([moved])
-
-    views = build_vehicle_views([moved], index, tracker, NOW)
-    assert views[0].delay_seconds == 120
-    assert views[0].delay_measured is True
+def test_a_reported_delay_is_marked_as_measured() -> None:
+    v = _view(_vehicle(currentDelay="PT2M0S"))
+    assert v.delay_seconds == 120
+    assert v.delay_measured is True
 
 
-def test_countdown_fallback_is_not_marked_as_measured() -> None:
-    """The distinction matters: the fallback can only ever prove lateness."""
-    v = _view(_bus(time_difference="-00:01:00"))
-    assert v.delay_seconds == 60
-    assert v.delay_measured is False
+def test_an_early_vehicle_has_a_negative_delay() -> None:
+    v = _view(_vehicle(currentDelay="-PT1M0S"))
+    assert v.delay_seconds == -60
+    assert v.delay_measured is True
 
 
 # --- classification and payload ---------------------------------------------
 
 
 def test_trolleybus_lines_are_flagged() -> None:
-    assert _view(_bus(line_name="9", connection_no=115)).trolleybus is False
+    assert _view(_vehicle(lineId="9", connectionId=115)).trolleybus is False
+
+
+def test_a_lettered_line_is_not_mistaken_for_a_trolleybus() -> None:
+    """``line_id`` is not guaranteed to be numeric; a line the upstream names
+    with letters is simply not a trolleybus rather than a crash."""
+    index = StaticIndex({"LX1C1": ScheduledTrip(trip_id="LX1C1", route_id="LX1", stops=())})
+    views = build_vehicle_views(
+        [_vehicle(lineId="X1", connectionId=1)], index, NOW
+    )
+    assert views[0].trolleybus is False
 
 
 def test_reported_at_is_local_time() -> None:
-    """state_dtime is UTC; a passenger-facing timestamp should not be."""
-    v = _view(_bus(state_dtime="2026-08-07 17:00:00"))
+    """The snapshot time is UTC; a passenger-facing timestamp should not be."""
+    v = _view(_vehicle())
     assert v.reported_at.startswith("2026-08-07T19:00")
 
 
 def test_vehicles_off_the_static_feed_are_skipped() -> None:
     index = _index()
-    views = build_vehicle_views([_bus(connection_no=9999)], index, DelayTracker(index), NOW)
+    views = build_vehicle_views([_vehicle(connectionId=9999)], index, NOW)
     assert views == []
 
 
@@ -144,7 +150,7 @@ def test_payload_is_json_ready() -> None:
     import json
 
     index = _index()
-    views = build_vehicle_views([_bus()], index, DelayTracker(index), NOW)
+    views = build_vehicle_views([_vehicle(nextStopId=2, nextStopPlatformId=1)], index, NOW)
     payload = as_payload(views, NOW)
 
     assert payload["count"] == 1

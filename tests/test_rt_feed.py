@@ -3,10 +3,9 @@ from typing import Any
 
 from google.transit import gtfs_realtime_pb2 as rt
 
-from dpmp_gtfs.api.models import Bus
+from dpmp_gtfs.api.models import Vehicle
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import ScheduledStop, ScheduledTrip, StaticIndex
-from dpmp_gtfs.realtime.tracker import DelayTracker
 
 
 def _index() -> StaticIndex:
@@ -22,32 +21,40 @@ def _index() -> StaticIndex:
     return StaticIndex({"L9C115": trip})
 
 
-def _bus(**overrides: Any) -> Bus:
-    base = {
-        "vid": "105",
-        "state_dtime": "2026-08-07 17:00:00",
-        "line_name": "9",
-        "line_direction": "S12",
-        "destination_name": "x",
-        "last_stop_number": "0",
-        "last_stop_name": None,
-        "current_stop_number": "201",  # station 2, platform 1
-        "current_stop_name": "x",
-        "current_stop_scheduled_departure": "19:05:00",
-        "time_difference": None,
-        "connection_no": 115,
-        "gps_latitude": 50.03,
-        "gps_longitude": 15.77,
-        "gps_course": 271.0,
+def _vehicle(**over: object) -> Vehicle:
+    payload: dict[str, object] = {
+        "vid": "100",
+        "lineId": "1",
+        "connectionId": 1,
+        "gpsLat": 50.01,
+        "gpsLon": 15.77,
+        "currentDelay": "PT0S",
+        "onStation": False,
     }
-    return Bus.model_validate(base | overrides)
+    payload.update(over)
+    return Vehicle.model_validate(payload)
 
 
-NOW = dt.datetime(2026, 8, 7, 17, 0, tzinfo=dt.UTC)
+def _line9(**over: Any) -> Vehicle:
+    """A vehicle running the ``L9C115`` trip that :func:`_index` knows."""
+    base: dict[str, object] = {
+        "vid": "105",
+        "lineId": "9",
+        "connectionId": 115,
+        "gpsLat": 50.03,
+        "gpsLon": 15.77,
+        "currentDelay": None,
+        "onStation": False,
+    }
+    base.update(over)
+    return _vehicle(**base)
+
+
+NOW = dt.datetime(2026, 8, 7, 17, 0, tzinfo=dt.UTC)  # 19:00 Prague
 
 
 def test_header_is_a_full_dataset() -> None:
-    msg = build_feed_message([], _index(), DelayTracker(_index()), NOW)
+    msg = build_feed_message([], _index(), NOW)
     assert msg.header.gtfs_realtime_version == "2.0"
     assert msg.header.incrementality == rt.FeedHeader.FULL_DATASET
     assert msg.header.timestamp == int(NOW.timestamp())
@@ -55,7 +62,8 @@ def test_header_is_a_full_dataset() -> None:
 
 def test_a_vehicle_produces_a_position() -> None:
     index = _index()
-    msg = build_feed_message([_bus()], index, DelayTracker(index), NOW)
+    vehicle = _line9(nextStopId=2, nextStopPlatformId=1)
+    msg = build_feed_message([vehicle], index, NOW)
 
     positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
     assert len(positions) == 1
@@ -65,70 +73,81 @@ def test_a_vehicle_produces_a_position() -> None:
     assert vp.trip.route_id == "L9"
     assert vp.stop_id == "S2P1"
     assert vp.current_stop_sequence == 1
-    assert round(vp.position.bearing) == 271
 
 
 def test_trip_descriptor_carries_start_date_and_time() -> None:
     index = _index()
-    msg = build_feed_message([_bus()], index, DelayTracker(index), NOW)
+    msg = build_feed_message([_line9(nextStopId=2, nextStopPlatformId=1)], index, NOW)
     trip = next(e.vehicle.trip for e in msg.entity if e.HasField("vehicle"))
     assert trip.start_date == "20260807"
     assert trip.start_time == "19:00:00"
 
 
-def test_no_trip_update_without_delay_evidence() -> None:
-    """A vehicle that has not departed has no delay, and must not be described
-    as running exactly on time."""
+def test_delay_comes_straight_from_the_vehicle(static_index: StaticIndex) -> None:
+    vehicle = _vehicle(currentDelay="-PT1M43S")
+    message = build_feed_message([vehicle], static_index)
+
+    update = next(e.trip_update for e in message.entity if e.HasField("trip_update"))
+    assert update.delay == -103
+
+
+def test_no_delay_means_no_trip_update(static_index: StaticIndex) -> None:
+    vehicle = _vehicle(currentDelay=None)
+    message = build_feed_message([vehicle], static_index)
+
+    assert not any(e.HasField("trip_update") for e in message.entity)
+    assert any(e.HasField("vehicle") for e in message.entity)
+
+
+def test_on_station_reports_stopped_at(static_index: StaticIndex) -> None:
+    stopped = build_feed_message([_vehicle(onStation=True)], static_index)
+    moving = build_feed_message([_vehicle(onStation=False)], static_index)
+
+    assert (
+        next(e.vehicle for e in stopped.entity if e.HasField("vehicle")).current_status
+        == rt.VehiclePosition.STOPPED_AT
+    )
+    assert (
+        next(e.vehicle for e in moving.entity if e.HasField("vehicle")).current_status
+        == rt.VehiclePosition.IN_TRANSIT_TO
+    )
+
+
+def test_trip_update_predicts_the_remaining_stops_with_decay() -> None:
+    """Unlike the retired tracker, a projected delay decays: a vehicle that is
+    late tends to claw back a little at each further stop."""
     index = _index()
-    msg = build_feed_message([_bus(time_difference=None)], index, DelayTracker(index), NOW)
-
-    assert any(e.HasField("vehicle") for e in msg.entity), "position is still published"
-    assert not any(e.HasField("trip_update") for e in msg.entity)
-
-
-def test_trip_update_predicts_only_the_remaining_stops() -> None:
-    index = _index()
-    tracker = DelayTracker(index)
-    tracker.observe([_bus(last_stop_number="0")])
-    moved = _bus(state_dtime="2026-08-07 17:02:00", last_stop_number="1")
-    tracker.observe([moved])
-
-    msg = build_feed_message([moved], index, tracker, NOW)
+    vehicle = _line9(nextStopId=2, nextStopPlatformId=1, currentDelay="PT2M0S")
+    msg = build_feed_message([vehicle], index, NOW)
     update = next(e.trip_update for e in msg.entity if e.HasField("trip_update"))
 
     assert update.delay == 120
     # Vehicle is at S2P1 (sequence 1), so sequences 1 and 2 remain.
     assert [s.stop_sequence for s in update.stop_time_update] == [1, 2]
-    assert all(s.arrival.delay == 120 for s in update.stop_time_update)
+    assert [s.arrival.delay for s in update.stop_time_update] == [120, 108]
+    assert [s.departure.delay for s in update.stop_time_update] == [120, 108]
 
 
 def test_vehicles_missing_from_the_static_feed_are_skipped() -> None:
     index = _index()
-    msg = build_feed_message([_bus(connection_no=9999)], index, DelayTracker(index), NOW)
+    msg = build_feed_message([_line9(connectionId=9999)], index, NOW)
     assert len(msg.entity) == 0
 
 
 def test_entity_ids_are_unique() -> None:
     index = _index()
-    tracker = DelayTracker(index)
-    tracker.observe([_bus(last_stop_number="0")])
-    moved = _bus(state_dtime="2026-08-07 17:02:00", last_stop_number="1")
-    tracker.observe([moved])
-
-    msg = build_feed_message([moved], index, tracker, NOW)
+    vehicle = _line9(nextStopId=2, nextStopPlatformId=1, currentDelay="PT2M0S")
+    msg = build_feed_message([vehicle], index, NOW)
     ids = [e.id for e in msg.entity]
     assert len(ids) == len(set(ids))
 
 
 def test_feed_round_trips_through_protobuf() -> None:
     index = _index()
-    tracker = DelayTracker(index)
-    tracker.observe([_bus(last_stop_number="0")])
-    # Departed 50s early -- negative delays must survive serialisation.
-    early = _bus(state_dtime="2026-08-07 16:59:10", last_stop_number="1")
-    tracker.observe([early])
+    # 50s early -- negative delays must survive serialisation.
+    vehicle = _line9(nextStopId=2, nextStopPlatformId=1, currentDelay="-PT50S")
 
-    msg = build_feed_message([early], index, tracker, NOW)
+    msg = build_feed_message([vehicle], index, NOW)
     restored = rt.FeedMessage()
     restored.ParseFromString(msg.SerializeToString())
 
@@ -150,15 +169,41 @@ def test_a_vehicle_on_an_unlisted_platform_still_gets_predictions() -> None:
     """
     index = _index()
     # Station 2 is on the trip, but as platform 1; the vehicle claims 9.
-    bus = _bus(current_stop_number="209", last_stop_number="1", time_difference="-00:02:00")
+    vehicle = _line9(nextStopId=2, nextStopPlatformId=9, currentDelay="-PT2M")
 
-    msg = build_feed_message([bus], index, DelayTracker(index), NOW)
+    msg = build_feed_message([vehicle], index, NOW)
 
     positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
     assert positions[0].current_stop_sequence == 1
 
     updates = [e.trip_update for e in msg.entity if e.HasField("trip_update")]
     assert [u.stop_id for u in updates[0].stop_time_update] == ["S2P1", "S3P1"]
+
+
+def test_an_unknown_platform_falls_back_to_the_parent_station_id() -> None:
+    """Regression: when the upstream does not name a platform at all, the
+    published stop_id must still resolve against the static feed -- so it is
+    the parent station, not an empty guess or a fabricated platform."""
+    index = _index()
+    vehicle = _line9(nextStopId=2, nextStopPlatformId=None)
+
+    msg = build_feed_message([vehicle], index, NOW)
+
+    position = next(e.vehicle for e in msg.entity if e.HasField("vehicle"))
+    assert position.stop_id == "S2"
+    assert position.current_stop_sequence == 1
+
+
+def test_the_unknown_platform_fallback_resolves_in_a_real_feed(static_index: StaticIndex) -> None:
+    """The parent-station id the unknown-platform fallback publishes must
+    actually appear in a built static feed, not just satisfy the in-memory
+    :class:`ScheduledTrip` check that the other tests use."""
+    vehicle = _vehicle(nextStopId=1, nextStopPlatformId=None)
+    msg = build_feed_message([vehicle], static_index)
+
+    position = next(e.vehicle for e in msg.entity if e.HasField("vehicle"))
+    assert position.stop_id == "S1"
+    assert static_index.stop_name(position.stop_id) != ""
 
 
 def test_a_trip_running_past_midnight_reports_the_day_it_started() -> None:
@@ -175,40 +220,11 @@ def test_a_trip_running_past_midnight_reports_the_day_it_started() -> None:
     )
     index = StaticIndex({"L98C9": late})
     # 00:30 Prague on 9 August = 22:30 UTC on the 8th.
-    bus = _bus(
-        line_name="98",
-        connection_no=9,
-        current_stop_number="201",
-        state_dtime="2026-08-08 22:30:00",
-    )
+    vehicle = _vehicle(lineId="98", connectionId=9, nextStopId=1, nextStopPlatformId=1)
+    now = dt.datetime(2026, 8, 8, 22, 30, tzinfo=dt.UTC)
 
-    msg = build_feed_message([bus], index, DelayTracker(index), NOW)
+    msg = build_feed_message([vehicle], index, now)
 
     positions = [e.vehicle for e in msg.entity if e.HasField("vehicle")]
     assert positions[0].trip.start_date == "20260808"
     assert positions[0].trip.start_time == "23:58:00"
-
-
-def test_one_malformed_vehicle_does_not_discard_the_snapshot() -> None:
-    """Regression: ``int(line_name)`` raised out of the middle of the loop.
-
-    Nothing guarantees the upstream's numeric fields hold numbers. A single
-    vehicle with a lettered line took all fifty others down with it, and since
-    the scheduler keeps the last good feed on failure, the realtime feed then
-    stayed frozen for as long as that vehicle was reported.
-    """
-    index = _index()
-    good = _bus(vid="1")
-    lettered = _bus(vid="2", line_name="X1")
-    garbled = _bus(vid="3", current_stop_number="n/a")
-
-    msg = build_feed_message([good, lettered, garbled], index, DelayTracker(index), NOW)
-
-    # The good vehicle is published; the one with an unusable line is skipped.
-    assert [e.vehicle.vehicle.id for e in msg.entity if e.HasField("vehicle")] == ["1", "3"]
-
-
-def test_a_malformed_vehicle_does_not_break_the_tracker_either() -> None:
-    index = _index()
-    tracker = DelayTracker(index)
-    assert tracker.observe([_bus(vid="2", line_name="X1")]) == 0

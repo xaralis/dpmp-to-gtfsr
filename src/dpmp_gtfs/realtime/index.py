@@ -1,8 +1,9 @@
 """Lookup structures that connect realtime observations to the static feed.
 
-``/api/buses`` reports ``line_name`` and ``connection_no``, which are exactly
-the upstream's own line and trip numbers -- the same pair the timetable
-endpoints use. So the join is direct, with no name matching or heuristics.
+``/{provider}/vehicles`` reports ``lineId`` and ``connectionId``, which are
+exactly the upstream's own line and trip identifiers -- the same pair the
+timetable endpoints use. So the join is direct, with no name matching or
+heuristics.
 """
 
 import datetime as dt
@@ -51,15 +52,8 @@ class StaticIndex:
     def __len__(self) -> int:
         return len(self._by_trip_id)
 
-    def lookup(self, line: int | None, connection: int) -> ScheduledTrip | None:
-        """The trip a vehicle is running, if it is one this feed knows.
-
-        ``line`` is ``None`` for a vehicle whose line number the upstream sent
-        as something other than a number; there is nothing to look up, and the
-        caller already skips a vehicle it cannot place.
-        """
-        if line is None:
-            return None
+    def lookup(self, line: str, connection: int) -> ScheduledTrip | None:
+        """The trip a vehicle is running, if it is one this feed knows."""
         return self._by_trip_id.get(trip_id(line, connection))
 
     def stop_name(self, stop_id: str) -> str:

@@ -63,3 +63,19 @@ def simple_timetable():
         directions={("1", 1): 0, ("1", 2): 1},
         connections={("1", 1): connection(1, 1, 2), ("1", 2): connection(2, 2, 1)},
     )
+
+
+@pytest.fixture
+def static_index(simple_timetable, tmp_path):
+    """A real ``StaticIndex``, built and read back the same way the scheduler
+    does: :func:`build_feed` then :func:`write_feed` then
+    ``StaticIndex.from_zip`` -- not a hand-built dict of dataclasses. Line
+    ``"1"`` connection ``1`` resolves to trip ``L1C1``."""
+    from dpmp_gtfs.realtime.index import StaticIndex
+    from dpmp_gtfs.static.builder import build_feed
+    from dpmp_gtfs.static.writer import write_feed
+
+    feed = build_feed(simple_timetable)
+    destination = tmp_path / "gtfs.zip"
+    write_feed(feed, destination)
+    return StaticIndex.from_zip(destination)
