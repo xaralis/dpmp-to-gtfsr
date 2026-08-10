@@ -1,13 +1,13 @@
 """Fetches the whole timetable from the API alone.
 
 The API exposes trips one at a time and publishes no listing, so for each
-line this walks its trip-number space with :func:`discover_trips`, fetches
-exactly the numbers found, and derives which way each one runs with
-:func:`assign_directions` over the connections just fetched. Roughly 2,700
-trips at 8 req/s, about six minutes -- plus the discovery probes themselves,
-which cost the same again in requests but are cheap next to the outage risk
-of trusting a second source that cannot be kept in sync (see
-``docs/upstream-api.md``).
+line this walks its trip-number space with :func:`discover_trips`, which
+returns the connections it found while probing -- no second fetch pass, since
+the walk already paid for them -- and derives which way each one runs with
+:func:`assign_directions` over exactly those connections. Roughly 2,700 trips
+at 8 req/s, about six minutes, plus the discovery walk's own misses, cheap
+next to the outage risk of trusting a second source that cannot be kept in
+sync (see ``docs/upstream-api.md``).
 """
 
 import asyncio
@@ -79,21 +79,10 @@ async def _crawl_once(api: SupportsTimetable) -> Timetable:
     timetable = Timetable(stops=stops, lines=lines)
 
     for line in lines:
-        numbers = await discover_trips(api, line.id)
-        results = await asyncio.gather(*(api.connection(line.id, n) for n in numbers))
+        connections = await discover_trips(api, line.id)
 
-        connections: dict[int, Connection] = {}
-        for number, connection in zip(numbers, results, strict=True):
-            if connection is None:
-                # Found during discovery, gone by the time it was fetched --
-                # a race, not evidence of anything wrong with the line.
-                logger.debug(
-                    "line %s trip %d vanished between discovery and fetch", line.id, number
-                )
-                continue
-            connections[number] = connection
+        for number, connection in connections.items():
             timetable.connections[(line.id, number)] = connection
-
         for number, direction in assign_directions(connections).items():
             timetable.directions[(line.id, number)] = direction
 

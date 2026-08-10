@@ -24,15 +24,20 @@ the stop rule -- the batch shrinks to exactly what is left as the allowance
 runs low."""
 
 
-class SupportsConnection(Protocol):
-    async def connection(self, line: str, number: int) -> object | None: ...
+class SupportsConnection[T](Protocol):
+    async def connection(self, line: str, number: int) -> T | None: ...
 
 
-async def discover_trips(
-    api: SupportsConnection, line_id: str, stop_after: int = DEFAULT_STOP_AFTER
-) -> list[int]:
-    """Every trip number the API answers for, in ascending order."""
-    found: list[int] = []
+async def discover_trips[T](
+    api: SupportsConnection[T], line_id: str, stop_after: int = DEFAULT_STOP_AFTER
+) -> dict[int, T]:
+    """Every trip the API answers for, keyed by trip number.
+
+    Returns what the walk already fetched while probing for existence,
+    rather than just the numbers -- a second pass to fetch the same
+    connections again would double the request count for nothing.
+    """
+    found: dict[int, T] = {}
     misses = 0
     start = 1
 
@@ -44,9 +49,11 @@ async def discover_trips(
             if result is None:
                 misses += 1
             else:
-                found.append(number)
+                found[number] = result
                 misses = 0
         start += size
 
-    logger.info("line %s: found %d trips up to %d", line_id, len(found), found[-1] if found else 0)
+    logger.info(
+        "line %s: found %d trips up to %d", line_id, len(found), max(found) if found else 0
+    )
     return found

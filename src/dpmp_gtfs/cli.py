@@ -84,15 +84,12 @@ def dump_fixtures(
             _write(dest / "lines.json", [line.model_dump(mode="json") for line in line_list])
 
             for line in line_list[:lines]:
-                numbers = await discover_trips(api, line.id)
+                connections = await discover_trips(api, line.id)
                 # A couple of trips is enough to exercise the stop_times path.
-                for number in numbers[:3]:
-                    connection = await api.connection(line.id, number)
-                    if connection is None:
-                        continue
+                for number in sorted(connections)[:3]:
                     _write(
                         dest / f"connection-{line.id}-{number}.json",
-                        connection.model_dump(mode="json"),
+                        connections[number].model_dump(mode="json"),
                     )
 
             _write(dest / "vehicles.json", (await api.vehicles()).model_dump(mode="json"))
