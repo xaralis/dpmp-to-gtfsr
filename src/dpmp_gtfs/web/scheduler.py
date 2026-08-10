@@ -40,6 +40,17 @@ class Scheduler:
         self.settings = settings
         self.state = FeedState()
         self._tasks: list[asyncio.Task[None]] = []
+        self._build_lock = asyncio.Lock()
+        """Guards against two rebuilds interleaving on ``self.state``.
+
+        The initial build and ``_static_loop``'s nightly one are now created
+        in the same batch (see :meth:`start`), so a cold start shortly before
+        ``static_rebuild_hour`` can no longer rely on the nightly loop's
+        first sleep having been computed after the initial build finished --
+        both can legitimately want to run at once. Two concurrent crawls
+        would both write ``gtfs.zip``; the write itself is atomic, but which
+        one's result survives is then a race, and one build's success could
+        be clobbered by the other's later failure."""
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -113,46 +124,62 @@ class Scheduler:
         logger.info("static build: %s", message)
 
     async def rebuild_static(self) -> None:
-        try:
-            self._phase("stahuji jízdní řády")
-            async with DpmpApiClient(self.settings) as api:
-                timetable = await crawl(api)
-            feed = build_feed(timetable)
+        """Crawl, build and publish a fresh static feed.
 
-            if self.settings.shapes_enabled:
-                # Routing reaches the network, so it runs in a worker thread to
-                # keep the realtime loop ticking through a slow first build.
-                self._phase("počítám trasy")
-                feed = await asyncio.to_thread(
-                    with_shapes, feed, self.settings.data_dir / "shape-cache.json"
-                )
+        Skips rather than queues when a build is already running: the
+        initial build and the nightly one are scheduled independently and
+        can now legitimately overlap (see ``_build_lock``'s docstring), and
+        a rebuild that starts the instant another finishes would just redo
+        the same crawl for nothing. The check-then-acquire below has no
+        ``await`` between the two, so nothing can slip in between them.
+        """
+        if self._build_lock.locked():
+            logger.info("skipping static rebuild: one is already in progress")
+            return
 
-            missing = sorted(set(iter_missing_stop_references(feed)))
-            if missing:
-                # Publishing a feed with dangling stop references would break
-                # every consumer; keeping the previous one is strictly better.
-                raise FeedBuildError(
-                    f"{len(missing)} stop ids referenced but not defined: {missing[:5]}"
-                )
+        async with self._build_lock:
+            try:
+                self._phase("stahuji jízdní řády")
+                async with DpmpApiClient(self.settings) as api:
+                    timetable = await crawl(api)
+                feed = build_feed(timetable)
 
-            destination = self.settings.gtfs_zip_path
-            version = write_feed(feed, destination)
+                if self.settings.shapes_enabled:
+                    # Routing reaches the network, so it runs in a worker thread
+                    # to keep the realtime loop ticking through a slow first
+                    # build.
+                    self._phase("počítám trasy")
+                    feed = await asyncio.to_thread(
+                        with_shapes, feed, self.settings.data_dir / "shape-cache.json"
+                    )
 
-            index = StaticIndex.from_zip(destination)
-            self.state.index = index
-            self.state.static_version = version
-            self.state.static_built_at = dt.datetime.now(dt.UTC)
-            self.state.trip_count = len(index)
-            self.state.unserved_stops = feed.unserved_stops
-            self.state.static_error = None
-        except Exception as exc:
-            # The previous feed stays in place and keeps being served.
-            logger.exception("static rebuild failed")
-            self.state.static_error = repr(exc)
-        finally:
-            # Whether this succeeded, failed, or is about to be retried
-            # tonight, nothing is being built right now.
-            self.state.static_phase = None
+                missing = sorted(set(iter_missing_stop_references(feed)))
+                if missing:
+                    # Publishing a feed with dangling stop references would
+                    # break every consumer; keeping the previous one is
+                    # strictly better.
+                    raise FeedBuildError(
+                        f"{len(missing)} stop ids referenced but not defined: {missing[:5]}"
+                    )
+
+                destination = self.settings.gtfs_zip_path
+                version = write_feed(feed, destination)
+
+                index = StaticIndex.from_zip(destination)
+                self.state.index = index
+                self.state.static_version = version
+                self.state.static_built_at = dt.datetime.now(dt.UTC)
+                self.state.trip_count = len(index)
+                self.state.unserved_stops = feed.unserved_stops
+                self.state.static_error = None
+            except Exception as exc:
+                # The previous feed stays in place and keeps being served.
+                logger.exception("static rebuild failed")
+                self.state.static_error = repr(exc)
+            finally:
+                # Whether this succeeded, failed, or is about to be retried
+                # tonight, nothing is being built right now.
+                self.state.static_phase = None
 
     async def _static_loop(self) -> None:
         while True:

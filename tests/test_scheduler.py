@@ -8,6 +8,7 @@ here is that the phase is visible *during* each stage and gone once the
 build ends, however it ends.
 """
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -120,3 +121,37 @@ async def test_the_phase_is_cleared_even_when_the_build_fails(
 
     assert sched.state.static_phase is None
     assert sched.state.static_error is not None
+
+
+async def test_a_second_rebuild_is_skipped_while_one_is_in_flight(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The initial build and the nightly loop's are now scheduled
+    independently (see ``_build_lock``'s docstring): a cold start shortly
+    before ``static_rebuild_hour`` can have both want to run at once. Only
+    one crawl -- and one write to ``self.state`` -- must actually happen."""
+    gate = asyncio.Event()
+    starts = 0
+
+    async def gated_crawl(api: Any) -> Timetable:
+        nonlocal starts
+        starts += 1
+        await gate.wait()
+        return Timetable(stops=[], lines=[])
+
+    monkeypatch.setattr(scheduler_module, "crawl", gated_crawl)
+    sched = Scheduler(_settings(tmp_path))
+
+    first = asyncio.create_task(sched.rebuild_static())
+    await asyncio.sleep(0)  # let the first call reach the crawl and take the lock
+    assert sched._build_lock.locked()
+
+    with caplog.at_level(logging.INFO, logger="dpmp_gtfs.web.scheduler"):
+        await sched.rebuild_static()  # a second call while the first is still running
+
+    assert starts == 1, "the crawl must not have started a second time"
+    assert "skipping" in caplog.text.lower()
+
+    gate.set()
+    await first
+    assert not sched._build_lock.locked()
