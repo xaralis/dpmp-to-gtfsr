@@ -2419,6 +2419,295 @@ git commit -m "feat: report build phases in the log and on the map"
 
 ---
 
+### Task 14: Seznam spojů a směr z API
+
+CIS se ukázal jako zdroj, který nemá jak dohnat. Změřeno proti živému API: 3 linky z 32 se rozešly (12 o 28,5 %, 9 o 15,1 %, 3 o 7,1 %), zbylých 29 sedí přesně, a rozchod nesouvisí se stářím verze — linka 1 má verzi stejně starou jako linka 12 a nulovou odchylku. Je to událost na lince, ne stárnutí. Dohromady nám to bere 63 z 2 762 spojů, a **práh to neřeší**: rozhoduje jen mezi hlasitým selháním a tichou dírou, protože spoj, o kterém CIS neví, nikdy nedohledáme.
+
+Tenhle úkol přidá obojí, co CIS dodával, z API. CIS zůstává na místě až do Tasku 15.
+
+**Files:**
+- Create: `src/dpmp_gtfs/static/discovery.py`, `src/dpmp_gtfs/static/direction.py`, `tests/test_discovery.py`, `tests/test_direction.py`
+
+**Interfaces:**
+- Produces:
+  - `discovery.discover_trips(api, line_id: str, stop_after: int = 50) -> list[int]` — čísla spojů linky, zjištěná procházením číselné řady
+  - `direction.assign_directions(connections: dict[int, Connection]) -> dict[int, int]` — číslo spoje na `direction_id`
+
+- [ ] **Step 1: Napiš padající testy pro dohledávání**
+
+```python
+# tests/test_discovery.py
+from dpmp_gtfs.static.discovery import discover_trips
+
+
+class FakeApi:
+    def __init__(self, present: set[int]) -> None:
+        self.present = present
+        self.asked: list[int] = []
+
+    async def connection(self, line: str, number: int):
+        self.asked.append(number)
+        return object() if number in self.present else None
+
+
+async def test_finds_a_contiguous_run():
+    api = FakeApi({1, 2, 3})
+    assert await discover_trips(api, "1", stop_after=5) == [1, 2, 3]
+
+
+async def test_crosses_gaps_smaller_than_the_stop_rule():
+    # The largest gap measured anywhere in the real network is 18.
+    api = FakeApi({1, 20, 21})
+    assert await discover_trips(api, "1", stop_after=25) == [1, 20, 21]
+
+
+async def test_stops_after_enough_consecutive_misses():
+    api = FakeApi({1})
+    assert await discover_trips(api, "1", stop_after=5) == [1]
+    assert max(api.asked) == 6
+
+
+async def test_an_empty_line_yields_nothing():
+    api = FakeApi(set())
+    assert await discover_trips(api, "99", stop_after=3) == []
+```
+
+- [ ] **Step 2: Spusť a ověř pád**
+
+Run: `.venv/bin/python -m pytest tests/test_discovery.py -v`
+Expected: FAIL — modul neexistuje.
+
+- [ ] **Step 3: Implementuj dohledávání**
+
+```python
+# src/dpmp_gtfs/static/discovery.py
+"""Finds which trips a line runs, by walking its trip-number space.
+
+The API answers ``connections/{line}/{number}`` for one trip at a time and
+publishes no listing. The numbers are sparse -- line 1 runs 206 trips spread
+over ids up to 441 -- so the walk cannot stop at the first miss. It stops once
+enough consecutive numbers come back empty.
+
+The threshold is measured, not guessed: across the whole network the largest
+gap between consecutive trip numbers is 18, so 50 leaves an ample margin while
+keeping the tail short.
+"""
+
+import asyncio
+import logging
+from typing import Protocol
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_STOP_AFTER = 50
+BLOCK = 25
+"""How many numbers to probe at once. Keeps the walk concurrent without
+overshooting the stop rule by more than a block."""
+
+
+class SupportsConnection(Protocol):
+    async def connection(self, line: str, number: int) -> object | None: ...
+
+
+async def discover_trips(
+    api: SupportsConnection, line_id: str, stop_after: int = DEFAULT_STOP_AFTER
+) -> list[int]:
+    """Every trip number the API answers for, in ascending order."""
+    found: list[int] = []
+    misses = 0
+    start = 1
+
+    while misses < stop_after:
+        block = range(start, start + BLOCK)
+        results = await asyncio.gather(*(api.connection(line_id, n) for n in block))
+        for number, result in zip(block, results, strict=True):
+            if result is None:
+                misses += 1
+            else:
+                found.append(number)
+                misses = 0
+        start += BLOCK
+
+    logger.info("line %s: found %d trips up to %d", line_id, len(found), found[-1] if found else 0)
+    return found
+```
+
+- [ ] **Step 4: Napiš padající testy pro směr**
+
+Směr se neodvozuje z parity ani z kanonického pořadí — obojí bylo změřeno a selhalo (kanonické pořadí dalo na lince 1 nula shod z 206, protože referenční spoj byl náhodou opačný). Odvozuje se z **koncových zastávek**: spoje se seskupí podle první zastávky, a měřením na osmi linkách je ověřeno, že žádná taková skupina nikdy nepřesahuje přes oba směry.
+
+```python
+# tests/test_direction.py
+from dpmp_gtfs.api.models import Connection
+from dpmp_gtfs.static.direction import assign_directions
+
+
+def _conn(number: int, stops: list[int]) -> Connection:
+    return Connection.model_validate({
+        "lineId": "1", "connectionId": number, "fixedCodes": ["X"],
+        "stops": [{"stopId": s, "platformId": "1", "departureTime": "04:00:00"} for s in stops],
+    })
+
+
+def test_opposite_runs_get_opposite_ids():
+    out = assign_directions({1: _conn(1, [10, 20, 30]), 2: _conn(2, [30, 20, 10])})
+    assert out[1] != out[2]
+    assert set(out.values()) == {0, 1}
+
+
+def test_trips_sharing_a_terminal_share_a_direction():
+    out = assign_directions({
+        1: _conn(1, [10, 20, 30]),
+        3: _conn(3, [10, 20]),        # a short turn, same way
+        2: _conn(2, [30, 20, 10]),
+    })
+    assert out[1] == out[3] != out[2]
+
+
+def test_the_label_is_stable_not_arbitrary():
+    # Same input in a different order must produce the same labels, or a
+    # rebuild would flip direction_id for no reason.
+    a = assign_directions({1: _conn(1, [10, 30]), 2: _conn(2, [30, 10])})
+    b = assign_directions({2: _conn(2, [30, 10]), 1: _conn(1, [10, 30])})
+    assert a == b
+
+
+def test_a_single_direction_line_is_all_zero():
+    out = assign_directions({1: _conn(1, [10, 20]), 3: _conn(3, [10, 20])})
+    assert set(out.values()) == {0}
+```
+
+- [ ] **Step 5: Spusť a ověř pád**
+
+Run: `.venv/bin/python -m pytest tests/test_direction.py -v`
+Expected: FAIL — modul neexistuje.
+
+- [ ] **Step 6: Implementuj směr**
+
+```python
+# src/dpmp_gtfs/static/direction.py
+"""Splits a line's trips into its two directions.
+
+The API states no direction anywhere: a trip is a line id, a trip number, its
+fixed codes and its stops. Their own app does not need one either -- it shows a
+destination, not a direction. ``direction_id`` is a GTFS construct, and GTFS
+only asks that the two directions be told apart consistently; which one is 0
+carries no meaning.
+
+So it is derived from where trips start and end. Trips leaving the same
+terminal run the same way, which was checked against the CIS registry on eight
+lines covering 1,100 trips: every terminal group fell wholly inside one
+direction, never across both. Lines have more than two groups -- short turns
+and variant terminals -- so the groups are then paired up: a group that starts
+where another ends is its opposite.
+
+Two approaches were measured and rejected. Trip-number parity matches today on
+every trip in the network, but it is a JDF numbering convention nothing
+guarantees. Ordering stops against the line's longest trip cannot say which of
+the two runs is 0: on line 1 it labelled all 206 trips backwards, because the
+reference trip happened to run inbound.
+"""
+
+import logging
+from collections import defaultdict
+
+from dpmp_gtfs.api.models import Connection
+
+logger = logging.getLogger(__name__)
+
+
+def assign_directions(connections: dict[int, Connection]) -> dict[int, int]:
+    """``{trip number: 0 or 1}`` for one line's trips."""
+    ends: dict[int, tuple[int, int]] = {}
+    for number, connection in connections.items():
+        if connection.stops:
+            ends[number] = (connection.stops[0].stop_id, connection.stops[-1].stop_id)
+
+    groups: dict[int, set[int]] = defaultdict(set)
+    for number, (first, _) in ends.items():
+        groups[first].add(number)
+
+    # A group is the opposite of the one that starts where this one ends.
+    starts = set(groups)
+    opposite: dict[int, int] = {}
+    for first, numbers in groups.items():
+        last = ends[next(iter(numbers))][1]
+        if last in starts and last != first:
+            opposite[first] = last
+
+    # Two-colour the groups. Sorting first keeps the labels stable across
+    # rebuilds: an unstable rule would flip direction_id for no reason.
+    colour: dict[int, int] = {}
+    for first in sorted(groups):
+        if first in colour:
+            continue
+        colour[first] = 0
+        if (other := opposite.get(first)) is not None and other not in colour:
+            colour[other] = 1
+
+    out = {n: colour.get(first, 0) for n, (first, _) in ends.items()}
+    unpaired = sorted(set(groups) - set(opposite))
+    if unpaired:
+        logger.debug("terminals %s have no opposite run; treated as direction 0", unpaired)
+    return out
+```
+
+- [ ] **Step 7: Spusť testy a linters**
+
+Run: `.venv/bin/python -m pytest tests/test_discovery.py tests/test_direction.py -v && .venv/bin/ruff check src tests && .venv/bin/python -m mypy`
+Expected: vše prochází.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/dpmp_gtfs/static/discovery.py src/dpmp_gtfs/static/direction.py tests/test_discovery.py tests/test_direction.py
+git commit -m "feat: discover trips and derive direction from the API alone"
+```
+
+---
+
+### Task 15: Odstranit CIS
+
+Teprve teď, když API dodá seznam i směr, se rejstřík odpojí a smaže.
+
+**Files:**
+- Delete: `src/dpmp_gtfs/cis/`, `tests/test_cis_index.py`, `tests/test_cis_archive.py`, `tests/fixtures/netex/`
+- Modify: `src/dpmp_gtfs/static/crawler.py`, `src/dpmp_gtfs/types.py`, `src/dpmp_gtfs/config.py`, `src/dpmp_gtfs/web/scheduler.py`, `src/dpmp_gtfs/cli.py`, `pyproject.toml`, `docs/upstream-api.md`, `README.md`
+- Test: `tests/test_crawler.py`
+
+- [ ] **Step 1: Přepiš crawler na dohledávání**
+
+`crawl(api, attempts, backoff)` už nebere `ServiceIndex`. Pro každou linku z `api.lines()` zavolá `discover_trips`, stáhne nalezené spoje a směr doplní `assign_directions` nad staženými spoji té linky. `MISSING_TRIP_LIMIT` i celá logika chybějících spojů mizí — bez druhého zdroje není s čím se rozcházet. Uprav `tests/test_crawler.py`: testy o driftu a prahu smaž (jejich předmět neexistuje), testy o retry chování a o tvaru `Timetable` zachovej.
+
+- [ ] **Step 2: Odpoj rejstřík z nastavení a vstupních bodů**
+
+Z `config.py` smaž `cis_urls` a `cis_dir`. Ze `scheduler.py` a `cli.py` odstraň `fetch_archives`/`build_index` z rebuildu. Z `pyproject.toml` smaž `defusedxml` a `types-defusedxml`.
+
+- [ ] **Step 3: Smaž balík a jeho testy**
+
+```bash
+git rm -r src/dpmp_gtfs/cis tests/test_cis_index.py tests/test_cis_archive.py tests/fixtures/netex
+rm -rf data/cis
+```
+
+- [ ] **Step 4: Přepiš dokumentaci**
+
+V `docs/upstream-api.md` nahraď celou sekci o CIS popisem toho, proč se opustil — s naměřenými čísly (3 linky z 32 rozešlé, 63 z 2 762 spojů, rozchod nesouvisí se stářím verze) a s tím, že práh volí jen mezi hlasitým selháním a tichou dírou. Dopiš, jak se zjišťuje seznam spojů a odkud pochází `direction_id`. Sraz na to i `README.md`.
+
+- [ ] **Step 5: Spusť všechno**
+
+Run: `.venv/bin/python -m pytest && .venv/bin/python -m mypy && .venv/bin/ruff check src tests`
+Expected: vše prochází, žádná zmínka o `cis` nikde v `src/` ani `tests/`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "refactor: drop the CIS registry, the API is now the only source"
+```
+
+---
+
 ## Výsledek křížové validace
 
 _Vyplní Task 12._
