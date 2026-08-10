@@ -43,7 +43,7 @@ class FailingApi:
 
 async def test_a_clean_crawl_makes_one_attempt():
     api = FailingApi()
-    timetable = await crawl(api, backoff=0)
+    timetable = await crawl(api, {}, backoff=0)
     assert api.attempts == 1
     assert timetable.trip_count == 0
 
@@ -52,7 +52,7 @@ async def test_a_transient_outage_is_retried():
     """An outage lasting longer than one request's retries must not cost the
     whole rebuild."""
     api = FailingApi(failures=2)
-    await crawl(api, attempts=3, backoff=0)
+    await crawl(api, {}, attempts=3, backoff=0)
     assert api.attempts == 3
 
 
@@ -62,7 +62,7 @@ async def test_a_sustained_outage_raises_rather_than_returning_a_partial_feed():
     api = FailingApi(failures=99)
 
     with pytest.raises(DpmpApiError, match="failed after 3 attempts"):
-        await crawl(api, attempts=3, backoff=0)
+        await crawl(api, {}, attempts=3, backoff=0)
 
     assert api.attempts == 3
 
@@ -71,7 +71,7 @@ async def test_attempts_can_be_disabled():
     api = FailingApi(failures=1)
 
     with pytest.raises(DpmpApiError):
-        await crawl(api, attempts=1, backoff=0)
+        await crawl(api, {}, attempts=1, backoff=0)
 
     assert api.attempts == 1
 
@@ -111,7 +111,7 @@ class FakeApi:
 
 async def test_crawl_discovers_trips_and_assigns_directions():
     api = FakeApi(present={1, 2, 3, 4})
-    table = await crawl(api)
+    table = await crawl(api, {})
 
     assert table.trip_count == 4
     assert table.stops[0].id == 1
@@ -122,7 +122,7 @@ async def test_crawl_discovers_trips_and_assigns_directions():
 
 async def test_a_line_with_no_trips_yields_none_for_it():
     api = FakeApi(present=set())
-    table = await crawl(api)
+    table = await crawl(api, {})
 
     assert table.trip_count == 0
     assert table.directions == {}
@@ -135,6 +135,6 @@ async def test_crawl_logs_progress_per_line(caplog: pytest.LogCaptureFixture) ->
     api = FakeApi(present={1, 2})
 
     with caplog.at_level(logging.INFO, logger="dpmp_gtfs.static.crawler"):
-        await crawl(api)
+        await crawl(api, {})
 
     assert "line 1: 2 trips (1/1 lines)" in caplog.text

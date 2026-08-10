@@ -19,12 +19,18 @@ from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.archive import read_tables
+from dpmp_gtfs.cis import build_calendars, fetch_archives
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import StaticIndex
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
-from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
+from dpmp_gtfs.static.builder import (
+    VALIDITY_DAYS,
+    build_feed,
+    iter_missing_stop_references,
+    with_shapes,
+)
 from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.service_watch import load_unserved, state_path
 from dpmp_gtfs.static.writer import write_feed
@@ -123,6 +129,23 @@ class Scheduler:
         self.state.static_phase = message
         logger.info("static build: %s", message)
 
+    async def _fetch_calendars(self, today: dt.date) -> dict[tuple[str, int], frozenset[dt.date]]:
+        """Days of operation, from CIS, covering the whole validity window.
+
+        Raises rather than returning what it has: the API's own days of
+        operation are wrong for about a third of trips, so a feed built without
+        these is a feed already known to be wrong, and keeping yesterday's is
+        strictly better than publishing it.
+        """
+        paths = await fetch_archives(self.settings.cis_urls, self.settings.cis_dir)
+        horizon = today + dt.timedelta(days=VALIDITY_DAYS)
+        # ~300 MB of zipped XML, ten seconds or so of pure CPU -- off the event
+        # loop, so the realtime feed keeps ticking through it.
+        calendars = await asyncio.to_thread(build_calendars, paths, today, horizon)
+        if not calendars:
+            raise FeedBuildError("the CIS archives describe no DPMP calendars")
+        return calendars
+
     async def rebuild_static(self) -> None:
         """Crawl, build and publish a fresh static feed.
 
@@ -139,10 +162,15 @@ class Scheduler:
 
         async with self._build_lock:
             try:
+                today = dt.date.today()
+
+                self._phase("stahuji rejstřík CIS")
+                calendars = await self._fetch_calendars(today)
+
                 self._phase("stahuji jízdní řády")
                 async with DpmpApiClient(self.settings) as api:
-                    timetable = await crawl(api)
-                feed = build_feed(timetable)
+                    timetable = await crawl(api, calendars)
+                feed = build_feed(timetable, start_date=today)
 
                 if self.settings.shapes_enabled:
                     # Routing reaches the network, so it runs in a worker thread

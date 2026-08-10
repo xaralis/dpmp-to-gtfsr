@@ -10,8 +10,14 @@ from typing import Any
 import typer
 
 from dpmp_gtfs.api import DpmpApiClient
+from dpmp_gtfs.cis import build_calendars, fetch_archives
 from dpmp_gtfs.config import settings
-from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
+from dpmp_gtfs.static.builder import (
+    VALIDITY_DAYS,
+    build_feed,
+    iter_missing_stop_references,
+    with_shapes,
+)
 from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.discovery import discover_trips
 from dpmp_gtfs.static.writer import write_feed
@@ -33,11 +39,15 @@ def build_static(
     """Crawl the full timetable and write a GTFS zip."""
 
     async def run() -> None:
+        today = dt.date.today()
+        archives = await fetch_archives(settings.cis_urls, settings.cis_dir)
+        calendars = build_calendars(archives, today, today + dt.timedelta(days=VALIDITY_DAYS))
+
         async with DpmpApiClient() as api:
-            timetable = await crawl(api)
+            timetable = await crawl(api, calendars)
 
         destination = dest or settings.gtfs_zip_path
-        feed = build_feed(timetable)
+        feed = build_feed(timetable, start_date=today)
 
         if shapes:
             feed = with_shapes(feed, destination.parent / "shape-cache.json")

@@ -1,4 +1,4 @@
-"""Fetches the whole timetable from the API alone.
+"""Fetches the whole timetable from the API.
 
 The API exposes trips one at a time and publishes no listing, so for each
 line this walks its trip-number space with :func:`discover_trips`, which
@@ -8,9 +8,15 @@ the walk already paid for them -- and derives which way each one runs with
 at 8 req/s, about six minutes, plus the discovery walk's own misses, cheap
 next to the outage risk of trusting a second source that cannot be kept in
 sync (see ``docs/upstream-api.md``).
+
+The days of operation are the exception, and they arrive here already read
+from CIS. They are carried through rather than fetched because they are not
+the API's to give: its ``fixedCodes`` contradict DPMP's own published
+timetable on about a third of trips.
 """
 
 import asyncio
+import datetime as dt
 import logging
 from typing import Protocol
 
@@ -37,6 +43,7 @@ class SupportsTimetable(Protocol):
 
 async def crawl(
     api: SupportsTimetable,
+    calendars: dict[tuple[str, int], frozenset[dt.date]],
     attempts: int = DEFAULT_ATTEMPTS,
     backoff: float = DEFAULT_BACKOFF,
 ) -> Timetable:
@@ -54,7 +61,7 @@ async def crawl(
 
     for attempt in range(1, attempts + 1):
         try:
-            return await _crawl_once(api)
+            return await _crawl_once(api, calendars)
         except DpmpApiError as exc:
             last = exc
             if attempt == attempts:
@@ -72,11 +79,13 @@ async def crawl(
     raise DpmpApiError(f"crawl failed after {attempts} attempts: {last!r}") from last
 
 
-async def _crawl_once(api: SupportsTimetable) -> Timetable:
+async def _crawl_once(
+    api: SupportsTimetable, calendars: dict[tuple[str, int], frozenset[dt.date]]
+) -> Timetable:
     stops, lines = await asyncio.gather(api.stops(), api.lines())
     logger.info("crawling %d lines, %d stops", len(lines), len(stops))
 
-    timetable = Timetable(stops=stops, lines=lines)
+    timetable = Timetable(stops=stops, lines=lines, calendars=calendars)
 
     for index, line in enumerate(lines, start=1):
         connections = await discover_trips(api, line.id)

@@ -23,10 +23,21 @@ from dpmp_gtfs.types import (
 )
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
-from .calendar import calendar_exceptions, service_from_codes
+from .calendar import calendar_exceptions, service_from_codes, service_from_dates
 from .shapes import ShapeCache, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
+
+VALIDITY_DAYS = 365
+"""How far ahead a built feed claims to be valid.
+
+Shared with whoever fetches the CIS calendars, because that is the window they
+have to cover: a horizon one day short leaves every service looking cancelled
+on the feed's last day."""
+
+MAX_FALLBACK_SHARE = 0.10
+"""Above this share of trips missing from CIS, the two sources have drifted far
+enough apart that the feed stops being trustworthy. Measured at 2.3 %."""
 
 ROUTE_TYPE_BUS = 3
 ROUTE_TYPE_TROLLEYBUS = 11
@@ -39,7 +50,7 @@ COORDINATE_WITH_DRIVER = 3
 def build_feed(
     timetable: Timetable,
     start_date: dt.date | None = None,
-    validity_days: int = 365,
+    validity_days: int = VALIDITY_DAYS,
 ) -> Feed:
     """Assemble a complete feed.
 
@@ -48,7 +59,8 @@ def build_feed(
     feed expires rather than silently claiming to be current forever.
     """
     start = start_date or dt.date.today()
-    trips, stop_times, services = build_trips_and_stop_times(timetable)
+    end = start + dt.timedelta(days=validity_days)
+    trips, stop_times, services = build_trips_and_stop_times(timetable, start, end)
     stops, unserved = prune_unserved_stops(build_stops(timetable), stop_times)
 
     feed = Feed(
@@ -59,7 +71,7 @@ def build_feed(
         stop_times=stop_times,
         services=services,
         start_date=start,
-        end_date=start + dt.timedelta(days=validity_days),
+        end_date=end,
     )
     feed.calendar_exceptions = list(
         calendar_exceptions(feed.services, feed.start_date, feed.end_date)
@@ -218,7 +230,7 @@ def build_routes(timetable: Timetable) -> list[Route]:
 
 
 def build_trips_and_stop_times(
-    timetable: Timetable,
+    timetable: Timetable, start: dt.date, end: dt.date
 ) -> tuple[list[Trip], list[StopTime], list[Service]]:
     trips: list[Trip] = []
     stop_times: list[StopTime] = []
@@ -226,6 +238,9 @@ def build_trips_and_stop_times(
     names = {s.id: s.name for s in timetable.stops}
     on_request_stops = {s.id for s in timetable.stops if s.on_request}
     missing_coords = stops_without_coordinates(timetable)
+    jdf_ids = {line.id: line.jdf_id for line in timetable.lines}
+    from_cis = 0
+    from_codes = 0
 
     for key, connection in sorted(timetable.connections.items()):
         line_id, connection_number = key
@@ -279,19 +294,35 @@ def build_trips_and_stop_times(
             )
             continue
 
-        service = service_from_codes(connection.fixed_codes)
-        try:
-            sid = service.service_id
-        except ValueError:
-            # A trip carrying no calendar code at all cannot be placed in the
-            # week. Dropping one trip beats the alternative: this used to raise
-            # through build_feed and take the whole feed down, so a single
-            # unrecognised code meant publishing nothing at all.
+        dates = timetable.calendars.get((jdf_ids.get(line_id, ""), connection_number))
+        if dates is None:
+            # CIS does not know this trip. Its fixed codes are the weaker
+            # source -- that is the whole reason CIS is consulted first -- but
+            # for a trip with no calendar at all they beat dropping it.
+            from_codes += 1
             logger.warning(
-                "trip %s/%s runs on no known days (codes %r), dropping the trip",
+                "line %s trip %s is not in CIS, falling back to its fixed codes %r",
                 line_id,
                 connection_number,
                 sorted(connection.fixed_codes),
+            )
+            service = service_from_codes(connection.fixed_codes)
+        else:
+            from_cis += 1
+            service = service_from_dates(dates, start, end)
+
+        try:
+            sid = service.service_id
+        except ValueError:
+            # Nothing places this trip in the year: either it carries no
+            # calendar code at all, or CIS says it runs on no day between now
+            # and the feed's horizon. Dropping one trip beats the alternative:
+            # this used to raise through build_feed and take the whole feed
+            # down, so a single unrecognised code meant publishing nothing.
+            logger.warning(
+                "trip %s/%s runs on no day of the feed's validity window, dropping the trip",
+                line_id,
+                connection_number,
             )
             continue
         services.setdefault(sid, service)
@@ -308,6 +339,17 @@ def build_trips_and_stop_times(
         )
         stop_times.extend(trip_stop_times)
 
+    total = from_cis + from_codes
+    logger.log(
+        # A handful of trips CIS has not heard of is the normal state of
+        # affairs; a tenth of the network would mean the two sources have
+        # drifted far enough apart that the days of operation in this feed can
+        # no longer be trusted, and someone has to look.
+        logging.ERROR if from_codes > total * MAX_FALLBACK_SHARE else logging.INFO,
+        "calendars: %d trips from CIS, %d fell back to the API's fixed codes",
+        from_cis,
+        from_codes,
+    )
     return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
 
 

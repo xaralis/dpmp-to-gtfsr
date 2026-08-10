@@ -145,7 +145,7 @@ async def test_status_reports_the_phase_while_building(client: httpx.AsyncClient
 
 
 async def test_healthz_answers_immediately_during_a_cold_start(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: object
 ) -> None:
     """The one test in this module that actually runs the lifespan: with no
     ``gtfs.zip`` on disk, ``start()`` must not await the initial build --
@@ -153,8 +153,10 @@ async def test_healthz_answers_immediately_during_a_cold_start(
     for however long the crawl takes. Health is honestly 503 while it
     builds, but it must answer, and the answer must carry the phase."""
     gate = asyncio.Event()
+    crawling = asyncio.Event()
 
-    async def hanging_crawl(api: object) -> Timetable:
+    async def hanging_crawl(api: object, calendars: object) -> Timetable:
+        crawling.set()
         await gate.wait()
         return Timetable(stops=[], lines=[])
 
@@ -167,6 +169,11 @@ async def test_healthz_answers_immediately_during_a_cold_start(
         app.router.lifespan_context(app),
         httpx.AsyncClient(transport=transport, base_url="http://test") as client,
     ):
+        # The build passes through an earlier phase (the CIS registry) that
+        # the stub answers instantly, so wait for the one that hangs rather
+        # than racing it.
+        await asyncio.wait_for(crawling.wait(), timeout=5)
+
         response = await client.get("/healthz")
         assert response.status_code == 503
         payload = response.json()

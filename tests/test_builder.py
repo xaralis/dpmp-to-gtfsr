@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 
 import pytest
@@ -13,9 +14,15 @@ from dpmp_gtfs.static.builder import (
     prune_unserved_stops,
     stop_seconds,
 )
+from dpmp_gtfs.static.calendar import days_between, observed_holidays
 from dpmp_gtfs.timeutil import format_gtfs_time
 from dpmp_gtfs.types import Stop, StopTime, Timetable
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
+
+YEAR = (dt.date(2026, 8, 10), dt.date(2027, 8, 10))
+"""The validity window the builder places services in. Fixed rather than
+``today``, so a test that depends on which weekdays a date falls on reads
+the same every day of the year."""
 
 
 def _stop(departure: str, *, stop: int = 1, platform: str = "1") -> ConnectionStop:
@@ -189,7 +196,7 @@ def test_wheelchair_boarding_comes_from_the_stop_fixed_codes(
 def test_direction_comes_from_the_timetable_not_the_stop_order(
     simple_timetable: Timetable,
 ) -> None:
-    trips, _, _ = build_trips_and_stop_times(simple_timetable)
+    trips, _, _ = build_trips_and_stop_times(simple_timetable, *YEAR)
     assert {t.trip_id: t.direction_id for t in trips} == {"L1C1": 0, "L1C2": 1}
 
 
@@ -237,7 +244,7 @@ def test_a_stop_time_referencing_a_coordinateless_stop_is_dropped() -> None:
     timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
 
     stop_ids = {s.stop_id for s in build_stops(timetable)}
-    trips, stop_times, _ = build_trips_and_stop_times(timetable)
+    trips, stop_times, _ = build_trips_and_stop_times(timetable, *YEAR)
 
     assert "S147" not in stop_ids
     assert all(st.stop_id in stop_ids for st in stop_times)
@@ -267,7 +274,7 @@ def test_a_trip_with_fewer_than_two_usable_stops_is_dropped() -> None:
     )
     timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
 
-    trips, stop_times, _ = build_trips_and_stop_times(timetable)
+    trips, stop_times, _ = build_trips_and_stop_times(timetable, *YEAR)
     assert trips == []
     assert stop_times == []
 
@@ -307,12 +314,12 @@ def test_a_calendarless_trip_is_dropped_without_taking_the_feed_with_it(
     )
 
     with caplog.at_level(logging.WARNING):
-        trips, stop_times, services = build_trips_and_stop_times(timetable)
+        trips, stop_times, services = build_trips_and_stop_times(timetable, *YEAR)
 
     assert [t.trip_id for t in trips] == [trip_id("1", 2)]
     assert {s.service_id for s in services} == {"wd"}
     assert stop_times
-    assert "runs on no known days" in caplog.text
+    assert "runs on no day of the feed's validity window" in caplog.text
 
 
 def test_trip_headsign_comes_from_the_last_surviving_stop() -> None:
@@ -338,7 +345,7 @@ def test_trip_headsign_comes_from_the_last_surviving_stop() -> None:
     )
     timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
 
-    trips, stop_times, _ = build_trips_and_stop_times(timetable)
+    trips, stop_times, _ = build_trips_and_stop_times(timetable, *YEAR)
     assert len(trips) == 1
     assert trips[0].trip_headsign == "Middle"
     assert len(stop_times) == 2
@@ -369,3 +376,123 @@ def test_a_stop_unknown_to_stops_is_logged(caplog: pytest.LogCaptureFixture) -> 
 
     assert "999" in caplog.text
     assert "998" in caplog.text
+
+
+# --- days of operation --------------------------------------------------------
+#
+# The API's fixed codes place about a third of trips on the wrong days -- trip
+# 46 of line 1 (06:36 from Slovany,točna) is marked as a weekend trip and runs
+# Mon-Fri. CIS is therefore the source, and the codes only stand in for the
+# ~2 % of trips CIS has never heard of.
+
+
+def _line_1_trip(number: int, codes: list[str]) -> Connection:
+    return Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": number,
+            "fixedCodes": codes,
+            "stops": [
+                {"stopId": 1, "platformId": "1", "departureTime": "06:36:00"},
+                {"stopId": 2, "platformId": "1", "departureTime": "06:46:00"},
+            ],
+        }
+    )
+
+
+def _line_1_timetable(
+    connections: dict[int, Connection],
+    calendars: dict[tuple[str, int], frozenset[dt.date]],
+) -> Timetable:
+    return Timetable(
+        stops=[
+            ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
+            ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.01, "gpsLon": 15.01}),
+        ],
+        lines=[Line.model_validate({"id": "1", "jdfId": "655001"})],
+        connections={("1", number): c for number, c in connections.items()},
+        calendars=calendars,
+    )
+
+
+HOLIDAYS = observed_holidays(*YEAR)
+WEEKDAYS = frozenset(d for d in days_between(*YEAR) if d.weekday() < 5 and d not in HOLIDAYS)
+"""What CIS says a weekday trip runs on: Mon-Fri, minus the state holidays,
+on which the network runs its Sunday timetable."""
+
+
+def test_cis_days_win_over_the_fixed_codes() -> None:
+    """Trip 46 carries ``+`` -- "Sundays and state holidays" -- and runs on
+    weekdays. Reading the code would put an empty trolleybus on the road every
+    Sunday and none of the ones people actually catch."""
+    timetable = _line_1_timetable({46: _line_1_trip(46, ["+", "@"])}, {("655001", 46): WEEKDAYS})
+
+    trips, _, services = build_trips_and_stop_times(timetable, *YEAR)
+
+    assert [s.service_id for s in services] == ["wd"]
+    assert trips[0].service_id == "wd"
+
+
+def test_a_trip_cis_does_not_know_falls_back_to_its_codes_and_says_which(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """63 of 2,762 trips are in the API and not in CIS, concentrated on lines
+    3, 9 and 12. Dropping them would leave silent holes in the feed."""
+    timetable = _line_1_timetable(
+        {46: _line_1_trip(46, ["+", "@"]), 47: _line_1_trip(47, ["X", "@"])},
+        {("655001", 46): WEEKDAYS},
+    )
+
+    with caplog.at_level(logging.WARNING):
+        trips, _, _ = build_trips_and_stop_times(timetable, *YEAR)
+
+    assert {t.trip_id: t.service_id for t in trips} == {"L1C46": "wd", "L1C47": "wd"}
+    assert "line 1 trip 47 is not in CIS" in caplog.text
+    assert "trip 46" not in caplog.text
+
+
+def test_a_build_mostly_falling_back_is_reported_as_an_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """2.3 % of trips missing from CIS is the normal state; a tenth of the
+    network would mean the two sources have come apart and nobody should trust
+    the days in this feed until someone has looked."""
+    timetable = _line_1_timetable(
+        {46: _line_1_trip(46, ["X", "@"]), 47: _line_1_trip(47, ["X", "@"])},
+        {("655001", 46): WEEKDAYS},
+    )
+
+    with caplog.at_level(logging.INFO):
+        build_trips_and_stop_times(timetable, *YEAR)
+
+    summary = next(r for r in caplog.records if r.message.startswith("calendars:"))
+    assert summary.levelno == logging.ERROR
+    assert (
+        summary.getMessage() == "calendars: 1 trips from CIS, 1 fell back to the API's fixed codes"
+    )
+
+
+def test_a_build_wholly_covered_by_cis_is_only_reported(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    timetable = _line_1_timetable({46: _line_1_trip(46, ["X", "@"])}, {("655001", 46): WEEKDAYS})
+
+    with caplog.at_level(logging.INFO):
+        build_trips_and_stop_times(timetable, *YEAR)
+
+    summary = next(r for r in caplog.records if r.message.startswith("calendars:"))
+    assert summary.levelno == logging.INFO
+
+
+def test_a_trip_cis_says_has_stopped_running_is_dropped(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """CIS keeps trips whose bitmap has run out. Publishing one would put a
+    trip in trips.txt pointing at a service that never runs."""
+    timetable = _line_1_timetable({46: _line_1_trip(46, ["X", "@"])}, {("655001", 46): frozenset()})
+
+    with caplog.at_level(logging.WARNING):
+        trips, stop_times, services = build_trips_and_stop_times(timetable, *YEAR)
+
+    assert (trips, stop_times, services) == ([], [], [])
+    assert "runs on no day of the feed's validity window" in caplog.text

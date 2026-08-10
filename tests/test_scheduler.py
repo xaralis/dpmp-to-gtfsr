@@ -25,9 +25,7 @@ def _settings(tmp_path: Path, *, shapes_enabled: bool = False) -> Settings:
     return Settings(data_dir=tmp_path, shapes_enabled=shapes_enabled)
 
 
-async def test_phase_writes_state_and_log(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
+async def test_phase_writes_state_and_log(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     sched = Scheduler(_settings(tmp_path))
 
     with caplog.at_level(logging.INFO, logger="dpmp_gtfs.web.scheduler"):
@@ -38,7 +36,7 @@ async def test_phase_writes_state_and_log(
 
 
 async def test_rebuild_static_announces_the_crawl_phase(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: object
 ) -> None:
     """The phase must already be set *before* the network call it describes,
     not logged around it afterwards -- otherwise a caller inspecting state
@@ -46,7 +44,7 @@ async def test_rebuild_static_announces_the_crawl_phase(
     seen: list[str | None] = []
     sched = Scheduler(_settings(tmp_path))
 
-    async def fake_crawl(api: Any) -> Timetable:
+    async def fake_crawl(api: Any, calendars: Any) -> Timetable:
         seen.append(sched.state.static_phase)
         return Timetable(stops=[], lines=[])
 
@@ -61,12 +59,12 @@ async def test_rebuild_static_announces_the_crawl_phase(
 
 
 async def test_rebuild_static_announces_the_shapes_phase_when_enabled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: object
 ) -> None:
     seen: list[str | None] = []
     sched = Scheduler(_settings(tmp_path, shapes_enabled=True))
 
-    async def fake_crawl(api: Any) -> Timetable:
+    async def fake_crawl(api: Any, calendars: Any) -> Timetable:
         return Timetable(stops=[], lines=[])
 
     def fake_with_shapes(feed: Any, cache_path: Path, router: Any = None) -> Any:
@@ -83,12 +81,12 @@ async def test_rebuild_static_announces_the_shapes_phase_when_enabled(
 
 
 async def test_shapes_phase_is_skipped_when_shapes_are_disabled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: object
 ) -> None:
     called = False
     sched = Scheduler(_settings(tmp_path, shapes_enabled=False))
 
-    async def fake_crawl(api: Any) -> Timetable:
+    async def fake_crawl(api: Any, calendars: Any) -> Timetable:
         return Timetable(stops=[], lines=[])
 
     def fake_with_shapes(feed: Any, cache_path: Path, router: Any = None) -> Any:
@@ -106,13 +104,13 @@ async def test_shapes_phase_is_skipped_when_shapes_are_disabled(
 
 
 async def test_the_phase_is_cleared_even_when_the_build_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_cis: object
 ) -> None:
     """A build that errors out must not leave the map claiming forever that
     something is still loading."""
     sched = Scheduler(_settings(tmp_path))
 
-    async def broken_crawl(api: Any) -> Timetable:
+    async def broken_crawl(api: Any, calendars: Any) -> Timetable:
         raise RuntimeError("upstream is gone")
 
     monkeypatch.setattr(scheduler_module, "crawl", broken_crawl)
@@ -124,18 +122,23 @@ async def test_the_phase_is_cleared_even_when_the_build_fails(
 
 
 async def test_a_second_rebuild_is_skipped_while_one_is_in_flight(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    stub_cis: object,
 ) -> None:
     """The initial build and the nightly loop's are now scheduled
     independently (see ``_build_lock``'s docstring): a cold start shortly
     before ``static_rebuild_hour`` can have both want to run at once. Only
     one crawl -- and one write to ``self.state`` -- must actually happen."""
     gate = asyncio.Event()
+    crawling = asyncio.Event()
     starts = 0
 
-    async def gated_crawl(api: Any) -> Timetable:
+    async def gated_crawl(api: Any, calendars: Any) -> Timetable:
         nonlocal starts
         starts += 1
+        crawling.set()
         await gate.wait()
         return Timetable(stops=[], lines=[])
 
@@ -143,7 +146,7 @@ async def test_a_second_rebuild_is_skipped_while_one_is_in_flight(
     sched = Scheduler(_settings(tmp_path))
 
     first = asyncio.create_task(sched.rebuild_static())
-    await asyncio.sleep(0)  # let the first call reach the crawl and take the lock
+    await asyncio.wait_for(crawling.wait(), timeout=5)  # the first call now holds the lock
     assert sched._build_lock.locked()
 
     with caplog.at_level(logging.INFO, logger="dpmp_gtfs.web.scheduler"):

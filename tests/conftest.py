@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,30 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def load(name: str) -> Any:
     return json.loads((FIXTURES / name).read_text(encoding="utf8"))
+
+
+@pytest.fixture
+def stub_cis(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, int], frozenset[dt.date]]:
+    """Answer the scheduler's CIS step from memory.
+
+    Every build now starts by downloading ~300 MB of NeTEx, which no test of
+    the scheduler is about. The returned dict is what the stub hands back, so
+    a test that does care can put trips in it. Deliberately not empty: the
+    scheduler refuses to build a feed on no calendars at all.
+    """
+    from dpmp_gtfs.web import scheduler as scheduler_module
+
+    calendars = {("655001", 1): frozenset({dt.date(2026, 8, 10)})}
+
+    async def fetch_archives(urls: Any, dest: Any, client: Any = None) -> list[Path]:
+        return []
+
+    def build_calendars(paths: Any, on_date: dt.date, horizon: dt.date) -> Any:
+        return calendars
+
+    monkeypatch.setattr(scheduler_module, "fetch_archives", fetch_archives)
+    monkeypatch.setattr(scheduler_module, "build_calendars", build_calendars)
+    return calendars
 
 
 @pytest.fixture
