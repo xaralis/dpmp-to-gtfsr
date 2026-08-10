@@ -1,30 +1,23 @@
 import pytest
 
 from dpmp_gtfs.api.models import ConnectionStop
-from dpmp_gtfs.ids import stop_id, trip_id
+from dpmp_gtfs.ids import route_id, stop_id, trip_id
 from dpmp_gtfs.static.builder import (
     ROUTE_TYPE_BUS,
     ROUTE_TYPE_TROLLEYBUS,
+    build_stops,
+    build_trips_and_stop_times,
     prune_unserved_stops,
     stop_seconds,
 )
 from dpmp_gtfs.timeutil import format_gtfs_time
-from dpmp_gtfs.types import Stop, StopTime
+from dpmp_gtfs.types import Stop, StopTime, Timetable
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
 
-def _stop(departure: str, *, number: int = 1, platform: int = 1, index: int = 0) -> ConnectionStop:
+def _stop(departure: str, *, stop: int = 1, platform: str = "1") -> ConnectionStop:
     return ConnectionStop.model_validate(
-        {
-            "number": number,
-            "name": f"Stop {number}",
-            "codes": [],
-            "index": index,
-            "distance": 0,
-            "arrivalTime": "",
-            "departureTime": departure,
-            "platform": platform,
-        }
+        {"stopId": stop, "platformId": platform, "departureTime": departure}
     )
 
 
@@ -49,7 +42,7 @@ def test_format_gtfs_time(seconds: int, formatted: str) -> None:
 
 
 def test_times_within_one_day_are_unchanged() -> None:
-    stops = [_stop("0425"), _stop("0430"), _stop("0442")]
+    stops = [_stop("04:25:00"), _stop("04:30:00"), _stop("04:42:00")]
     assert stop_seconds(stops) == [15900, 16200, 16920]
 
 
@@ -59,7 +52,7 @@ def test_a_trip_crossing_midnight_keeps_counting_past_24h() -> None:
     Wrapping to 00:23 would describe a trip that arrives 23 hours before it
     departs, which consumers reject or render as an all-day journey.
     """
-    stops = [_stop("2355"), _stop("2358"), _stop("0002"), _stop("0023")]
+    stops = [_stop("23:55:00"), _stop("23:58:00"), _stop("00:02:00"), _stop("00:23:00")]
     seconds = stop_seconds(stops)
 
     assert [format_gtfs_time(s) for s in seconds] == [
@@ -73,7 +66,7 @@ def test_a_trip_crossing_midnight_keeps_counting_past_24h() -> None:
 
 def test_the_longest_real_midnight_trip() -> None:
     """Line 98 trip 9: 23:58 -> 00:52, the widest rollover in the network."""
-    seconds = stop_seconds([_stop("2358"), _stop("0052")])
+    seconds = stop_seconds([_stop("23:58:00"), _stop("00:52:00")])
     assert [format_gtfs_time(s) for s in seconds] == ["23:58:00", "24:52:00"]
 
 
@@ -84,7 +77,7 @@ def test_night_trips_starting_after_midnight_are_left_alone() -> None:
     assigned to cannot change the feed -- and treating them as ordinary
     early-morning times is the simpler reading.
     """
-    seconds = stop_seconds([_stop("0005"), _stop("0030"), _stop("0050")])
+    seconds = stop_seconds([_stop("00:05:00"), _stop("00:30:00"), _stop("00:50:00")])
     assert [format_gtfs_time(s) for s in seconds] == ["00:05:00", "00:30:00", "00:50:00"]
 
 
@@ -152,7 +145,8 @@ def test_dropped_stops_are_reported_not_discarded() -> None:
 
 def test_ids_are_stable_and_unambiguous() -> None:
     assert stop_id(16, 2) == "S16P2"
-    assert trip_id(9, 115) == "L9C115"
+    assert route_id("9") == "L9"
+    assert trip_id("9", 115) == "L9C115"
     # The upstream's own encoding would collide here; explicit ids do not.
     assert stop_id(1, 60) != stop_id(16, 0)
 
@@ -167,3 +161,30 @@ def test_a_feed_with_no_services_is_refused_with_a_usable_message() -> None:
 
     with pytest.raises(FeedBuildError, match="no services"):
         feed_to_files(Feed())
+
+
+# --- stops, routes and trips from a crawled timetable ------------------------
+
+
+def test_platforms_inherit_the_station_position(simple_timetable: Timetable) -> None:
+    stops = build_stops(simple_timetable)
+    parent = next(s for s in stops if s.stop_id == "S1")
+    child = next(s for s in stops if s.stop_id == "S1P1")
+
+    assert (child.stop_lat, child.stop_lon) == (parent.stop_lat, parent.stop_lon)
+    assert child.platform_code == "1"
+    assert child.parent_station == "S1"
+
+
+def test_wheelchair_boarding_comes_from_the_stop_fixed_codes(
+    simple_timetable: Timetable,
+) -> None:
+    stops = build_stops(simple_timetable)
+    assert next(s for s in stops if s.stop_id == "S1").wheelchair_boarding == 1
+
+
+def test_direction_comes_from_the_timetable_not_the_stop_order(
+    simple_timetable: Timetable,
+) -> None:
+    trips, _, _ = build_trips_and_stop_times(simple_timetable)
+    assert {t.trip_id: t.direction_id for t in trips} == {"L1C1": 0, "L1C2": 1}

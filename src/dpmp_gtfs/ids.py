@@ -23,11 +23,11 @@ def stop_id(station: int, platform: int) -> str:
     return f"S{station}P{platform}"
 
 
-def route_id(line: int) -> str:
+def route_id(line: str) -> str:
     return f"L{line}"
 
 
-def trip_id(line: int, connection: int) -> str:
+def trip_id(line: str, connection: int) -> str:
     """A trip, e.g. ``L9C115``.
 
     ``connection`` is the upstream's own trip number, which ``/api/buses``
