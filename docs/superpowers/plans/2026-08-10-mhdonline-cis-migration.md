@@ -767,13 +767,24 @@ class Line(BaseModel):
 class ConnectionStop(BaseModel):
     stop_id: int = Field(alias="stopId")
     platform_id: str = Field(alias="platformId", default="")
-    departure_time: str = Field(alias="departureTime")
+    departure_time: str | None = Field(alias="departureTime", default=None)
+    arrival_time: str | None = Field(alias="arrivalTime", default=None)
 
     model_config = {"populate_by_name": True}
 
     @property
     def departure(self) -> dt.time:
-        return parse_hhmmss(self.departure_time)
+        """The stop's timetable time.
+
+        Only the terminal stop of a trip carries ``arrivalTime``; everywhere
+        else ``departureTime`` is the authoritative one. The old API behaved
+        the same way, and a model that demanded ``departureTime`` would raise
+        on the last stop of every trip in the network.
+        """
+        raw = self.departure_time or self.arrival_time
+        if raw is None:
+            raise ValueError(f"stop {self.stop_id} has no time at all")
+        return parse_hhmmss(raw)
 
 
 class Connection(BaseModel):
