@@ -1,0 +1,203 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1" xsi:schemaLocation="http://www.netex.uk/netex http://netex.uk/netex/schema/1.10/xsd/NeTEx_publication.xsd">
+  <PublicationTimestamp>2026-08-07T19:00:01</PublicationTimestamp>
+  <ParticipantRef>CZ:cisjr</ParticipantRef>
+  <dataObjects>
+    <CompositeFrame id="CZ:cisjr_jdf:CompositeFrame-EU_PI_LINE_OFFER" version="1">
+      <TypeOfFrameRef ref="epip:EU_PI_LINE_OFFER" />
+      <codespaces>
+        <Codespace id="epip_data">
+          <Xmlns>epd</Xmlns>
+          <XmlnsUrl>http://netex-cen.eu/epip_data</XmlnsUrl>
+          <Description>EPIP data</Description>
+        </Codespace>
+        <Codespace id="epip">
+          <Xmlns>epip</Xmlns>
+          <XmlnsUrl>http://netex-cen.eu/epip</XmlnsUrl>
+          <Description>EPIP metadata</Description>
+        </Codespace>
+      </codespaces>
+      <FrameDefaults>
+        <DefaultLocale>
+          <TimeZone>Europe/Prague</TimeZone>
+          <DefaultLanguage>cs</DefaultLanguage>
+        </DefaultLocale>
+      </FrameDefaults>
+      <frames>
+        <ResourceFrame id="CZ:cisjr_jdf:ResourceFrame-EU_PI_COMMON" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_COMMON" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <organisations>
+            <Operator id="CZ:cisjr_jdf:Operator:63217066_1" version="1">
+              <PublicCode>63217066</PublicCode>
+              <LegalName>Dopravní podnik města Pardubic a.s.</LegalName>
+              <ContactDetails>
+                <Email />
+                <Phone>466 899 111</Phone>
+                <Url>www.dpmp.cz</Url>
+              </ContactDetails>
+              <OrganisationType>operator</OrganisationType>
+              <Address id="CZ:cisjr_jdf:Address:63217066_1" version="1">
+                <AddressLine1>Teplého 2141, 532 20 Pardubice V, Zelené Předměstí</AddressLine1>
+              </Address>
+            </Operator>
+          </organisations>
+        </ResourceFrame>
+        <ServiceCalendarFrame id="CZ:cisjr_jdf:ServiceCalendarFrame-EU_PI_CALENDAR" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_CALENDAR" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <ServiceCalendar id="CZ:cisjr_jdf:ServiceCalendar" version="1">
+            <dayTypes>
+              <DayType id="CZ:cisjr_jdf:DayType:1" version="1" />
+              <DayType id="CZ:cisjr_jdf:DayType:2" version="1" />
+              <DayType id="CZ:cisjr_jdf:DayType:3" version="1" />
+            </dayTypes>
+            <operatingPeriods>
+              <UicOperatingPeriod id="CZ:cisjr_jdf:UicOperatingPeriod:1" version="1">
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+                <ValidDayBits>1110001111001111100111110011111001111100111110011111001111100111110011111001111100111110001111001111100111110011111001101100111110011111001011100111110011111001111100111110011100001111000111110011111001111100111110011111001111100111110011111001111100111110011111001111000011110011111001111100111110011111001111100111110011111001111100111110011111001111100111110011111000011100111110011111001111100111110011111001111100111110011111001111100111110011111001011100111110011111001111100111010011111001111100110110011111001111100111110011111001111000111110011111001111100111110011111001111100111110011111001111100111110011111001111100111110011111001111100111100001111001111100011110001111001111100111110011111001111100111110011111001111100110010011111001111100111110011111001111100111110011111001111100111110011111001111100111010011111001111100111110011111001111100111110011110001111100111110011111001111100111110000111000111100111110011111001111100111110011111001111100111110011111001111100111110011111001111000011110011111001111100111110010111001011100111110011111001111100111110011111001111100111110011100001111100111110011111001111100111110011111001111100111110011111001111100111110011110001111100111110011111001111100111110011111001111100111110011111001111100111110011111000001100101110011111001111100111110011111001111100111110011111001111100111110011111001111100111110011111001111100111100001111001101100110110011111001111100111110011111001111100111110011111001111000111110011111001111100111110011111001111100111110011111001111100111110011111001111100111110011111001111100111110001111001111100111110011111001111100111110011111001111100100010011</ValidDayBits>
+              </UicOperatingPeriod>
+              <UicOperatingPeriod id="CZ:cisjr_jdf:UicOperatingPeriod:2" version="1">
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+                <ValidDayBits>0001110000110000011000001100000110000011000001100000110000011000001100000110000011000001110000110000011000001100000110010011000001100000110100011000001100000110000011000001100011110000111000001100000110000011000001100000110000011000001100000110000011000001100000110000111100001100000110000011000001100000110000011000001100000110000011000001100000110000011000001100000111100011000001100000110000011000001100000110000011000001100000110000011000001100000110100011000001100000110000011000101100000110000011001001100000110000011000001100000110000111000001100000110000011000001100000110000011000001100000110000011000001100000110000011000001100000110000011000011110000110000011100001110000110000011000001100000110000011000001100000110000011001101100000110000011000001100000110000011000001100000110000011000001100000110000011000101100000110000011000001100000110000011000001100001110000011000001100000110000011000001111000111000011000001100000110000011000001100000110000011000001100000110000011000001100000110000111100001100000110000011000001101000110100011000001100000110000011000001100000110000011000001100011110000011000001100000110000011000001100000110000011000001100000110000011000001100001110000011000001100000110000011000001100000110000011000001100000110000011000001100000111110011010001100000110000011000001100000110000011000001100000110000011000001100000110000011000001100000110000011000011110000110010011001001100000110000011000001100000110000011000001100000110000111000001100000110000011000001100000110000011000001100000110000011000001100000110000011000001100000110000011000001110000110000011000001100000110000011000001100000110000011011101100</ValidDayBits>
+              </UicOperatingPeriod>
+              <UicOperatingPeriod id="CZ:cisjr_jdf:UicOperatingPeriod:3" version="1">
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+                <ValidDayBits>1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111</ValidDayBits>
+              </UicOperatingPeriod>
+            </operatingPeriods>
+            <dayTypeAssignments>
+              <DayTypeAssignment id="CZ:cisjr_jdf:DayTypeAssignment:1" version="1" order="1">
+                <OperatingPeriodRef nameOfRefClass="UicOperatingPeriod" version="1" ref="CZ:cisjr_jdf:UicOperatingPeriod:1" />
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:1" />
+                <isAvailable>true</isAvailable>
+              </DayTypeAssignment>
+              <DayTypeAssignment id="CZ:cisjr_jdf:DayTypeAssignment:2" version="1" order="2">
+                <OperatingPeriodRef nameOfRefClass="UicOperatingPeriod" version="1" ref="CZ:cisjr_jdf:UicOperatingPeriod:2" />
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:2" />
+                <isAvailable>true</isAvailable>
+              </DayTypeAssignment>
+              <DayTypeAssignment id="CZ:cisjr_jdf:DayTypeAssignment:3" version="1" order="3">
+                <OperatingPeriodRef nameOfRefClass="UicOperatingPeriod" version="1" ref="CZ:cisjr_jdf:UicOperatingPeriod:3" />
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:3" />
+                <isAvailable>true</isAvailable>
+              </DayTypeAssignment>
+            </dayTypeAssignments>
+          </ServiceCalendar>
+        </ServiceCalendarFrame>
+        <ServiceFrame id="CZ:cisjr_jdf:ServiceFrame-EU_PI_NETWORK" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_NETWORK" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <lines>
+            <Line id="CZ:cisjr_jdf:Line:655001_1" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+              </ValidBetween>
+              <keyList>
+                <KeyValue>
+                  <Key>JdfLineType</Key>
+                  <Value>B</Value>
+                </KeyValue>
+                <KeyValue>
+                  <Key>JdfDetourTimetable</Key>
+                  <Value>0</Value>
+                </KeyValue>
+              </keyList>
+              <Name>MHD Pardubice linka č.1: Mikulovice,,Staňkova - Pardubice,Slovany,točna</Name>
+              <ShortName>655001</ShortName>
+              <TransportMode>trolleyBus</TransportMode>
+              <PublicCode>655001</PublicCode>
+              <OperatorRef version="1" ref="CZ:cisjr_jdf:Operator:63217066_1" />
+            </Line>
+          </lines>
+        </ServiceFrame>
+        <TimetableFrame id="CZ:cisjr_jdf:TimetableFrame-EU_PI_TIMETABLE" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_TIMETABLE" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <vehicleJourneys>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655001_1_3" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>3</Name>
+              <TransportMode>trolleyBus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:2" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655001_1_3">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655001_1_3_9" version="1">
+                  <StopPointInJourneyPatternRef version="1" ref="CZ:cisjr_jdf:StopPointInJourneyPattern:1_out_9" />
+                  <DepartureTime>04:33:00</DepartureTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655001_1_46" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>46</Name>
+              <TransportMode>trolleyBus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:1" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655001_1_46">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655001_1_46_24" version="1">
+                  <StopPointInJourneyPatternRef version="1" ref="CZ:cisjr_jdf:StopPointInJourneyPattern:2_in_24" />
+                  <DepartureTime>06:36:00</DepartureTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655001_1_60" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>60</Name>
+              <TransportMode>trolleyBus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:2" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655001_1_60">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655001_1_60_24" version="1">
+                  <StopPointInJourneyPatternRef version="1" ref="CZ:cisjr_jdf:StopPointInJourneyPattern:4_in_24" />
+                  <DepartureTime>07:02:00</DepartureTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655001_1_382" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2030-12-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>382</Name>
+              <TransportMode>trolleyBus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:3" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655001_1_382">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655001_1_382_24" version="1">
+                  <StopPointInJourneyPatternRef version="1" ref="CZ:cisjr_jdf:StopPointInJourneyPattern:2_in_24" />
+                  <DepartureTime>21:29:00</DepartureTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+          </vehicleJourneys>
+        </TimetableFrame>
+      </frames>
+    </CompositeFrame>
+  </dataObjects>
+</PublicationDelivery>

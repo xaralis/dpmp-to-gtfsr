@@ -7,5 +7,6 @@ trips exist, their times, stops, directions and realtime all stay with the API.
 """
 
 from .archive import CisUnavailable, fetch_archives
+from .calendars import build_calendars
 
-__all__ = ["CisUnavailable", "fetch_archives"]
+__all__ = ["CisUnavailable", "build_calendars", "fetch_archives"]
