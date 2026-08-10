@@ -1,20 +1,21 @@
-"""Service calendars, derived from each trip's JDF fixed codes.
+"""Service calendars: the days each trip runs, and the GTFS rows that say so.
 
-The upstream has no notion of a service calendar: a trip carries a set of
-one-character codes inherited from JDF. The old API published their meanings
-at ``/api/codes``; the new one does not, so the mapping is spelled out here
-against the JDF convention.
+Two ways in. :func:`service_from_dates` takes the day-by-day list CIS
+publishes and squeezes it into a weekly pattern plus exceptions; that is what
+the build normally uses. :func:`service_from_codes` reads a trip's JDF fixed
+codes instead, and stands in for the handful of trips CIS has never heard of.
+The codes are the weaker source -- about a third of them contradict DPMP's own
+published timetable, which is why CIS came back -- but for a trip with no
+calendar at all they beat nothing.
 
-Case is significant. Upper-case ``X`` on a trip means "runs on weekdays";
-lower-case ``x`` is a *stop*-level marker meaning "request stop" and must
-never be read as a calendar code.
-
-Across the whole network only a handful of distinct service patterns occur, so
-the generated ``calendar.txt`` stays small and legible.
+Case is significant in the codes. Upper-case ``X`` on a trip means "runs on
+weekdays"; lower-case ``x`` is a *stop*-level marker meaning "request stop" and
+must never be read as a calendar code.
 """
 
 import datetime as dt
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 
 import holidays
 
@@ -46,25 +47,76 @@ def service_from_codes(codes: Iterable[str]) -> Service:
     return Service(days=frozenset(days), holidays=SUNDAY_AND_HOLIDAYS in present)
 
 
+def service_from_dates(dates: frozenset[dt.date], start: dt.date, end: dt.date) -> Service:
+    """The smallest weekly pattern plus exceptions that describes ``dates`` exactly.
+
+    A weekday joins the pattern when the service runs on most of that weekday's
+    ordinary occurrences in ``[start, end]``; state holidays are counted
+    separately, since they follow :attr:`Service.holidays` rather than the day
+    they land on. Whatever the pattern then gets wrong is spelled out
+    day by day, so the description is exact however irregular the source is.
+    """
+    holiday_dates = observed_holidays(start, end)
+    ordinary = [d for d in days_between(start, end) if d not in holiday_dates]
+
+    weekdays: set[int] = set()
+    for weekday in range(7):
+        occurrences = [d for d in ordinary if d.weekday() == weekday]
+        if occurrences and 2 * sum(d in dates for d in occurrences) > len(occurrences):
+            weekdays.add(weekday)
+
+    pattern = Service(
+        days=frozenset(weekdays),
+        holidays=2 * sum(d in dates for d in holiday_dates) > len(holiday_dates),
+    )
+
+    added: set[dt.date] = set()
+    removed: set[dt.date] = set()
+    for date in days_between(start, end):
+        if pattern.runs_on(date, holiday=date in holiday_dates) == (date in dates):
+            continue
+        (added if date in dates else removed).add(date)
+
+    return replace(pattern, added=frozenset(added), removed=frozenset(removed))
+
+
 def calendar_exceptions(
     services: Iterable[Service], start: dt.date, end: dt.date
 ) -> Iterator[CalendarException]:
-    """Emit the ``calendar_dates.txt`` rows that make holidays behave.
+    """Emit the ``calendar_dates.txt`` rows that reconcile ``calendar.txt``
+    with what each service actually does.
 
-    On a holiday the network runs its Sunday timetable. For every holiday that
-    is *not* already a Sunday this means two corrections per service: drop the
-    day it would normally have run, and add the day it now runs instead.
+    ``calendar.txt`` can only say "these weekdays", so every date on which a
+    service departs from its own weekly pattern needs a row here. Two things
+    cause that: a state holiday, when the network runs its Sunday timetable
+    whatever weekday it is, and a service's own :attr:`Service.added` /
+    :attr:`Service.removed` days.
     """
     services = list(services)
-    for date in sorted(holidays_between(start, end)):
-        if date.weekday() == 6:
-            continue  # already a Sunday; the regular calendar covers it
+    holiday_dates = observed_holidays(start, end)
+
+    for date in days_between(start, end):
+        holiday = date in holiday_dates
         for service in services:
-            normally = service.runs_on(date, holiday=False)
-            on_holiday = service.runs_on(date, holiday=True)
-            if normally == on_holiday:
-                continue
-            yield CalendarException(service.service_id, date, added=on_holiday)
+            runs = service.runs_on(date, holiday=holiday)
+            if runs != (date.weekday() in service.days):
+                yield CalendarException(service.service_id, date, added=runs)
+
+
+def observed_holidays(start: dt.date, end: dt.date) -> frozenset[dt.date]:
+    """Holidays in ``[start, end]`` that change what the network does.
+
+    A holiday falling on a Sunday is left out: the network is already running
+    its Sunday timetable that day, so treating it as a holiday would only
+    generate exceptions that cancel each other out.
+    """
+    return frozenset(d for d in holidays_between(start, end) if d.weekday() != 6)
+
+
+def days_between(start: dt.date, end: dt.date) -> Iterator[dt.date]:
+    """Every date in ``[start, end]``, both ends included."""
+    for offset in range((end - start).days + 1):
+        yield start + dt.timedelta(days=offset)
 
 
 def holidays_between(start: dt.date, end: dt.date) -> set[dt.date]:

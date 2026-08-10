@@ -7,6 +7,7 @@ behaviour lives with the module that owns it.
 """
 
 import datetime as dt
+import hashlib
 from dataclasses import dataclass, field
 
 from dpmp_gtfs.api.models import Connection, Line
@@ -47,10 +48,11 @@ class Feed:
 class Timetable:
     """Everything needed to build a static feed.
 
-    Built entirely from the API: which trips a line has comes from walking
-    its trip-number space, which way each one runs from the stop order of the
-    trips just fetched. See :mod:`dpmp_gtfs.static.discovery` and
-    :mod:`dpmp_gtfs.static.direction`.
+    Almost entirely from the API: which trips a line has comes from walking its
+    trip-number space, which way each one runs from the stop order of the trips
+    just fetched. See :mod:`dpmp_gtfs.static.discovery` and
+    :mod:`dpmp_gtfs.static.direction`. Days of operation are the one exception
+    -- those come from CIS, because the API's are wrong.
     """
 
     stops: list[ApiStop]
@@ -59,6 +61,11 @@ class Timetable:
     """``(line_id, connection_id)`` -> ``direction_id``, derived from stop order."""
     connections: dict[tuple[str, int], Connection] = field(default_factory=dict)
     """``(line_id, connection_id)`` -> the trip's stop times, from the API."""
+    calendars: dict[tuple[str, int], frozenset[dt.date]] = field(default_factory=dict)
+    """``(line jdf id, connection_id)`` -> the days that trip runs, from CIS.
+
+    Keyed by the JDF line number rather than the API's ``lineId``, because that
+    is the only line identifier the two sources share."""
 
     @property
     def trip_count(self) -> int:
@@ -108,16 +115,34 @@ class Service:
     collapsing the two would put a trip on the road on Christmas Day that its
     timetable says stays in the depot.
     """
+    added: frozenset[dt.date] = frozenset()
+    """Days the service runs on beyond its weekly pattern."""
+    removed: frozenset[dt.date] = frozenset()
+    """Days the pattern says it runs on but it does not.
+
+    Both exist because the real calendars come from CIS as a day-by-day bitmap,
+    and DPMP runs three different weekday timetables depending on whether
+    schools are in session -- a difference no set of seven weekdays can carry.
+    """
 
     @property
     def service_id(self) -> str:
-        """A legible name, e.g. ``wd``, ``sa-su+h``, ``mo-fr``.
+        """A legible name, e.g. ``wd``, ``sa-su+h``, ``mo-fr``, ``wd-a3f21c``.
 
         The whole working week collapses to ``wd`` however it was spelled, so a
         trip marked ``X`` and one marked ``1,2,3,4,5`` share a calendar row
         rather than producing two rows saying the same thing.
+
+        A service with exceptions carries a digest of them, because otherwise
+        the school-term and school-holiday variants of the same weekday pattern
+        would collapse onto one id and each would get the other's days off.
+
+        Named after the weekdays it is ever on the road, which for a service
+        with no weekly pattern at all -- the trips that run only for the last
+        weeks of the summer holidays -- means the weekdays of its added days.
+        Otherwise those would all be called nothing but a digest.
         """
-        remaining = set(self.days)
+        remaining = set(self.days) or {date.weekday() for date in self.added}
         parts = []
         if remaining >= WORKING_WEEK:
             parts.append("wd")
@@ -128,10 +153,27 @@ class Service:
         if self.holidays:
             # Always marked, so that "+" and "7" can never land on one id while
             # meaning different things.
-            return f"{name}+h" if name else "h"
+            name = f"{name}+h" if name else "h"
         if not name:
             raise ValueError("service runs on no days at all")
+        if self.added or self.removed:
+            return f"{name}-{self._exception_digest}"
         return name
+
+    @property
+    def _exception_digest(self) -> str:
+        """A short, stable hash of the exception days.
+
+        Built from the sorted dates rather than from anything iteration-ordered,
+        and from a named algorithm rather than ``hash()``, so that two runs of
+        the same build produce the same ``service_id`` and a feed diff shows
+        only what actually changed.
+        """
+        material = " ".join(
+            [f"+{date}" for date in sorted(self.added)]
+            + [f"-{date}" for date in sorted(self.removed)]
+        )
+        return hashlib.blake2s(material.encode(), digest_size=3).hexdigest()
 
     @property
     def weekday_flags(self) -> tuple[int, int, int, int, int, int, int]:
@@ -144,8 +186,14 @@ class Service:
 
         On a state holiday the network runs its Sunday timetable, so what
         decides the day is :attr:`holidays` rather than the weekday the holiday
-        happens to fall on.
+        happens to fall on. An explicit exception outranks both: it is the one
+        thing said about that date and nothing else, so nothing else can
+        override it.
         """
+        if day in self.added:
+            return True
+        if day in self.removed:
+            return False
         if holiday:
             return self.holidays
         return day.weekday() in self.days

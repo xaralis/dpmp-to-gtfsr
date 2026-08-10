@@ -5,9 +5,13 @@ import pytest
 from dpmp_gtfs.static.calendar import (
     calendar_exceptions,
     czech_holidays,
+    days_between,
     holidays_between,
+    observed_holidays,
     service_from_codes,
+    service_from_dates,
 )
+from dpmp_gtfs.types import Service
 
 # --- code -> service --------------------------------------------------------
 
@@ -212,3 +216,125 @@ def test_saturday_holiday_swaps_saturday_for_sunday() -> None:
 
     got = {(e.service_id, e.added) for e in calendar_exceptions(services, boxing_day, boxing_day)}
     assert got == {("sa", False), ("su+h", True)}
+
+
+# --- dates -> service --------------------------------------------------------
+#
+# CIS publishes a day-by-day bitmap rather than a weekly pattern, because DPMP
+# runs three different weekday timetables depending on whether schools are in
+# session. Squeezing that back into calendar.txt plus calendar_dates.txt is
+# only worth anything if it is exact, so these check the round trip rather
+# than the shape of the answer.
+
+YEAR = (dt.date(2026, 8, 10), dt.date(2027, 8, 10))
+"""A full year from a Monday, the window a nightly rebuild produces."""
+
+
+def _dates(predicate) -> frozenset[dt.date]:
+    return frozenset(d for d in days_between(*YEAR) if predicate(d))
+
+
+def _reconstruct(service: Service, start: dt.date, end: dt.date) -> frozenset[dt.date]:
+    """The days a consumer reading calendar.txt and calendar_dates.txt would
+    believe this service runs on."""
+    days = {d for d in days_between(start, end) if d.weekday() in service.days}
+    for row in calendar_exceptions([service], start, end):
+        (days.add if row.added else days.discard)(row.date)
+    return frozenset(days)
+
+
+HOLIDAYS = observed_holidays(*YEAR)
+
+PATTERNS = {
+    "weekdays but not holidays": _dates(lambda d: d.weekday() < 5 and d not in HOLIDAYS),
+    "weekends and holidays": _dates(lambda d: d.weekday() >= 5 or d in HOLIDAYS),
+    "fridays only": _dates(lambda d: d.weekday() == 4),
+    "school holidays only": _dates(
+        lambda d: d.weekday() < 5 and d not in HOLIDAYS and d.month in (7, 8)
+    ),
+    "every third day": _dates(lambda d: (d - YEAR[0]).days % 3 == 0),
+}
+
+
+@pytest.mark.parametrize("name", sorted(PATTERNS))
+def test_a_service_built_from_dates_runs_on_exactly_those_dates(name: str) -> None:
+    dates = PATTERNS[name]
+    service = service_from_dates(dates, *YEAR)
+
+    for date in days_between(*YEAR):
+        assert service.runs_on(date, holiday=date in HOLIDAYS) is (date in dates), date
+
+
+@pytest.mark.parametrize("name", sorted(PATTERNS))
+def test_the_written_calendar_reproduces_the_dates_it_came_from(name: str) -> None:
+    """calendar.txt cannot say "weekdays in term time", so whatever the weekly
+    pattern gets wrong has to come back out of calendar_dates.txt."""
+    dates = PATTERNS[name]
+
+    assert _reconstruct(service_from_dates(dates, *YEAR), *YEAR) == dates
+
+
+def test_the_ordinary_patterns_need_no_exceptions_at_all() -> None:
+    """A trip that really does run every weekday must not drag 250 rows of
+    calendar_dates.txt along with it."""
+    weekdays = service_from_dates(PATTERNS["weekdays but not holidays"], *YEAR)
+    weekends = service_from_dates(PATTERNS["weekends and holidays"], *YEAR)
+
+    assert weekdays.service_id == "wd"
+    assert not weekdays.added and not weekdays.removed
+    assert weekends.service_id == "sa-su+h"
+    assert not weekends.added and not weekends.removed
+
+
+def test_a_seasonal_service_is_named_after_the_weekdays_it_appears_on() -> None:
+    """Summer-only weekday trips are on the road too few days to give any
+    weekday a majority, so the pattern is empty -- but "runs on no days" is
+    the one thing the id must not say, because the trip does run."""
+    summer = service_from_dates(PATTERNS["school holidays only"], *YEAR)
+
+    assert summer.days == frozenset()
+    assert summer.service_id.startswith("wd-")
+    assert summer.added == PATTERNS["school holidays only"]
+
+
+def test_two_variants_of_the_same_weekly_pattern_keep_separate_ids() -> None:
+    """Term-time and school-holiday weekday trips share a weekly pattern and
+    differ only in their days off. One id would give each the other's."""
+    term = service_from_dates(
+        PATTERNS["weekdays but not holidays"] - {dt.date(2026, 10, 29)}, *YEAR
+    )
+    other = service_from_dates(
+        PATTERNS["weekdays but not holidays"] - {dt.date(2026, 10, 30)}, *YEAR
+    )
+
+    assert term.days == other.days == frozenset({0, 1, 2, 3, 4})
+    assert term.service_id != other.service_id
+
+
+def test_the_same_exceptions_always_produce_the_same_id() -> None:
+    """The id is written into every trip row, so a digest that moved between
+    runs would rewrite the whole feed for nothing."""
+    dates = PATTERNS["weekdays but not holidays"] - {dt.date(2026, 10, 29)}
+
+    first = service_from_dates(dates, *YEAR)
+    again = service_from_dates(dates, *YEAR)
+
+    assert first.service_id == again.service_id
+
+
+def test_an_exception_outranks_the_holiday_rule() -> None:
+    """A trip CIS says runs on Labour Day runs on Labour Day, whatever the
+    network does around it."""
+    labour_day = dt.date(2026, 5, 1)  # Friday
+    weekdays_including_the_holiday = Service(
+        days=frozenset({0, 1, 2, 3, 4}), holidays=False, added=frozenset({labour_day})
+    )
+
+    assert weekdays_including_the_holiday.runs_on(labour_day, holiday=True) is True
+
+
+def test_a_trip_that_runs_on_no_day_of_the_window_has_no_id() -> None:
+    """CIS keeps trips whose bitmap has run out. The builder drops them, and
+    this is how it finds out."""
+    with pytest.raises(ValueError):
+        _ = service_from_dates(frozenset(), *YEAR).service_id
