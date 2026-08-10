@@ -2,109 +2,75 @@
 
 import httpx
 import pytest
-import respx
 
-from dpmp_gtfs.api import DpmpApiClient, DpmpApiError
+from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.config import Settings
+from dpmp_gtfs.exceptions import DpmpApiError
 
-API = "https://online.dpmp.cz/api"
-
-
-def make_settings(**overrides: object) -> Settings:
-    base = {
-        "api_key": "test-key",
-        "api_root": API,
-        "max_retries": 3,
-        "retry_backoff": 0.0,  # keep tests fast
-        "crawl_delay": 0.0,
-    }
-    return Settings(**(base | overrides))  # type: ignore[arg-type]
+API = "https://api.mhdonline.cz"
 
 
-@respx.mock
-async def test_request_is_posted_as_text_plain_with_the_key() -> None:
-    """Regression against the upstream's 500 on application/json.
-
-    The server rejects a correctly-labelled JSON body and accepts the very same
-    bytes labelled text/plain.
-    """
-    route = respx.post(f"{API}/codes").mock(return_value=httpx.Response(200, json=[]))
-
-    async with DpmpApiClient(make_settings()) as api:
-        await api.codes()
-
-    request = route.calls.last.request
-    assert request.headers["content-type"] == "text/plain;charset=UTF-8"
-    assert request.read() == b'{"key": "test-key"}'
-    assert request.headers["user-agent"].startswith("dpmp-to-gtfsr/")
-
-
-@respx.mock
-async def test_query_parameters_are_passed_through() -> None:
-    route = respx.post(f"{API}/connectionDetail").mock(
-        return_value=httpx.Response(200, json={"line_number": 11, "number": 1, "stops": []})
+def _settings(**over: object) -> Settings:
+    return Settings(
+        api_root=API,
+        provider="pardubice",
+        max_retries=2,
+        crawl_rate_limit=1000.0,
+        **over,  # type: ignore[arg-type]
     )
 
-    async with DpmpApiClient(make_settings()) as api:
-        await api.connection_detail(line=11, number=1)
 
-    assert dict(route.calls.last.request.url.params) == {"line": "11", "number": "1"}
+async def test_sends_the_protocol_header_and_uses_get(vehicles_payload):
+    seen: list[httpx.Request] = []
 
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=vehicles_payload)
 
-@respx.mock
-async def test_transient_failure_is_retried_then_succeeds() -> None:
-    """The upstream intermittently drops connections for minutes at a time."""
-    route = respx.post(f"{API}/buses").mock(
-        side_effect=[
-            httpx.ConnectTimeout("timed out"),
-            httpx.Response(500),
-            httpx.Response(200, json={"success": True, "data": []}),
-        ]
-    )
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
+        async with DpmpApiClient(settings=_settings(), client=raw) as api:
+            await api.vehicles()
 
-    async with DpmpApiClient(make_settings()) as api:
-        assert await api.buses() == []
-
-    assert route.call_count == 3
+    assert seen[0].method == "GET"
+    assert seen[0].url.path == "/pardubice/vehicles"
+    assert len(seen[0].headers["X-App-Protocol"]) == 64
 
 
-@respx.mock
-async def test_sustained_outage_raises_rather_than_returning_empty() -> None:
-    """An outage must be loud.
+async def test_refreshes_the_signature_once_on_401(vehicles_payload):
+    codes = [401, 200]
+    seen: list[str] = []
 
-    Silently returning no vehicles would publish a feed claiming the whole
-    fleet had vanished.
-    """
-    respx.post(f"{API}/buses").mock(side_effect=httpx.ConnectTimeout("down"))
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers["X-App-Protocol"])
+        code = codes.pop(0)
+        return httpx.Response(code, json=vehicles_payload if code == 200 else {})
 
-    async with DpmpApiClient(make_settings()) as api:
-        with pytest.raises(DpmpApiError, match="failed after 3 attempts"):
-            await api.buses()
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
+        async with DpmpApiClient(settings=_settings(), client=raw) as api:
+            result = await api.vehicles()
 
-
-@respx.mock
-async def test_success_false_is_treated_as_an_error() -> None:
-    respx.post(f"{API}/buses").mock(
-        return_value=httpx.Response(200, json={"success": False, "data": []})
-    )
-
-    async with DpmpApiClient(make_settings()) as api:
-        with pytest.raises(DpmpApiError, match="success=false"):
-            await api.buses()
+    assert len(seen) == 2
+    assert len(result) > 0
 
 
-@respx.mock
-async def test_lines_come_back_sorted() -> None:
-    respx.post(f"{API}/lines").mock(
-        return_value=httpx.Response(
-            200, json=[{"number": 11, "stops": []}, {"number": 2, "stops": []}]
-        )
-    )
+async def test_connection_returns_none_on_404():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text="")
 
-    async with DpmpApiClient(make_settings()) as api:
-        assert [line.number for line in await api.lines()] == [2, 11]
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
+        async with DpmpApiClient(settings=_settings(), client=raw) as api:
+            assert await api.connection("1", 999) is None
 
 
-async def test_missing_key_fails_fast() -> None:
-    with pytest.raises(DpmpApiError, match="No API key"):
-        DpmpApiClient(make_settings(api_key=""))
+async def test_raises_after_exhausting_retries():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="boom")
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url=API) as raw:
+        async with DpmpApiClient(settings=_settings(), client=raw) as api:
+            with pytest.raises(DpmpApiError):
+                await api.vehicles()

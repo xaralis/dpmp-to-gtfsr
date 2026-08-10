@@ -1,20 +1,25 @@
-"""Async client for the DPMP API.
+"""Async client for api.mhdonline.cz.
 
-Two upstream quirks drive the shape of this module:
+Three upstream facts drive the shape of this module:
 
-1. Every call is a ``POST`` whose body is ``{"key": "..."}`` -- and it must be
-   sent as ``text/plain``. With ``Content-Type: application/json`` the server
-   answers 500. (The web app hits this by accident: ``fetch`` with a plain
-   string body defaults to ``text/plain``.)
+1. Every call is a plain ``GET`` under ``/{provider}/``. The old API's
+   ``POST`` with a ``text/plain`` body is gone, and so is its static key.
 
-2. The upstream is not robust. During exploration it twice stopped answering
-   for minutes at a time, then recovered. Retries are mandatory, and callers
-   must be able to survive a total outage.
+2. Authentication is a signature that rotates every 15 minutes
+   (:mod:`dpmp_gtfs.protocol`). A full crawl takes longer than that, so the
+   header is computed per request, never cached on the client. A 401 or 403
+   is treated as "the window rolled under us" and retried once with a fresh
+   signature.
+
+3. ``connections/{line}/{number}`` answers 404 for a trip number that does
+   not exist. That is data, not failure -- CIS and the API drift -- so it is
+   returned as ``None`` rather than raised.
 """
 
 import asyncio
 import json
 import logging
+import time
 from types import TracebackType
 from typing import Any, Self
 
@@ -23,19 +28,47 @@ import httpx
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
 from dpmp_gtfs.exceptions import DpmpApiError
+from dpmp_gtfs.protocol import app_protocol
 
-from .models import Bus, BusesResponse, Code, ConnectionDetail, ConnectionSummary, Line, Station
+from .models import Connection, Line, Stop, Vehicle, VehiclesResponse
 
 logger = logging.getLogger(__name__)
 
+AUTH_STATUSES = frozenset({401, 403})
+
+
+class RateLimiter:
+    """Lets through at most ``rate`` requests per second, however many callers.
+
+    A fixed sleep between requests would not do: with N workers in flight the
+    real rate depends on latency, so the one number we actually care about
+    would drift with the network.
+    """
+
+    def __init__(self, rate: float) -> None:
+        self._interval = 1.0 / rate if rate > 0 else 0.0
+        self._lock = asyncio.Lock()
+        self._next = 0.0
+
+    async def acquire(self) -> None:
+        if not self._interval:
+            return
+        async with self._lock:
+            now = time.monotonic()
+            wait = self._next - now
+            if wait > 0:
+                await asyncio.sleep(wait)
+                now += wait
+            self._next = max(now, self._next) + self._interval
+
 
 class DpmpApiClient:
-    """Talks to ``online.dpmp.cz/api``.
+    """Talks to ``api.mhdonline.cz/{provider}``.
 
-    Use as an async context manager so the underlying connection pool is closed:
+    Use as an async context manager so the connection pool is closed:
 
         async with DpmpApiClient() as api:
-            buses = await api.buses()
+            vehicles = await api.vehicles()
     """
 
     def __init__(
@@ -44,12 +77,7 @@ class DpmpApiClient:
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.settings = settings or default_settings
-        if not self.settings.api_key:
-            raise DpmpApiError(
-                "No API key configured. Set DPMP_API_KEY -- the public web app "
-                "ships one in its JS bundle."
-            )
-        self._body = json.dumps({"key": self.settings.api_key})
+        self._prefix = f"/{self.settings.provider}"
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             base_url=self.settings.api_root,
@@ -57,6 +85,7 @@ class DpmpApiClient:
             headers={"User-Agent": self.settings.user_agent},
         )
         self._gate = asyncio.Semaphore(self.settings.crawl_concurrency)
+        self._limiter = RateLimiter(self.settings.crawl_rate_limit)
 
     async def __aenter__(self) -> Self:
         return self
@@ -75,11 +104,32 @@ class DpmpApiClient:
 
     # -- transport -----------------------------------------------------------
 
-    async def _post(self, path: str, **params: Any) -> Any:
-        """POST to an endpoint, retrying with exponential backoff.
+    def _headers(self) -> dict[str, str]:
+        return {
+            "X-App-Protocol": app_protocol(self.settings.protocol_seed),
+            "Accept": "application/json",
+        }
 
-        Raises :class:`DpmpApiError` once retries are exhausted, so callers can
-        distinguish "upstream is down" from a bug.
+    async def _send(self, path: str) -> httpx.Response:
+        async with self._gate:
+            await self._limiter.acquire()
+            response = await self._client.get(f"{self._prefix}/{path}", headers=self._headers())
+        if response.status_code in AUTH_STATUSES:
+            # The 15-minute window rolled over mid-flight. One fresh attempt.
+            logger.debug("%s got %d, retrying with a new signature", path, response.status_code)
+            async with self._gate:
+                await self._limiter.acquire()
+                response = await self._client.get(
+                    f"{self._prefix}/{path}", headers=self._headers()
+                )
+        return response
+
+    async def _get(self, path: str, *, missing_ok: bool = False) -> Any:
+        """GET an endpoint, retrying with exponential backoff.
+
+        Returns ``None`` for a 404 when ``missing_ok`` -- see the module
+        docstring. Raises :class:`DpmpApiError` once retries are exhausted, so
+        callers can tell "upstream is down" from a bug.
         """
         last: Exception | None = None
 
@@ -97,16 +147,9 @@ class DpmpApiClient:
                 await asyncio.sleep(delay)
 
             try:
-                async with self._gate:
-                    response = await self._client.post(
-                        f"/{path}",
-                        params=params or None,
-                        content=self._body,
-                        # Not application/json -- see module docstring.
-                        headers={"Content-Type": "text/plain;charset=UTF-8"},
-                    )
-                    if self.settings.crawl_delay:
-                        await asyncio.sleep(self.settings.crawl_delay)
+                response = await self._send(path)
+                if missing_ok and response.status_code == 404:
+                    return None
                 response.raise_for_status()
                 return response.json()
             except (httpx.HTTPError, json.JSONDecodeError) as exc:
@@ -118,36 +161,27 @@ class DpmpApiClient:
 
     # -- endpoints -----------------------------------------------------------
 
-    async def codes(self) -> list[Code]:
-        return [Code.model_validate(c) for c in await self._post("codes")]
-
-    async def stations(self) -> list[Station]:
-        return [Station.model_validate(s) for s in await self._post("stations")]
+    async def stops(self) -> list[Stop]:
+        return [Stop.model_validate(s) for s in await self._get("stops")]
 
     async def lines(self) -> list[Line]:
-        lines = [Line.model_validate(line) for line in await self._post("lines")]
-        return sorted(lines, key=lambda line: line.number)
+        lines = [Line.model_validate(line) for line in await self._get("lines")]
+        return sorted(lines, key=lambda line: line.jdf_id)
 
-    async def connections(self, line: int) -> list[ConnectionSummary]:
-        payload = await self._post("connections", line=line)
-        return [ConnectionSummary.model_validate(c) for c in payload]
+    async def vehicles(self) -> list[Vehicle]:
+        payload = VehiclesResponse.model_validate(await self._get("vehicles"))
+        return payload.vehicles
 
-    async def connection_detail(self, line: int, number: int) -> ConnectionDetail:
-        payload = await self._post("connectionDetail", line=line, number=number)
-        return ConnectionDetail.model_validate(payload)
-
-    async def buses(self) -> list[Bus]:
-        payload = BusesResponse.model_validate(await self._post("buses"))
-        if not payload.success:
-            raise DpmpApiError("buses endpoint reported success=false")
-        return payload.data
+    async def connection(self, line: str, number: int) -> Connection | None:
+        """One trip's stop times, or ``None`` if the upstream has no such trip."""
+        payload = await self._get(f"connections/{line}/{number}", missing_ok=True)
+        return None if payload is None else Connection.model_validate(payload)
 
     async def events(self) -> list[dict[str, Any]]:
         """Service disruptions.
 
         Returned untyped on purpose: the endpoint has only ever been observed
-        empty, so its element shape is still unknown. Typing it now would be
-        guessing.
+        empty, on both the old API and this one, so its element shape is still
+        unknown. Typing it now would be guessing.
         """
-        payload = await self._post("events")
-        return list(payload)
+        return list(await self._get("events"))
