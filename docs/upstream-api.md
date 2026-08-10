@@ -108,6 +108,30 @@ ním sesynchronizovat, je horší než mít jenom API.
 **Co dohledávání nedá:** souřadnice nástupišť pořád nemá nikdo — ty dál
 zůstávají po zastávce, ne po nástupišti, viz výše.
 
+## Dny provozu: jediná věc, kterou API neumí
+
+CIS je v projektu zpátky, ale **výhradně jako zdroj dnů provozu**. Rejstřík
+spojů z něj nebereme dál — důvody výš platí beze změny.
+
+**Proč.** `fixedCodes` u zhruba třetiny spojů neodpovídají jízdnímu řádu, který
+DPMP samo vyvěšuje. Doložený případ: spoj 46 linky 1, 06:36 ze Slovany,točna.
+Vyvěšený jízdní řád i CIS říkají *pracovní den*, API posílá kód `+`, tedy
+neděle a svátky. U linky 1 sedí staré API s CIS na 206 z 206 spojů, nové na
+163. Chyba je v hodnotách, ne v našem čtení: tabulka kódů níž je opsaná
+doslova z bundlu oficiální aplikace DPMP. Hlášeno dopravnímu podniku.
+
+**Jak.** [`cis/calendars.py`](../src/dpmp_gtfs/cis/calendars.py) čte z NeTEx
+denní bitmapu (`UicOperatingPeriod/ValidDayBits`) a
+[`static/calendar.py`](../src/dpmp_gtfs/static/calendar.py) z ní udělá týdenní
+vzorec plus výjimky. Bitmapa je nutná, ne přepych: DPMP jezdí tři různé
+varianty pracovních dnů podle školního vyučování a do sedmi sloupců
+`calendar.txt` se to nevejde.
+
+Párování je `(jdf_id linky, číslo spoje)` ↔ `ServiceJourney/Name`, ověřené
+nezávisle časy prvního odjezdu. 63 z 2 762 spojů (2,3 %) v CIS protějšek nemá —
+soustředěně na linkách 12, 9 a 3 — a těm zůstanou kódy z API; build to loguje
+po spojích a přeleze-li podíl 10 %, hlásí to jako chybu.
+
 ## Na co si dát pozor
 
 Podrobněji i s důkazy v [`upstream.py`](../src/dpmp_gtfs/upstream.py) a

@@ -73,10 +73,21 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
   by tvrdilo, že jede přesně, což z dat nevyplývá. Takových vozidel bývá kolem 40 %.
 </p>
 
-<h3>Kalendář</h3>
+<h3>Kalendář — z CIS, ne z API</h3>
 <p>
-  Pět služeb: pracovní dny, sobota, neděle, víkend a denně. Státní svátky se přepínají
-  na nedělní provoz přes <code>calendar_dates.txt</code>, včetně pohyblivých Velikonoc.
+  <strong>Dny provozu jsou jediný údaj, který nepochází z API dopravního podniku.</strong>
+  Kódy dnů provozu, které API posílá, zhruba u třetiny spojů neodpovídají vyvěšenému
+  jízdnímu řádu — spoj 46 linky 1 (06:36 ze Slovany,točna) je podle jízdního řádu i podle
+  celostátního registru <a href="https://portal.cisjr.cz/">CIS JŘ</a> pracovní den, podle
+  API víkend. Feed proto bere kalendáře z CIS, kam DPMP jízdní řády odevzdává jako primární
+  zdroj; dopravnímu podniku je rozpor nahlášený. Zhruba 2 % spojů v CIS protějšek nemají
+  a těm zůstávají kódy z API.
+</p>
+<p>
+  Výsledkem je zhruba patnáct služeb: kromě pracovních dnů, soboty, neděle a denního
+  provozu i sezónní varianty, protože DPMP jezdí jiné pracovní dny podle školního
+  vyučování. Rozdíly oproti týdennímu vzorci — včetně státních svátků, kdy síť jede
+  nedělní provoz — jsou v <code>calendar_dates.txt</code>.
 </p>
 
 <h3>Geometrie tras — odhad</h3>

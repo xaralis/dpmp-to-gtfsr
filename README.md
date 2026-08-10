@@ -51,13 +51,16 @@ byla restart, ne commit.
 
 ```bash
 uv sync
-uv run dpmp-gtfs build-static    # jednou, ~7 min (jízdní řády + geometrie)
+uv run dpmp-gtfs build-static    # jednou, ~10 min (registr CIS + jízdní řády + geometrie)
 uv run dpmp-gtfs serve           # http://localhost:8000
 ```
 
 `build-static` je volitelný: `serve` si feed postaví sám, když v `data/`
-žádný nenajde. Předem je to ale příjemnější — jinak služba prvních sedm minut
+žádný nenajde. Předem je to ale příjemnější — jinak služba prvních deset minut
 neodpovídá, protože uvicorn otevře port až po dokončení startu.
+
+První běh stáhne do `data/cis/` dva NeTEx archivy z CIS (~300 MB dohromady);
+další běhy se ptají podmíněně a stahují je jen tehdy, když se registr změnil.
 
 Další příkazy:
 
@@ -75,8 +78,8 @@ docker compose --env-file .env -f docker/compose.yaml up -d
 `--env-file .env` není volitelné: bez něj by compose hledal `docker/.env`,
 tedy jiný soubor než ten, ze kterého čte `dpmp-gtfs serve`.
 
-První start postaví feed od nuly (~7 min včetně geometrie tras), další starty
-ho načtou z volume (~5 s).
+První start postaví feed od nuly (~10 min včetně registru CIS a geometrie
+tras), další starty ho načtou z volume (~5 s).
 
 Nasazení na veřejnou adresu:
 
@@ -124,6 +127,16 @@ Několik vlastností zdrojového API, které nejsou zřejmé a stály za ověře
   u staršího API. Směr vozidla se proto počítá z jízdního řádu, ne z kompasu vozu.
 
 Podrobnosti i s důkazy v [`docs/upstream-api.md`](docs/upstream-api.md).
+
+### Dny provozu jsou z CIS, ne z API
+
+Všechno ostatní ve feedu je z `api.mhdonline.cz`, ale **dny provozu se berou
+z celostátního registru CIS JŘ** (`portal.cisjr.cz`), kam DPMP jízdní řády
+odevzdává jako primární zdroj. Důvod je prostý: kódy dnů provozu z API zhruba
+u třetiny spojů neodpovídají jízdnímu řádu, který DPMP samo vyvěšuje. Spoj 46
+linky 1, 06:36 ze Slovany,točna — vyvěšený jízdní řád i CIS říkají pracovní
+den, API říká víkend. Dopravnímu podniku je to nahlášené; než se to spraví,
+platí CIS.
 
 ### Trasy jsou odhad
 
