@@ -19,7 +19,7 @@ from dpmp_gtfs.web.scheduler import read_feed_version
 
 
 def _settings(tmp_path: Path) -> Settings:
-    return Settings(api_key="test-key", data_dir=tmp_path)  # type: ignore[call-arg]
+    return Settings(data_dir=tmp_path)
 
 
 def _write_minimal_zip(path: Path, version: str = "20260807-abc") -> None:

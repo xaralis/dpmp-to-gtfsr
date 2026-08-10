@@ -1,135 +1,130 @@
-# API za online.dpmp.cz
+# API za api.mhdonline.cz
 
 Zpětně zjištěná dokumentace neveřejného API, ze kterého tenhle projekt staví
-oba feedy. Není oficiální a DPMP ho nikde nepopisuje — všechno níž je odvozené
-z pozorování jejich webové aplikace a ověřené proti reálným odpovědím.
+oba feedy. Není oficiální a nikdo ho nikde nepopisuje — všechno níž je odvozené
+z pozorování webové aplikace DPMP a ověřené proti reálným odpovědím.
 
-## Volání
+## Co se stalo
 
-Vše je `POST` na `https://online.dpmp.cz/api/<endpoint>`, tělo `{"key": "<uuid>"}`.
+DPMP vyměnil backend. `online.dpmp.cz/api`, ze kterého tenhle projekt původně
+stavěl, je mrtvý — vrací 404 z nginx. Nahradil ho `api.mhdonline.cz` s
+prefixem podle provozovatele (`/pardubice`). Proti starému stavu se změnilo
+všechno podstatné:
 
-**Content-Type musí být `text/plain`.** S `application/json` server vrací 500.
-Jejich aplikace na to narazí náhodou: `fetch` s prostým řetězcem v těle posílá
-`text/plain` sám od sebe.
+- **Autentizace.** Statický klíč v těle zmizel. Místo něj rotující podpis
+  v hlavičce `X-App-Protocol`: `HMAC-SHA256(seed, floor(unix_ms / 900000))`
+  v hexu, platný 15 minut. Seed je `your-public-protocol-seed` — placeholder ze
+  šablony, který nechali v produkčním bundlu. Veřejný stejně jako předtím klíč,
+  ale v projektu chodí přes proměnnou `DPMP_PROTOCOL_SEED`, ne natvrdo v kódu.
+- **Volání.** Všechno `GET`, žádné `Content-Type: text/plain` kouzlo.
+- **Zmizel hromadný výpis spojů linky.** Starý `connections?line=X` byl základ
+  `trips.txt`, `stop_times.txt` i `calendar.txt`. Náhrada v API neexistuje —
+  ověřeno proti jejich vlastnímu JS bundlu, jejich frontend celý jízdní řád
+  nikdy nezobrazuje.
+- **Zmizel endpoint `codes`.** Význam kalendářních kódů se musí zadrátovat
+  (viz níž).
+- **Zmizely souřadnice nástupišť.** `/stops` vrací 219 plochých zastávek
+  s jedním bodem; nástupiště dědí souřadnice od své stanice.
 
-Klíč je natvrdo v jejich JS bundlu (`_next/static/chunks/pages/lines-*.js`),
-takže to není tajemství — v tomhle projektu ale stejně chodí přes proměnnou
-`DPMP_API_KEY`, aby jeho výměna byla restart, ne commit.
+Naopak přibylo:
 
-Server je citlivý na zátěž: při osmi paralelních spojeních spadlo volání na
-timeout. Klient drží konkurenci na čtyřech a mezi požadavky pauzuje.
+- **`currentDelay` je skutečné zpoždění** v ISO-8601 (`"-PT1M43S"`), ne odpočet
+  do plánovaného odjezdu jako staré `time_difference`.
+- **`connectionId` u vozidla** rozřeší spoj napřímo.
+- **`onStation`** říká, jestli vůz stojí v zastávce.
 
-## Endpointy
+Endpointy, které tenhle projekt používá:
 
 | endpoint | parametry | vrací | používáme na |
 |---|---|---|---|
-| `codes` | — | významy číselných kódů | kalendář, příznaky zastávek |
-| `stations` | — | 216 stanic vč. nástupišť a GPS | `stops.txt` |
-| `lines` | — | 31 linek se seznamem zastávek | `routes.txt` |
-| `connections` | `line` | všechny spoje linky | `trips.txt`, `calendar.txt` |
-| `connectionDetail` | `line`, `number` | zastávkové časy spoje | `stop_times.txt` |
-| `buses` | — | živé polohy vozidel | GTFS-RT |
-| `route` | `line` | **geometrie trasy linky** | zatím nic — viz níž |
-| `busConnectionDetail` | `line`, `number` | detail spoje, jiný tvar | nepoužíváme |
-| `events` | — | mimořádnosti | zatím nic, vždy prázdné |
-| `currentConnections` | `line` | právě jedoucí spoje | nepoužíváme, redundantní |
+| `stops` | — | zastávky, GPS, `fixedCodes` | `stops.txt` |
+| `lines` | — | linky, `jdfId` na napojení k CIS | `routes.txt` |
+| `connections/{line}/{n}` | linka, číslo spoje | zastávkové časy jednoho spoje | `stop_times.txt` |
+| `vehicles` | — | živé polohy vozidel, jedna společná `time` | GTFS-RT |
+| `events` | — | mimořádnosti | zatím nic, vždy prázdné — stejně jako u starého API |
 
-### `route` — geometrie linky
+Bundl nabízí i další cesty (`configuration/connectionDetail`, `presets`,
+`vehicles/movement`, `paths/{a}/{b}`, `stops/{id}/incomingArrivals`,
+`connections/{line}/longest`, …), ale žádnou z nich projekt nepotřebuje.
 
-Objeveno až v srpnu 2026, protože se volá teprve po kliknutí na „Detail spoje";
-při načtení stránky se neobjeví. Průzkum postavený na tom, co je vidět v síti
-po otevření webu, ho systematicky mine.
+## Zdroj jízdních řádů: CIS
 
-```json
-{
-  "line_number": 1,
-  "route": [[49.9899994, 15.7752138], [49.9895062, 15.7755732], ...],
-  "stations": [179, 178, 177, 222, 1, 15, ...]
-}
-```
+Chybějící seznam spojů dodá CIS JŘ (`portal.cisjr.cz`), kam DPMP jízdní řády
+odevzdává jako primární zdroj. `dpmp_gtfs.cis` stáhne dva NeTEx archivy
+(trolejbusy a čistě městské linky v jednom, autobusy včetně příměstských ve
+druhém — JDF samotné pokrývá jen 19 z 32 linek), rozpozná DPMP podle IČO
+`63217066` a z toho postaví rejstřík „která linka má k danému dni která čísla
+spojů a kterým směrem".
 
-`route` je posloupnost `[šířka, délka]` kopírující skutečné ulice. Funguje pro
-**všech 31 linek**, medián kroku 11–21 m; nejdelší je linka 99 s 1080 body přes
-27 km.
+**Klíčové zjištění: `connectionId` je číslo spoje z JDF.** Statika z CIS
+a realtime z API jdou spojit napřímo — ověřeno na lince 25, kde se seznam
+spojů z CIS a `connectionId`, které vrací API, shodují do posledního čísla.
+Proto zůstává `trip_id` ve tvaru `L9C115` beze změny.
 
-**Není to geometrie spoje.** `stations` je sjednocení zastávek linky přes oba
-směry, takže neodpovídá žádné konkrétní sekvenci zastávek: u linky 1 (26 stanic)
-ani u linky 8 (41 stanic) se netrefí ani jeden spoj. Většina spojů je ale
-podmnožinou — 189 z 206 u linky 1, 120 ze 120 u linky 8.
+**Výběr verze je nutný, ne volitelný.** Linka je v NeTEx často vícekrát
+a víc verzí platí současně (`LINE-607`, 283 spojů, platnost 2026-01-01 —
+2030-12-31, souběžně s `LINE-396`, 206 spojů, platnost od 2026-07-01; API
+odpovídá druhé verzi přesně). Sjednocení by přidalo neexistující spoje.
+Pravidlo: z verzí, jejichž platnost pokrývá datum buildu, vyhrává ta
+s nejpozdějším `FromDate`; při shodě delší `ToDate`, pak jméno souboru — aby
+byl výběr deterministický.
 
-#### Na `shapes.txt` se to nehodí — změřeno
-
-Nabízí se sekvenci zastávek na tuhle polyline napasovat a vyříznout úsek, a tím
-nahradit routování přes Valhallu. **Vyzkoušeno a zamítnuto.**
-
-Napasování funguje překvapivě dobře: když se zkusí obě orientace polyline
-(101 z 218 sekvencí sedí na obrácenou), dostane se 73 % sekvencí do 100 m,
-medián nejhoršího přichycení je 54 m.
-
-Rozhodující je ale jiná otázka: **která geometrie vede blíž zastávkám, které má
-obsloužit?** To se dá změřit objektivně, bez ohledu na to, které se komu líbí.
-
-| | |
-|---|---|
-| Valhalla blíž | **200** z 218 sekvencí |
-| DPMP blíž | **0** |
-| shoda do 5 m | 18 |
-
-Valhalla míjí své zastávky o 8–11 m, geometrie DPMP o stovky metrů až 5,9 km.
-Důvod je v tom, čím `route` je: **přehledová trasa linky**, jedna na linku.
-Naše tvary jsou per sekvence zastávek, a linky mají varianty (zkrácené obraty,
-jiné větve), které se od té jedné reprezentativní trasy liší i o kilometry.
-
-I když se porovnají jen sekvence, kde geometrie DPMP sedí nejlíp (98 z 218 do
-50 m), Valhalla je pořád blíž: nejhorší odchylka od zastávky medián 9 m proti
-19 m, a DPMP nevyhraje ani jednou.
-
-Per-spoj geometrii nemá ani jejich vlastní aplikace: `route` ignoruje
-`number`, `direction` i `connection` a vrací pořád stejnou polyline, a
-`connectionRoute`, `routeDetail` ani `shape` neexistují. Červená trasa u
-„Detail spoje" na jejich mapě je celá linka, ne ta konkrétní jízda.
-
-**Známá mez tohohle měření:** metrika „vzdálenost od zastávek" neodhalí případ,
-kdy Valhalla vede jinou, ale legální ulicí — objede blok nebo použije silnici,
-kudy linka reálně nejede. Takových míst se našlo řádově pár desítek (největší
-rozdíly 300–500 m na linkách 15, 33, 25, 18, 3, 12), ale nikdo je neprošel
-proti skutečnému vedení linek. Kdyby někdy někdo chtěl, tohle je místo, kde
-začít.
-
-Zatím se to nechává být: `shapes.txt` je v GTFS volitelný a slouží hlavně
-kreslení, kdežto to, na čem feedu záleží — zastávky, časy, spoje — pochází z
-API přímo a žádné routování v tom nefiguruje.
-
-Endpoint je tedy užitečný na kreslení přehledu linky, ne na `shapes.txt`.
-
-### `busConnectionDetail`
-
-Vrací totéž co `connectionDetail`, ale zabalené jinak — přidává `codes`,
-`departureTime` a `arrivalTime` na úrovni spoje:
-
-```json
-{"line_number": 1, "number": 411, "codes": [...], "departureTime": "2141",
- "arrivalTime": "2156", "stops": [{"number": 1, "name": "Jesničánky,točna",
- "index": 4, "distance": 0, "arrivalTime": "", "departureTime": "2141",
- "platform": 1}, ...]}
-```
+**Co CIS nedá:** souřadnice ani čísla nástupišť. `<Location />` je v každém
+`ScheduledStopPoint` prázdný a odpovídající sloupce JDF jsou prázdné. Ty
+dodává jen `api.mhdonline.cz`.
 
 ## Na co si dát pozor
 
-Podrobněji i s důkazy v [`upstream.py`](../src/dpmp_gtfs/upstream.py).
+Podrobněji i s důkazy v [`upstream.py`](../src/dpmp_gtfs/upstream.py) a
+[`api/models.py`](../src/dpmp_gtfs/api/models.py).
 
-- **`state_dtime` je v UTC**, zatímco všechny jízdní řády jsou v lokálním čase.
-  Ověřeno proti hlavičce `Date` serveru.
-- **`time_difference` není zpoždění**, ale odpočet do plánovaného odjezdu z
-  `current_stop`. Klesá o sekundu za sekundu i u naprosto přesného vozu. Zhruba
-  42 % vozidel ho má `null` (stojí na výchozí zastávce).
-- **`current_stop_number` = stanice × 100 + nástupiště**, kdežto
-  `last_stop_number` je holé číslo stanice bez nástupiště. Kvůli tomu se u
-  spojů, které stanici obslouží dvakrát, nedá z `last_stop_number` poznat, o
-  který průjezd jde.
-- **`gps_course` je vždy `null`** — ve všech nahraných snímcích, u všech
-  vozidel. Směr vozidla se proto počítá z jízdního řádu.
-- **Číselná pole jsou řetězce** a nic nezaručuje, že obsahují čísla.
-- **`arrivalTime` je vyplněný jen u poslední zastávky** spoje; jinde platí
-  `departureTime`.
-- **`distance` jsou celé kilometry** — příliš hrubé na `shape_dist_traveled`.
+- **Čas snímku je teď jeden na celou odpověď `/vehicles`**, ne u každého
+  vozidla zvlášť. Staré `state_dtime` u jednotlivého vozidla neexistuje;
+  odpověď nese jedno pole `time`, v UTC se sufixem `Z`.
+- **`gps_course` v novém API neexistuje o nic víc než ve starém.** Směr
+  vozidla se proto dál počítá z jízdního řádu, ne z kompasu vozu.
+- **`/events` je stále vždy prázdné**, přesně jako u starého API. Element
+  toho, co by tam mělo být, tak zůstává neznámý.
+- **Souřadnice zastávky jsou nepovinné.** Jedna zastávka (`id` 147,
+  „Opočínek,rozvodna") je publikovaná úplně bez souřadnic. `Stop.gps_latitude`
+  a `gps_longitude` proto mají výchozí hodnotu `None` místo povinného pole, a
+  builder takové zastávky z feedu přeskočí, aby neshodily validaci celého
+  `/stops`.
+- **Chybějící zpoždění a nerozebratelné zpoždění jsou dvě různé věci** — to je
+  úmyslné produktové rozhodnutí, ne opomenutí:
+  - `currentDelay` chybějící nebo `null` znamená, že se pro to vozidlo
+    nepublikuje žádný `TripUpdate` vůbec. Chybějící údaj není nula — publikovat
+    nulu by tvrdilo přesnost tam, kde upstream nic neřekl.
+  - `currentDelay` přítomné, ale nerozparsovatelné jako ISO-8601 durace, se
+    zaloguje jako varování a spočítá jako nulové zpoždění — spoj se tedy dál
+    publikuje, jen s `delay == 0`, protože je lepší mít spoj v feedu s nulou
+    než ho kvůli jedné špatné hodnotě ztratit celý.
+
+### Past na velikost písmen
+
+`fixedCodes` existují na dvou úrovních a stejné písmeno v nich znamená různé
+věci:
+
+| úroveň | kód | význam |
+|---|---|---|
+| spoj (`/connections/{line}/{n}`) | `X` | jede v pracovních dnech |
+| spoj | `6` / `+` | sobota / neděle a svátky |
+| spoj | `@` | nízkopodlažní vůz |
+| zastávka (`/stops`) | `@` | bezbariérová zastávka (`wheelchair_boarding`) |
+| zastávka | `x` | zastávka na znamení |
+
+Velké `X` a malé `x` jsou dva různé kódy. Porovnání kódů musí být
+case-sensitive.
+
+### Pole, která v `/connections` zmizela
+
+Starý `ConnectionStop` nesl `index`, `distance` a per-zastávkové `codes`. Nový
+vrací jen `stopId`, `platformId` a `departureTime`/`arrivalTime`. Dopad:
+
+- **`index` živil směr spoje.** Náhrada je v NeTEx: `ServiceJourneyPattern` má
+  sufix `_out` / `_in`, který CIS index promítá do `direction_id`.
+- **`distance`** byl už dřív příliš hrubý na `shape_dist_traveled`. Nechybí.
+- **per-zastávkové `codes`** živily „na znamení". Náhrada je `fixedCodes` na
+  zastávce v `/stops` — sémantika se mírně mění, „na znamení" je nově
+  vlastnost zastávky, ne zastávky v rámci konkrétního spoje. To je spíš
+  správnější.

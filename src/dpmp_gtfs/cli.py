@@ -10,6 +10,7 @@ from typing import Any
 import typer
 
 from dpmp_gtfs.api import DpmpApiClient
+from dpmp_gtfs.cis import build_index, fetch_archives
 from dpmp_gtfs.config import settings
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
@@ -32,8 +33,11 @@ def build_static(
     """Crawl the full timetable and write a GTFS zip."""
 
     async def run() -> None:
+        paths = await fetch_archives(settings.cis_urls, settings.cis_dir)
+        index = build_index(paths, on_date=dt.date.today())
+
         async with DpmpApiClient() as api:
-            timetable = await crawl(api)
+            timetable = await crawl(api, index)
 
         destination = dest or settings.gtfs_zip_path
         feed = build_feed(timetable)
@@ -76,44 +80,46 @@ def dump_fixtures(
     """Record live API responses so tests can run against real data offline."""
 
     async def run() -> None:
+        paths = await fetch_archives(settings.cis_urls, settings.cis_dir)
+        index = build_index(paths, on_date=dt.date.today())
+
         async with DpmpApiClient() as api:
-            _write(dest / "codes.json", [c.model_dump() for c in await api.codes()])
-            _write(dest / "stations.json", [s.model_dump() for s in await api.stations()])
+            _write(dest / "stops.json", [s.model_dump(mode="json") for s in await api.stops()])
 
             line_list = await api.lines()
-            _write(dest / "lines.json", [line.model_dump() for line in line_list])
+            _write(dest / "lines.json", [line.model_dump(mode="json") for line in line_list])
 
             for line in line_list[:lines]:
-                conns = await api.connections(line.number)
-                _write(
-                    dest / f"connections-{line.number}.json",
-                    [c.model_dump() for c in conns],
-                )
+                services = index.lines.get(line.jdf_id)
+                if services is None:
+                    continue
                 # A couple of trips is enough to exercise the stop_times path.
-                for conn in conns[:3]:
-                    detail = await api.connection_detail(line.number, conn.number)
+                for number in sorted(services.trips)[:3]:
+                    connection = await api.connection(line.id, number)
+                    if connection is None:
+                        continue
                     _write(
-                        dest / f"detail-{line.number}-{conn.number}.json",
-                        detail.model_dump(),
+                        dest / f"connection-{line.id}-{number}.json",
+                        connection.model_dump(mode="json"),
                     )
 
-            buses = await api.buses()
-            _write(dest / "buses.json", [b.model_dump(mode="json") for b in buses])
+            _write(dest / "vehicles.json", (await api.vehicles()).model_dump(mode="json"))
 
     asyncio.run(run())
 
 
-@app.command("watch-buses")
-def watch_buses(
+@app.command("watch-vehicles")
+def watch_vehicles(
     dest: Path = typer.Option(Path("tests/fixtures/snapshots"), help="Where to write snapshots."),
     interval: float = typer.Option(15.0, help="Seconds between snapshots."),
     count: int = typer.Option(60, help="How many snapshots to record."),
 ) -> None:
-    """Record a timed sequence of /api/buses snapshots.
+    """Record a timed sequence of /vehicles snapshots, for manual inspection.
 
-    This is the fixture the delay tracker is tested against: reconstructing a
-    real delay needs to observe a vehicle actually moving between stops, which
-    a single snapshot can never show.
+    The delay tracker this used to feed is gone -- ``currentDelay`` is a real
+    delay straight from the upstream now, not something reconstructed from
+    watching a vehicle move between stops -- but a timed sequence of snapshots
+    is still handy for debugging the live feed by hand.
     """
 
     async def run() -> None:
@@ -123,16 +129,16 @@ def watch_buses(
             for i in range(count):
                 stamp = dt.datetime.now(dt.UTC)
                 try:
-                    buses = await api.buses()
+                    snapshot = await api.vehicles()
                 except Exception:
                     logger.exception("snapshot %d failed, continuing", i)
                 else:
                     name = stamp.strftime("%Y%m%dT%H%M%SZ")
                     _write(
-                        dest / f"buses-{name}.json",
+                        dest / f"vehicles-{name}.json",
                         {
                             "recorded_at": stamp.isoformat(),
-                            "buses": [b.model_dump(mode="json") for b in buses],
+                            **snapshot.model_dump(mode="json"),
                         },
                     )
 

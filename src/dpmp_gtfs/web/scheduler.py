@@ -19,11 +19,11 @@ from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.archive import read_tables
+from dpmp_gtfs.cis import build_index, fetch_archives
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import StaticIndex
-from dpmp_gtfs.realtime.tracker import DelayTracker
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
 from dpmp_gtfs.static.builder import build_feed, iter_missing_stop_references, with_shapes
 from dpmp_gtfs.static.crawler import crawl
@@ -40,7 +40,6 @@ class Scheduler:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.state = FeedState()
-        self._tracker: DelayTracker | None = None
         self._tasks: list[asyncio.Task[None]] = []
 
     # -- lifecycle -----------------------------------------------------------
@@ -85,7 +84,6 @@ class Scheduler:
         self.state.trip_count = len(index)
         self.state.static_built_at = dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC)
         self.state.static_version = read_feed_version(path)
-        self._tracker = DelayTracker(index)
 
         # Restore which stops were out of service, so the status page is
         # accurate before the first rebuild of this process.
@@ -101,8 +99,10 @@ class Scheduler:
 
     async def rebuild_static(self) -> None:
         try:
+            paths = await fetch_archives(self.settings.cis_urls, self.settings.cis_dir)
+            service_index = build_index(paths, on_date=dt.date.today())
             async with DpmpApiClient(self.settings) as api:
-                timetable = await crawl(api)
+                timetable = await crawl(api, service_index)
             feed = build_feed(timetable)
 
             if self.settings.shapes_enabled:
@@ -125,7 +125,6 @@ class Scheduler:
 
             index = StaticIndex.from_zip(destination)
             self.state.index = index
-            self._tracker = DelayTracker(index)
             self.state.static_version = version
             self.state.static_built_at = dt.datetime.now(dt.UTC)
             self.state.trip_count = len(index)
@@ -155,19 +154,18 @@ class Scheduler:
     # -- realtime ------------------------------------------------------------
 
     async def refresh_realtime(self, api: DpmpApiClient) -> None:
-        if self.state.index is None or self._tracker is None:
+        if self.state.index is None:
             return
 
-        buses = await api.buses()
-        self._tracker.observe(buses)
-        message = build_feed_message(buses, self.state.index, self._tracker)
-        vehicles = build_vehicle_views(buses, self.state.index, self._tracker)
+        snapshot = await api.vehicles()
+        message = build_feed_message(snapshot.vehicles, self.state.index, now=snapshot.time)
+        vehicles = build_vehicle_views(snapshot.vehicles, self.state.index, now=snapshot.time)
 
         self.state.vehicles = vehicles
         self.state.realtime_message = message
         self.state.realtime = message.SerializeToString()
         self.state.realtime_built_at = dt.datetime.now(dt.UTC)
-        self.state.vehicle_count = len(buses)
+        self.state.vehicle_count = len(snapshot.vehicles)
         self.state.realtime_error = None
 
     async def _realtime_loop(self) -> None:
@@ -239,6 +237,6 @@ def read_feed_version(path: Path) -> str | None:
     """
     try:
         rows = read_tables(path, "feed_info.txt")["feed_info.txt"]
-    except OSError, zipfile.BadZipFile:
+    except (OSError, zipfile.BadZipFile):
         return None
     return rows[0].get("feed_version") if rows else None
