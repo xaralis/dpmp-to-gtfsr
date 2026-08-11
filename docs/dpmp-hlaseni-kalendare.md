@@ -105,3 +105,16 @@ hodnota se proto ve vašem produktu nemusí nijak projevit. Problém dopadá na
 odběratele, kteří z API staví statický jízdní řád.
 
 Rádi doplníme jakákoli data nebo ověříme opravu.
+
+---
+
+Tentýž nález v podobě pro netechnické čtenáře, k rozeslání:
+[`dpmp-dny-provozu.pdf`](dpmp-dny-provozu.pdf). Sází se z
+[`dpmp-dny-provozu.html`](dpmp-dny-provozu.html):
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless --no-pdf-header-footer \
+  --print-to-pdf=docs/dpmp-dny-provozu.pdf \
+  "file://$PWD/docs/dpmp-dny-provozu.html"
+```

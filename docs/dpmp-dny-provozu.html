@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Dny provozu v datech z api.mhdonline.cz</title>
+<style>
+  /* Tiskovina, ne webová stránka. Sazební obrazec je posunutý doprava,
+     nadpisy a popisky visí do levého okraje -- klasické uspořádání zprávy,
+     které drží řádek na čitelné délce a zároveň využije místo. */
+  @page {
+    size: A4;
+    margin: 24mm 20mm 22mm 20mm;
+    @bottom-right { content: counter(page); }
+  }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    margin: 0;
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+    background: #fff;
+    counter-reset: page;
+  }
+
+  /* --- sazební obrazec ------------------------------------------------- */
+  .doc { max-width: 170mm; }
+  section { margin-left: 42mm; max-width: 118mm; }
+  section > h2 {
+    margin-left: -42mm;
+    width: 38mm;
+    float: left;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.35;
+    color: #8a6d1f;
+    margin-top: 0.35em;
+  }
+  section { clear: both; padding-top: 7mm; }
+  section:first-of-type { padding-top: 0; }
+
+  p { margin: 0 0 3.2mm; text-align: justify; hyphens: auto; }
+  p + p { text-indent: 0; }
+  strong { font-weight: 700; }
+
+  /* --- záhlaví ---------------------------------------------------------- */
+  header {
+    border-bottom: 1.2pt solid #1a1a1a;
+    padding-bottom: 5mm;
+    margin-bottom: 8mm;
+  }
+  .kicker {
+    font-family: system-ui, sans-serif;
+    font-size: 7.5pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #8a6d1f;
+    font-weight: 700;
+    margin: 0 0 3mm;
+  }
+  h1 {
+    font-size: 20pt;
+    line-height: 1.15;
+    font-weight: 700;
+    margin: 0 0 3mm;
+    max-width: 150mm;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #444;
+    margin: 0;
+    max-width: 150mm;
+  }
+
+  /* --- shrnutí ---------------------------------------------------------- */
+  .summary {
+    margin: 0 0 8mm 42mm;
+    max-width: 118mm;
+    padding: 4mm 5mm;
+    background: #f4f2ec;
+    border-left: 2pt solid #8a6d1f;
+  }
+  .summary p:last-child { margin-bottom: 0; }
+  .summary .who { font-size: 8.5pt; color: #555; line-height: 1.45; }
+
+  /* --- důkaz vedle sebe -------------------------------------------------- */
+  .evidence {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4mm;
+    margin: 4mm 0 4mm;
+    break-inside: avoid;
+  }
+  .evidence div { padding: 3mm 3.5mm; border: 0.5pt solid #bbb; }
+  .evidence .lbl {
+    font-family: system-ui, sans-serif;
+    font-size: 6.8pt;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #666;
+    margin: 0 0 2mm;
+    font-weight: 700;
+  }
+  .evidence .mono {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 8.5pt;
+    line-height: 1.5;
+    margin: 0 0 2mm;
+    font-variant-numeric: tabular-nums;
+  }
+  .evidence .verdict { font-size: 11pt; font-weight: 700; margin: 0; }
+  .ok { border-top: 2pt solid #1c6b58 !important; }
+  .ok .verdict { color: #14503f; }
+  .bad { border-top: 2pt solid #a8322a !important; }
+  .bad .verdict { color: #8c2a22; }
+  mark { background: #f6e2a8; padding: 0 0.6mm; font-weight: 700; }
+
+  /* --- tabulka ---------------------------------------------------------- */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: system-ui, sans-serif;
+    font-size: 8.5pt;
+    font-variant-numeric: tabular-nums;
+    margin: 3mm 0 2mm;
+    break-inside: avoid;
+  }
+  th {
+    text-align: left;
+    font-size: 6.8pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #666;
+    border-bottom: 0.8pt solid #1a1a1a;
+    padding: 0 2mm 1.2mm 0;
+    font-weight: 700;
+  }
+  td { padding: 1.1mm 2mm 1.1mm 0; border-bottom: 0.4pt solid #ddd; }
+  td.n { text-align: right; width: 16mm; }
+  td.b { width: 46mm; padding-right: 0; }
+  .bar { display: block; height: 4pt; background: #a8322a; }
+  tr.full .bar { background: #1c6b58; }
+  caption {
+    caption-side: bottom;
+    text-align: left;
+    font-family: system-ui, sans-serif;
+    font-size: 7.5pt;
+    color: #666;
+    padding-top: 2mm;
+  }
+
+  /* --- výčty ------------------------------------------------------------ */
+  ul { margin: 0 0 3.2mm; padding-left: 4.5mm; }
+  li { margin-bottom: 1.4mm; text-align: justify; }
+  ul.tight li { margin-bottom: 2.4mm; }
+  ul.tight b { font-weight: 700; }
+
+  .note {
+    font-size: 8.5pt;
+    line-height: 1.45;
+    color: #444;
+    border-top: 0.5pt solid #ccc;
+    padding-top: 3mm;
+    margin-top: 6mm;
+  }
+
+  footer {
+    margin: 10mm 0 0 42mm;
+    max-width: 118mm;
+    border-top: 1.2pt solid #1a1a1a;
+    padding-top: 3mm;
+    font-size: 8pt;
+    line-height: 1.45;
+    color: #555;
+  }
+
+  h2, .evidence, table { break-after: avoid; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<header>
+  <p class="kicker">Neoficiální podnět zvenčí &middot; ověřeno 11. srpna 2026</p>
+  <h1>Data z api.mhdonline.cz uvádějí u části spojů špatné dny provozu</h1>
+  <p class="standfirst">Časy i zastávky jsou v pořádku. Chybný je jen údaj o tom, které dny spoj jede. Ve starší verzi API byl tento údaj správný.</p>
+</header>
+
+<div class="summary">
+  <p>Rozhraní <span style="font-family:Menlo,monospace;font-size:9pt">api.mhdonline.cz</span> u každého spoje uvádí, ve které dny jezdí. Zhruba u třetiny spojů tento údaj neodpovídá jízdnímu řádu, který dopravní podnik sám vyvěšuje. Spoj označený jako víkendový ve skutečnosti jede ve všední den a naopak. U linky 1 souhlasila starší data s celostátním registrem CIS u všech 206 spojů, nová u 163.</p>
+  <p class="who">Za textem stojí soukromý nekomerční projekt, který z veřejných dat pardubické MHD staví otevřený jízdní řád ve formátu GTFS. Nemá s dopravním podnikem ani s jeho dodavateli nic společného a nic po nikom nechce. Jen se zdálo užitečné ta měření předat.</p>
+</div>
+
+<section>
+  <h2>Dopad na cestujícího</h2>
+  <p>Aplikace a vyhledávače spojení, které z tohoto rozhraní čerpají, staví na tomto údaji odpověď na otázku „kdy mi to jede“. Když je údaj chybný, stane se jedno z dvojího: cestující dostane spoj, který v ten den nejede, a čeká na zastávce na autobus, který nepřijede. Nebo naopak spoj, který reálně jede, ve vyhledávači vůbec nevidí, a odjede o hodinu později.</p>
+  <p>Vlastní aplikace dopravního podniku tímto problémem netrpí, protože ukazuje odjezdy pro aktuální okamžik a podle dne v týdnu nefiltruje. Dopadá to na data předávaná dál.</p>
+</section>
+
+<section>
+  <h2>Ověření na jednom spoji</h2>
+  <p>Linka 1, odjezd <strong>06:36</strong> ze zastávky <strong>Slovany,točna</strong>. Vyvěšený zastávkový jízdní řád s platností od 1. 7. 2026 uvádí v šesté hodině tyto minuty:</p>
+  <div class="evidence">
+    <div class="ok">
+      <p class="lbl">Vyvěšený jízdní řád DPMP</p>
+      <p class="mono">Pracovní dny (léto)<br>06 &nbsp;21 &nbsp;<mark>36</mark> &nbsp;51<br><br>Soboty, neděle, svátky<br>02 &nbsp;32</p>
+      <p class="verdict">pracovní den</p>
+    </div>
+    <div class="bad">
+      <p class="lbl">Co vrací api.mhdonline.cz</p>
+      <p class="mono">GET /pardubice/<br>&nbsp;&nbsp;&nbsp;&nbsp;connections/1/46<br><br>"fixedCodes":<br>&nbsp;&nbsp;["+", "6", "@"]</p>
+      <p class="verdict">sobota a neděle</p>
+    </div>
+  </div>
+  <p>Podle vlastní legendy v aplikaci DPMP znamená <strong>+</strong> „jede v neděli a ve státem uznané svátky“ a <strong>6</strong> „jede v sobotu“. Totéž co vyvěšený jízdní řád uvádí i celostátní registr CIS. Opačný případ je na téže lince spoj číslo 3, odjezd 04:33: API jej označuje jako všední, jízdní řád i CIS jej řadí mezi víkendové.</p>
+</section>
+
+<section>
+  <h2>Rozsah</h2>
+  <p>Porovnání kódů dnů proti celostátnímu registru CIS. Kratší pruh znamená větší rozpor.</p>
+  <table>
+    <caption>Celkem 1 058 z 1 620 spojů dvanácti linek, tedy 65,3 % shody. Měřeno 11. srpna 2026.</caption>
+    <thead><tr><th>Linka</th><th>Shoda</th><th></th></tr></thead>
+    <tbody>
+      <tr class="full"><td>11</td><td class="n">100,0 %</td><td class="b"><span class="bar" style="width:100%"></span></td></tr>
+      <tr><td>12</td><td class="n">81,3 %</td><td class="b"><span class="bar" style="width:81%"></span></td></tr>
+      <tr><td>1</td><td class="n">79,1 %</td><td class="b"><span class="bar" style="width:79%"></span></td></tr>
+      <tr><td>4</td><td class="n">69,5 %</td><td class="b"><span class="bar" style="width:70%"></span></td></tr>
+      <tr><td>17</td><td class="n">67,4 %</td><td class="b"><span class="bar" style="width:67%"></span></td></tr>
+      <tr><td>13</td><td class="n">64,5 %</td><td class="b"><span class="bar" style="width:65%"></span></td></tr>
+      <tr><td>2</td><td class="n">63,0 %</td><td class="b"><span class="bar" style="width:63%"></span></td></tr>
+      <tr><td>5</td><td class="n">54,5 %</td><td class="b"><span class="bar" style="width:55%"></span></td></tr>
+      <tr><td>3</td><td class="n">53,9 %</td><td class="b"><span class="bar" style="width:54%"></span></td></tr>
+      <tr><td>7</td><td class="n">50,0 %</td><td class="b"><span class="bar" style="width:50%"></span></td></tr>
+      <tr><td>30</td><td class="n">43,2 %</td><td class="b"><span class="bar" style="width:43%"></span></td></tr>
+      <tr><td>27</td><td class="n">40,0 %</td><td class="b"><span class="bar" style="width:40%"></span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Vyloučená vysvětlení</h2>
+  <p>Než jsme došli k tomuto závěru, vyloučili jsme postupně šest jiných možností. Uvádíme je, aby bylo zřejmé, že nejde o nedorozumění na naší straně.</p>
+  <ul class="tight">
+    <li><b>Špatný výklad kódů.</b> Tabulku významů jsme převzali doslova z bundlu vaší vlastní aplikace, ne z normy.</li>
+    <li><b>Záměna velkých a malých písmen.</b> Rozhraní /stops vrací malé <span style="font-family:Menlo,monospace">x</span> u 56 zastávek a spoje velké <span style="font-family:Menlo,monospace">X</span>, obojí v téže odpovědi.</li>
+    <li><b>Špatné párování spojů.</b> U linky 1 sedí čas prvního odjezdu mezi API a registrem u 206 z 206 spojů.</li>
+    <li><b>Novější verze jízdního řádu, kterou registr ještě nemá.</b> Verze platná od 1. 7. 2026 se s API shoduje v časech na 100 %, v kódech na 79 %. Novější podaná verze neexistuje.</li>
+    <li><b>Nestabilní odpověď.</b> Opakované dotazy vracejí tytéž hodnoty.</li>
+    <li><b>Chybějící parametr dotazu.</b> Zkoušeli jsme datum i den; odpověď se nemění.</li>
+  </ul>
+  <p>Nezávisle na registru i na starší verzi API to ukazuje samotná struktura odjezdů. Linka 1 jezdí ze Slovan ve všední den v patnáctiminutovém taktu, o víkendu ve třicetiminutovém. Podle starých kódů oba takty vycházejí přesně. Podle nových se prolínají: do pracovních dnů pronikají časy <span style="font-family:Menlo,monospace">:00</span> a <span style="font-family:Menlo,monospace">:30</span>, do víkendu časy <span style="font-family:Menlo,monospace">:06</span>, <span style="font-family:Menlo,monospace">:21</span>, <span style="font-family:Menlo,monospace">:36</span> a <span style="font-family:Menlo,monospace">:51</span>.</p>
+</section>
+
+<section>
+  <h2>Kdy jsme na to narazili</h2>
+  <p>Nové rozhraní běží od 10. srpna. Tento podklad vznikl během několika hodin poté, co jsme na změnu narazili. Je dost možné, že o té věci víte a ještě se dolaďuje; v tom případě prosím berte následující jako včasný postřeh zvenčí, ne jako stížnost.</p>
+  <p>Stojí za zmínku, kde se chyba <em>neprojeví</em>: ve vlastní aplikaci dopravního podniku. Odznak pro kód <span style="font-family:Menlo,monospace">X</span> tam má nastaveno <span style="font-family:Menlo,monospace">disabled: true</span> a nevykresluje se. Viditelné je to až tam, kde z dat někdo staví statický jízdní řád.</p>
+</section>
+
+<section>
+  <h2>Další zjištění</h2>
+  <p>Mimo hlavní problém jsme narazili na tři menší věci. Žádná není naléhavá, ale mají stejný charakter: data, která šla dřív získat, dnes chybějí.</p>
+  <ul class="tight">
+    <li><b>Zastávka 147 „Opočínek,rozvodna“ nemá souřadnice.</b> Jediná z 219. Nelze ji umístit do mapy, takže z jízdního řádu vypadává.</li>
+    <li><b>Zmizely souřadnice nástupišť.</b> Nástupiště dnes sdílejí jeden bod celé stanice. Proti starším datům se tím posunulo 357 zastávkových bodů; na velkých přestupních uzlech to znamená, že mapa ukáže špatnou stranu ulice.</li>
+    <li><b>Zmizel hromadný výpis spojů linky.</b> Jízdní řád se dnes dá získat jen dotazem na každý spoj zvlášť a hledáním, kde číselná řada končí. Jedno sestavení je přibližně 4 400 dotazů; jeden výpis na linku by tu zátěž odstranil.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Co by pomohlo</h2>
+  <p>Aby hodnoty v poli <span style="font-family:Menlo,monospace">fixedCodes</span> odpovídaly vyvěšenému jízdnímu řádu. Nic dalšího nepotřebujeme. Časy, zastávky, čísla spojů i data o polohách vozidel v reálném čase jsou v pořádku a nová verze je v několika ohledech lepší než předchozí: zpoždění je konečně skutečné zpoždění a u vozidla je rovnou číslo spoje.</p>
+  <p>Pokud už na tom pracujete, dejte prosím vědět a rádi opravu ověříme proti témuž měření.</p>
+</section>
+
+<footer>
+  Podklad vznikl při stavbě otevřeného jízdního řádu ve formátu GTFS z veřejných dat pardubické MHD. <strong>Soukromý nekomerční projekt bez jakékoli vazby na Dopravní podnik města Pardubic</strong>. Není to oficiální dokument, audit ani zakázka a nikdo si za něj nic neúčtuje. Všechna uvedená čísla jsou reprodukovatelná z veřejných zdrojů; podrobný technický rozbor včetně postupu měření poskytneme na vyžádání.
+</footer>
+
+</div>
+</body>
+</html>
