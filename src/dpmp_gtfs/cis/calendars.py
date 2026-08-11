@@ -153,9 +153,7 @@ def _warn_if_coverage_ends_early(
     honestly incomplete rather than wrong, but it is incomplete quietly, and
     an operator watching a line go dark deserves to be told which and when.
     """
-    ends = [
-        max(c.days) for c in by_trip.values() if c.days and max(c.days) < horizon - GRACE
-    ]
+    ends = [max(c.days) for c in by_trip.values() if c.days and max(c.days) < horizon - GRACE]
     if ends:
         logger.warning(
             "line %s: %d of %d trips have no CIS days after %s -- the next "

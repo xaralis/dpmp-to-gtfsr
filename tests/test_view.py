@@ -138,9 +138,7 @@ def test_a_lettered_line_is_not_mistaken_for_a_trolleybus() -> None:
     """``line_id`` is not guaranteed to be numeric; a line the upstream names
     with letters is simply not a trolleybus rather than a crash."""
     index = StaticIndex({"LX1C1": ScheduledTrip(trip_id="LX1C1", route_id="LX1", stops=())})
-    views = build_vehicle_views(
-        [_vehicle(lineId="X1", connectionId=1)], index, NOW
-    )
+    views = build_vehicle_views([_vehicle(lineId="X1", connectionId=1)], index, NOW)
     assert views[0].trolleybus is False
 
 

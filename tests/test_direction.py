@@ -5,10 +5,14 @@ from dpmp_gtfs.static.direction import assign_directions
 
 
 def _conn(number: int, stops: list[int]) -> Connection:
-    return Connection.model_validate({
-        "lineId": "1", "connectionId": number, "fixedCodes": ["X"],
-        "stops": [{"stopId": s, "platformId": "1", "departureTime": "04:00:00"} for s in stops],
-    })
+    return Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": number,
+            "fixedCodes": ["X"],
+            "stops": [{"stopId": s, "platformId": "1", "departureTime": "04:00:00"} for s in stops],
+        }
+    )
 
 
 def test_opposite_runs_get_opposite_ids():
@@ -21,11 +25,13 @@ def test_trips_sharing_a_terminal_share_a_direction():
     # A short turn (trip 3) shares two stops with the full trip (1) in the
     # same relative order -- that is enough evidence on its own, no terminal
     # grouping needed.
-    out = assign_directions({
-        1: _conn(1, [10, 20, 30]),
-        3: _conn(3, [10, 20]),        # a short turn, same way
-        2: _conn(2, [30, 20, 10]),
-    })
+    out = assign_directions(
+        {
+            1: _conn(1, [10, 20, 30]),
+            3: _conn(3, [10, 20]),  # a short turn, same way
+            2: _conn(2, [30, 20, 10]),
+        }
+    )
     assert out[1] == out[3] != out[2]
 
 

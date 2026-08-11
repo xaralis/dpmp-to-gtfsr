@@ -86,9 +86,7 @@ def service_from_dates(
 
     if not (added or removed):
         return pattern
-    return replace(
-        pattern, added=frozenset(added), removed=frozenset(removed), origin=origin
-    )
+    return replace(pattern, added=frozenset(added), removed=frozenset(removed), origin=origin)
 
 
 def calendar_exceptions(

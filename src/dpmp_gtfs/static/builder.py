@@ -141,9 +141,7 @@ def build_stops(timetable: Timetable) -> list[Stop]:
 
     for api_stop in timetable.stops:
         if api_stop.gps_latitude is None or api_stop.gps_longitude is None:
-            logger.warning(
-                "stop %s (%s) has no coordinates, skipping", api_stop.id, api_stop.name
-            )
+            logger.warning("stop %s (%s) has no coordinates, skipping", api_stop.id, api_stop.name)
             continue
 
         step_free = int(api_stop.step_free)
@@ -289,8 +287,7 @@ def build_trips_and_stop_times(
 
         if len(trip_stop_times) < 2:
             logger.warning(
-                "trip %s/%s has fewer than 2 usable stop times after filtering, "
-                "dropping the trip",
+                "trip %s/%s has fewer than 2 usable stop times after filtering, dropping the trip",
                 line_id,
                 connection_number,
             )

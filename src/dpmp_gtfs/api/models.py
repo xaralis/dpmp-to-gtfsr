@@ -165,7 +165,7 @@ class Stop(BaseModel):
 
     @property
     def on_request(self) -> bool:
-        """"Zastávka na znamení" -- the vehicle only calls if asked."""
+        """Zastávka na znamení: the vehicle only calls if asked."""
         return STOP_ON_REQUEST in self.fixed_codes
 
 

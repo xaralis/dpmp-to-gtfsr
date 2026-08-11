@@ -97,9 +97,7 @@ async def _crawl_once(
         # The six minutes between the start and completion lines are
         # otherwise silent -- this is what lets an operator tell a crawl in
         # progress from one that has stalled.
-        logger.info(
-            "line %s: %d trips (%d/%d lines)", line.id, len(connections), index, len(lines)
-        )
+        logger.info("line %s: %d trips (%d/%d lines)", line.id, len(connections), index, len(lines))
 
     logger.info("crawl complete: %d trips", timetable.trip_count)
     return timetable

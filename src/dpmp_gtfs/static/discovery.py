@@ -53,7 +53,5 @@ async def discover_trips[T](
                 misses = 0
         start += size
 
-    logger.info(
-        "line %s: found %d trips up to %d", line_id, len(found), max(found) if found else 0
-    )
+    logger.info("line %s: found %d trips up to %d", line_id, len(found), max(found) if found else 0)
     return found

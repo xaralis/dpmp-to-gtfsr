@@ -237,9 +237,7 @@ def test_one_malformed_vehicle_does_not_discard_the_snapshot() -> None:
     assert vehicle_ids == ["1", "2", "3"]
 
     updates = {
-        e.trip_update.vehicle.id: e.trip_update
-        for e in msg.entity
-        if e.HasField("trip_update")
+        e.trip_update.vehicle.id: e.trip_update for e in msg.entity if e.HasField("trip_update")
     }
     # The absent-delay vehicle (3) gets no TripUpdate at all; the malformed
     # one (2) gets one, pinned to zero.
