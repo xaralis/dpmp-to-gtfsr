@@ -47,6 +47,10 @@ packages = ["src/dpmp_gtfs"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+extend-exclude = ["docs/superpowers"]
+# Specs and plans are prose. The Python in them illustrates an argument and is
+# often deliberately abbreviated, so formatting it says nothing about the code
+# that shipped -- it only breaks CI over a document.
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
