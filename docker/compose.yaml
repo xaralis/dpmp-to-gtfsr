@@ -18,10 +18,6 @@ services:
     ports:
       - "${FEED_BIND:-127.0.0.1:8000}:8000"
     environment:
-      # The public web app ships this key in its JS bundle, so it is not a
-      # secret -- but it stays out of the image so rotating it is a restart,
-      # not a rebuild.
-      DPMP_API_KEY: ${DPMP_API_KEY:?set DPMP_API_KEY in .env}
       DPMP_DATA_DIR: /data
       # On the volume, not in the image: the CIS archives are ~300 MB and are
       # re-fetched conditionally, so losing them on a restart costs a full

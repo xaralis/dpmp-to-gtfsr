@@ -43,7 +43,6 @@ ssh ubuntu@IP
 cd /opt/dpmp-gtfs
 
 cat > .env <<'ENV'
-DPMP_API_KEY=sem-vloz-klic
 TUNNEL_ID=sem-vloz-id-tunelu
 TUNNEL_HOSTNAME=gtfs.progresivni-pardubice.cz
 ENV
@@ -57,14 +56,18 @@ zkontroluje, že `.env` i credentials existují a že `TUNNEL_ID` souhlasí
 s tím, co je v credentials — nesoulad by jinak vyrobil tunel, který se
 připojí a pak neobsluhuje nic, což se z logu čte špatně.
 
-`DPMP_API_KEY` je klíč, který veřejná aplikace DPMP posílá ze svého JS bundlu
-(`online.dpmp.cz`, chunk `pages/lines-*.js`, hledej `key`). Není to tajemství,
-ale do repozitáře nepatří — jeho výměna má být restart, ne commit.
+Žádný klíč se nenastavuje. Nové API se autentizuje podpisem, který se počítá
+ze seedu a mění se po patnácti minutách; seed je veřejný a má rozumnou výchozí
+hodnotu v `config.py`. Přepsat ho jde proměnnou `DPMP_PROTOCOL_SEED`, kdyby ho
+DPMP vyměnil.
 
 Hotovo. Certifikát vydá Cloudflare sám.
 
-První start prochází celý jízdní řád a routuje geometrii tras, takže než
-`/healthz` odpoví 200, počítej zhruba se **7 minutami**:
+`/healthz` odpoví hned; první jízdní řád ale chvíli trvá a služba do té doby
+hlásí, že data teprve stahuje (vidět je to i na mapě). Počítej zhruba
+s **25 minutami**: stáhnou se archivy CIS (~300 MB, podruhé už jen kontrola,
+jestli se změnily), projde se ~4 400 dotazů na API a doroutuje se geometrie
+tras. Archivy i geometrie zůstávají na svazku, takže restart je otázka minut:
 
 ```bash
 docker compose --env-file .env -f docker/compose.tunnel.yaml logs -f

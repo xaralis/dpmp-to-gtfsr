@@ -35,10 +35,11 @@ services:
       - --proxy-headers
       - --forwarded-allow-ips=*
     environment:
-      # Public in the sense that DPMP's own web app ships it in its JS bundle,
-      # but still out of the image so rotating it is a restart, not a rebuild.
-      DPMP_API_KEY: ${DPMP_API_KEY:?set DPMP_API_KEY in .env}
       DPMP_DATA_DIR: /data
+      # On the volume, not in the image: the CIS archives are ~300 MB and are
+      # re-fetched conditionally, so losing them on a restart costs a full
+      # download for a registry that has not changed.
+      DPMP_CIS_DIR: /data/cis
       # Needed for absolute URLs in social preview tags. Optional: left unset,
       # those tags are omitted rather than pointing somewhere unreachable.
       DPMP_PUBLIC_URL: ${DPMP_PUBLIC_URL:-}

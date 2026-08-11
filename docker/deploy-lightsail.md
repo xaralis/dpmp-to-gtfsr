@@ -44,7 +44,7 @@ cd dpmp-to-gtfsr
 Klíč do `.env` **v kořeni repozitáře** (ne do `docker/`):
 
 ```bash
-echo 'DPMP_API_KEY=...' > .env
+# .env není potřeba: nové API se autentizuje rotujícím podpisem, ne klíčem
 ```
 
 Klíč je ten, který veřejná aplikace DPMP posílá ze svého JS bundlu. Není to

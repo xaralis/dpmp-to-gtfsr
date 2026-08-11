@@ -5,7 +5,7 @@
 #   ./docker/tunnel-up.sh
 #
 # Expects, next to the repo:
-#   .env                             DPMP_API_KEY, TUNNEL_ID, TUNNEL_HOSTNAME
+#   .env                             TUNNEL_ID, TUNNEL_HOSTNAME
 #   docker/cloudflared/credentials.json   from `cloudflared tunnel create`
 #
 # Idempotent: generates the tunnel config from the template and (re)starts the
@@ -17,11 +17,10 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 fail() { printf '\033[1;31m✗\033[0m %s\n' "$1" >&2; exit 1; }
 ok() { printf '\033[1;32m✓\033[0m %s\n' "$1"; }
 
-[[ -f .env ]] || fail ".env is missing. It needs DPMP_API_KEY, TUNNEL_ID and TUNNEL_HOSTNAME."
+[[ -f .env ]] || fail ".env is missing. It needs TUNNEL_ID and TUNNEL_HOSTNAME."
 
 set -a; . ./.env; set +a
 
-: "${DPMP_API_KEY:?DPMP_API_KEY is not set in .env}"
 : "${TUNNEL_ID:?TUNNEL_ID is not set in .env}"
 : "${TUNNEL_HOSTNAME:?TUNNEL_HOSTNAME is not set in .env}"
 
