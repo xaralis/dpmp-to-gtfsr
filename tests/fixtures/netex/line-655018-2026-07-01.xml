@@ -1,0 +1,364 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1" xsi:schemaLocation="http://www.netex.uk/netex http://netex.uk/netex/schema/1.10/xsd/NeTEx_publication.xsd">
+  <PublicationTimestamp>2026-08-07T19:00:01</PublicationTimestamp>
+  <ParticipantRef>CZ:cisjr</ParticipantRef>
+  <dataObjects>
+    <CompositeFrame id="CZ:cisjr_jdf:CompositeFrame-EU_PI_LINE_OFFER" version="1">
+      <TypeOfFrameRef ref="epip:EU_PI_LINE_OFFER" />
+      <codespaces>
+        <Codespace id="epip_data">
+          <Xmlns>epd</Xmlns>
+          <XmlnsUrl>http://netex-cen.eu/epip_data</XmlnsUrl>
+          <Description>EPIP data</Description>
+        </Codespace>
+        <Codespace id="epip">
+          <Xmlns>epip</Xmlns>
+          <XmlnsUrl>http://netex-cen.eu/epip</XmlnsUrl>
+          <Description>EPIP metadata</Description>
+        </Codespace>
+      </codespaces>
+      <FrameDefaults>
+        <DefaultLocale>
+          <TimeZone>Europe/Prague</TimeZone>
+          <DefaultLanguage>cs</DefaultLanguage>
+        </DefaultLocale>
+      </FrameDefaults>
+      <frames>
+        <ResourceFrame id="CZ:cisjr_jdf:ResourceFrame-EU_PI_COMMON" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_COMMON" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <organisations>
+            <Operator id="CZ:cisjr_jdf:Operator:63217066_1" version="1">
+              <PublicCode>63217066</PublicCode>
+              <LegalName>Dopravní podnik města Pardubic a.s.</LegalName>
+              <ContactDetails>
+                <Email />
+                <Phone>466 899 111</Phone>
+                <Url>www.dpmp.cz</Url>
+              </ContactDetails>
+              <OrganisationType>operator</OrganisationType>
+              <Address id="CZ:cisjr_jdf:Address:63217066_1" version="1">
+                <AddressLine1>Teplého 2141, 532 20 Pardubice V, Zelené Předměstí</AddressLine1>
+              </Address>
+            </Operator>
+          </organisations>
+        </ResourceFrame>
+        <ServiceCalendarFrame id="CZ:cisjr_jdf:ServiceCalendarFrame-EU_PI_CALENDAR" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_CALENDAR" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <ServiceCalendar id="CZ:cisjr_jdf:ServiceCalendar" version="1">
+            <dayTypes>
+              <DayType id="CZ:cisjr_jdf:DayType:1" version="1" />
+              <DayType id="CZ:cisjr_jdf:DayType:2" version="1" />
+              <DayType id="CZ:cisjr_jdf:DayType:4" version="1" />
+            </dayTypes>
+            <operatingPeriods>
+              <UicOperatingPeriod id="CZ:cisjr_jdf:UicOperatingPeriod:1" version="1">
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+                <ValidDayBits>11100011110011111001111100111110011111001111100111110011111001</ValidDayBits>
+              </UicOperatingPeriod>
+              <UicOperatingPeriod id="CZ:cisjr_jdf:UicOperatingPeriod:2" version="1">
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+                <ValidDayBits>00011100001100000110000011000001100000110000011000001100000110</ValidDayBits>
+              </UicOperatingPeriod>
+              <UicOperatingPeriod id="CZ:cisjr_jdf:UicOperatingPeriod:4" version="1">
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+                <ValidDayBits>00001100000100000010000001000000100000010000001000000100000010</ValidDayBits>
+              </UicOperatingPeriod>
+            </operatingPeriods>
+            <dayTypeAssignments>
+              <DayTypeAssignment id="CZ:cisjr_jdf:DayTypeAssignment:1" version="1" order="1">
+                <OperatingPeriodRef nameOfRefClass="UicOperatingPeriod" version="1" ref="CZ:cisjr_jdf:UicOperatingPeriod:1" />
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:1" />
+                <isAvailable>true</isAvailable>
+              </DayTypeAssignment>
+              <DayTypeAssignment id="CZ:cisjr_jdf:DayTypeAssignment:2" version="1" order="2">
+                <OperatingPeriodRef nameOfRefClass="UicOperatingPeriod" version="1" ref="CZ:cisjr_jdf:UicOperatingPeriod:2" />
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:2" />
+                <isAvailable>true</isAvailable>
+              </DayTypeAssignment>
+              <DayTypeAssignment id="CZ:cisjr_jdf:DayTypeAssignment:4" version="1" order="4">
+                <OperatingPeriodRef nameOfRefClass="UicOperatingPeriod" version="1" ref="CZ:cisjr_jdf:UicOperatingPeriod:4" />
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:4" />
+                <isAvailable>true</isAvailable>
+              </DayTypeAssignment>
+            </dayTypeAssignments>
+          </ServiceCalendar>
+        </ServiceCalendarFrame>
+        <ServiceFrame id="CZ:cisjr_jdf:ServiceFrame-EU_PI_NETWORK" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_NETWORK" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <lines>
+            <Line id="CZ:cisjr_jdf:Line:655018_1" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+              </ValidBetween>
+              <keyList>
+                <KeyValue>
+                  <Key>JdfLineType</Key>
+                  <Value>B</Value>
+                </KeyValue>
+                <KeyValue>
+                  <Key>JdfDetourTimetable</Key>
+                  <Value>0</Value>
+                </KeyValue>
+              </keyList>
+              <Name>MHD Pardubice linka č.18: Pardubice,,Hlavní nádraží - Živanice,Nerad</Name>
+              <ShortName>655018</ShortName>
+              <TransportMode>bus</TransportMode>
+              <PublicCode>655018</PublicCode>
+              <OperatorRef version="1" ref="CZ:cisjr_jdf:Operator:63217066_1" />
+            </Line>
+          </lines>
+        </ServiceFrame>
+        <TimetableFrame id="CZ:cisjr_jdf:TimetableFrame-EU_PI_TIMETABLE" version="1">
+          <TypeOfFrameRef ref="epip:EU_PI_TIMETABLE" />
+          <FrameDefaults>
+            <DefaultCodespaceRef ref="epip_data" />
+          </FrameDefaults>
+          <vehicleJourneys>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655018_1_140" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>140</Name>
+              <TransportMode>bus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:2" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655018_1_140">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_21" version="1">
+                  <DepartureTime>16:28:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_20" version="1">
+                  <ArrivalTime>16:29:00</ArrivalTime>
+                  <DepartureTime>16:29:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_19" version="1">
+                  <ArrivalTime>16:30:00</ArrivalTime>
+                  <DepartureTime>16:30:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_17" version="1">
+                  <ArrivalTime>16:32:00</ArrivalTime>
+                  <DepartureTime>16:32:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_16" version="1">
+                  <ArrivalTime>16:33:00</ArrivalTime>
+                  <DepartureTime>16:33:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_15" version="1">
+                  <ArrivalTime>16:34:00</ArrivalTime>
+                  <DepartureTime>16:34:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_14" version="1">
+                  <ArrivalTime>16:35:00</ArrivalTime>
+                  <DepartureTime>16:35:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_13" version="1">
+                  <ArrivalTime>16:36:00</ArrivalTime>
+                  <DepartureTime>16:36:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_12" version="1">
+                  <ArrivalTime>16:37:00</ArrivalTime>
+                  <DepartureTime>16:37:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_11" version="1">
+                  <ArrivalTime>16:39:00</ArrivalTime>
+                  <DepartureTime>16:39:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_10" version="1">
+                  <ArrivalTime>16:40:00</ArrivalTime>
+                  <DepartureTime>16:40:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_9" version="1">
+                  <ArrivalTime>16:41:00</ArrivalTime>
+                  <DepartureTime>16:41:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_8" version="1">
+                  <ArrivalTime>16:42:00</ArrivalTime>
+                  <DepartureTime>16:42:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_6" version="1">
+                  <ArrivalTime>16:43:00</ArrivalTime>
+                  <DepartureTime>16:43:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_140_2" version="1">
+                  <ArrivalTime>16:50:00</ArrivalTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655018_1_205" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>205</Name>
+              <TransportMode>bus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:4" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655018_1_205">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_2" version="1">
+                  <DepartureTime>18:27:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_6" version="1">
+                  <ArrivalTime>18:32:00</ArrivalTime>
+                  <DepartureTime>18:32:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_7" version="1">
+                  <ArrivalTime>18:33:00</ArrivalTime>
+                  <DepartureTime>18:33:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_9" version="1">
+                  <ArrivalTime>18:34:00</ArrivalTime>
+                  <DepartureTime>18:34:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_10" version="1">
+                  <ArrivalTime>18:35:00</ArrivalTime>
+                  <DepartureTime>18:35:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_11" version="1">
+                  <ArrivalTime>18:36:00</ArrivalTime>
+                  <DepartureTime>18:36:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_12" version="1">
+                  <ArrivalTime>18:37:00</ArrivalTime>
+                  <DepartureTime>18:37:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_13" version="1">
+                  <ArrivalTime>18:39:00</ArrivalTime>
+                  <DepartureTime>18:39:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_14" version="1">
+                  <ArrivalTime>18:40:00</ArrivalTime>
+                  <DepartureTime>18:40:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_15" version="1">
+                  <ArrivalTime>18:41:00</ArrivalTime>
+                  <DepartureTime>18:41:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_16" version="1">
+                  <ArrivalTime>18:43:00</ArrivalTime>
+                  <DepartureTime>18:43:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_17" version="1">
+                  <ArrivalTime>18:44:00</ArrivalTime>
+                  <DepartureTime>18:44:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_19" version="1">
+                  <ArrivalTime>18:45:00</ArrivalTime>
+                  <DepartureTime>18:45:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_20" version="1">
+                  <ArrivalTime>18:46:00</ArrivalTime>
+                  <DepartureTime>18:46:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_205_21" version="1">
+                  <ArrivalTime>18:47:00</ArrivalTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+            <ServiceJourney id="CZ:cisjr_jdf:ServiceJourney:655018_1_229" version="1">
+              <ValidBetween>
+                <FromDate>2026-07-01T00:00:00</FromDate>
+                <ToDate>2026-08-31T00:00:00</ToDate>
+              </ValidBetween>
+              <Name>229</Name>
+              <TransportMode>bus</TransportMode>
+              <dayTypes>
+                <DayTypeRef version="1" ref="CZ:cisjr_jdf:DayType:1" />
+              </dayTypes>
+              <passingTimes id="CZ:cisjr_jdf:PassingTimes:655018_1_229">
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_2" version="1">
+                  <DepartureTime>22:21:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_6" version="1">
+                  <ArrivalTime>22:26:00</ArrivalTime>
+                  <DepartureTime>22:26:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_7" version="1">
+                  <ArrivalTime>22:27:00</ArrivalTime>
+                  <DepartureTime>22:27:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_9" version="1">
+                  <ArrivalTime>22:28:00</ArrivalTime>
+                  <DepartureTime>22:28:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_10" version="1">
+                  <ArrivalTime>22:29:00</ArrivalTime>
+                  <DepartureTime>22:29:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_11" version="1">
+                  <ArrivalTime>22:30:00</ArrivalTime>
+                  <DepartureTime>22:30:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_12" version="1">
+                  <ArrivalTime>22:31:00</ArrivalTime>
+                  <DepartureTime>22:31:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_13" version="1">
+                  <ArrivalTime>22:33:00</ArrivalTime>
+                  <DepartureTime>22:33:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_14" version="1">
+                  <ArrivalTime>22:34:00</ArrivalTime>
+                  <DepartureTime>22:34:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_15" version="1">
+                  <ArrivalTime>22:35:00</ArrivalTime>
+                  <DepartureTime>22:35:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_16" version="1">
+                  <ArrivalTime>22:36:00</ArrivalTime>
+                  <DepartureTime>22:36:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_17" version="1">
+                  <ArrivalTime>22:37:00</ArrivalTime>
+                  <DepartureTime>22:37:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_19" version="1">
+                  <ArrivalTime>22:38:00</ArrivalTime>
+                  <DepartureTime>22:38:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_20" version="1">
+                  <ArrivalTime>22:39:00</ArrivalTime>
+                  <DepartureTime>22:39:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_21" version="1">
+                  <ArrivalTime>22:40:00</ArrivalTime>
+                  <DepartureTime>22:40:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_22" version="1">
+                  <ArrivalTime>22:43:00</ArrivalTime>
+                  <DepartureTime>22:43:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_23" version="1">
+                  <ArrivalTime>22:46:00</ArrivalTime>
+                  <DepartureTime>22:46:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_24" version="1">
+                  <ArrivalTime>22:48:00</ArrivalTime>
+                  <DepartureTime>22:48:00</DepartureTime>
+                </TimetabledPassingTime>
+                <TimetabledPassingTime id="CZ:cisjr_jdf:TimetabledPassingTime:655018_1_229_25" version="1">
+                  <ArrivalTime>22:49:00</ArrivalTime>
+                </TimetabledPassingTime>
+              </passingTimes>
+            </ServiceJourney>
+          </vehicleJourneys>
+        </TimetableFrame>
+      </frames>
+    </CompositeFrame>
+  </dataObjects>
+</PublicationDelivery>
