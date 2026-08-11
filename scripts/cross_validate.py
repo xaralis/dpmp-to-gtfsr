@@ -175,9 +175,14 @@ def compare_calendars(old: str, new: str) -> None:
         return
 
     start, end = overlap(old, new)
-    window = frozenset(
-        start + dt.timedelta(days=n) for n in range((end - start).days + 1) if end >= start
-    )
+    if end < start:
+        # Every trip would compare equal over an empty window, which reads as
+        # "nothing changed" when it means "nothing was compared".
+        print(
+            f"\n=== dny provozu ===\n  platnosti se nepřekrývají ({start} > {end}), nelze porovnat"
+        )
+        return
+    window = frozenset(start + dt.timedelta(days=n) for n in range((end - start).days + 1))
     differing = sorted(t for t in shared if (a[t] & window) != (b[t] & window))
     print("\n=== dny provozu (v překryvu platnosti obou feedů) ===")
     print(f"  společných spojů: {len(shared)}")

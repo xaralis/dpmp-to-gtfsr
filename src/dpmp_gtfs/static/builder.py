@@ -173,9 +173,9 @@ def build_stops(timetable: Timetable) -> list[Stop]:
             )
 
     for number in sorted(set(used) - known_ids):
-        logger.error(
-            "stop %s is used by timetables but is unknown to /stops; its trips "
-            "will reference a stop that does not exist",
+        logger.warning(
+            "stop %s is used by timetables but is unknown to /stops; the calls "
+            "at it are dropped and the trips keep the rest of their route",
             number,
         )
 
@@ -343,26 +343,26 @@ def build_trips_and_stop_times(
         if not service.days and not service.holidays:
             no_weekly_pattern += 1
 
+        sid = service.service_id
         trips.append(
             Trip(
                 route_id=route_id(line_id),
-                service_id=service.service_id,
+                service_id=sid,
                 trip_id=tid,
                 trip_headsign=names.get(surviving_stops[-1].stop_id, ""),
                 direction_id=timetable.directions.get(key, 0),
                 wheelchair_accessible=1 if connection.low_floor else 0,
             )
         )
-        services.setdefault(service.service_id, service)
+        # Two different services on one id would silently give one of them the
+        # other's days: setdefault keeps the first and every later trip points
+        # at a calendar row that is not its own. It cannot happen while a
+        # service with exceptions carries the origin that tells it apart, which
+        # is exactly the property worth failing on if it ever stops holding.
+        seen = services.setdefault(sid, service)
+        if seen != service:
+            raise FeedBuildError(f"two different services share the id {sid!r}")
         stop_times.extend(trip_stop_times)
-
-    for service_id, service in services.items():
-        # Two services on one id would put two rows in calendar.txt claiming the
-        # same name, and consumers would keep whichever they read last. It
-        # cannot happen while every service with exceptions carries the origin
-        # that distinguishes it, so this is the check that says so.
-        if service.service_id != service_id:
-            raise FeedBuildError(f"two different services share the id {service_id!r}")
 
     total = from_cis + from_codes
     logger.log(
@@ -380,11 +380,12 @@ def build_trips_and_stop_times(
     # calendar_dates.txt, which is what the weeks around a timetable change look
     # like. Its own prefix, so that an operator alerting on drift in the line
     # above is not woken by the seasons.
-    logger.warning(
-        "seasonal calendars: %d trips run for too few days to have a weekly "
-        "pattern, and stop when the timetable they belong to does",
-        no_weekly_pattern,
-    )
+    if no_weekly_pattern:
+        logger.warning(
+            "seasonal calendars: %d trips run for too few days to have a weekly "
+            "pattern, and stop when the timetable they belong to does",
+            no_weekly_pattern,
+        )
     return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
 
 

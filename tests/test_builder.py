@@ -376,11 +376,14 @@ def test_a_stop_unknown_to_stops_is_logged(caplog: pytest.LogCaptureFixture) -> 
     )
     timetable = Timetable(stops=[], lines=lines, connections={("1", 1): connection})
 
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.WARNING):
         build_stops(timetable)
 
     assert "999" in caplog.text
     assert "998" in caplog.text
+    assert logging.ERROR not in {r.levelno for r in caplog.records}, (
+        "an upstream gap the build handles is a warning; reserve errors for what stops it"
+    )
 
 
 def test_a_stop_unknown_to_stops_does_not_block_the_whole_feed() -> None:
