@@ -15,6 +15,7 @@ from dpmp_gtfs.static.builder import (
     build_feed,
     build_stops,
     build_trips_and_stop_times,
+    iter_missing_stop_references,
     prune_unserved_stops,
     stop_seconds,
 )
@@ -380,6 +381,40 @@ def test_a_stop_unknown_to_stops_is_logged(caplog: pytest.LogCaptureFixture) -> 
 
     assert "999" in caplog.text
     assert "998" in caplog.text
+
+
+def test_a_stop_unknown_to_stops_does_not_block_the_whole_feed() -> None:
+    """The trip calling at it loses that call; everything else is published.
+
+    Leaving its stop_times rows in place would leave them pointing at a stop
+    with no stops.txt row, and iter_missing_stop_references refuses a feed
+    that does -- so one stop upstream forgot to publish would stop the whole
+    network being published, every night, until someone noticed.
+    """
+    stops = [
+        ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
+        ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.01, "gpsLon": 15.01}),
+    ]
+    lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
+    connection = Connection.model_validate(
+        {
+            "lineId": "1",
+            "connectionId": 1,
+            "fixedCodes": ["X", "@"],
+            "stops": [
+                {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
+                {"stopId": 999, "platformId": "1", "departureTime": "04:05:00"},
+                {"stopId": 2, "platformId": "1", "departureTime": "04:10:00"},
+            ],
+        }
+    )
+    timetable = Timetable(stops=stops, lines=lines, connections={("1", 1): connection})
+
+    feed = build_feed(timetable)
+
+    assert [t.trip_id for t in feed.trips] == [trip_id("1", 1)]
+    assert [st.stop_id for st in feed.stop_times] == [stop_id(1, 1), stop_id(2, 1)]
+    assert list(iter_missing_stop_references(feed)) == []
 
 
 # --- days of operation --------------------------------------------------------

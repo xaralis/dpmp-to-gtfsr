@@ -182,15 +182,28 @@ def build_stops(timetable: Timetable) -> list[Stop]:
     return stops
 
 
-def stops_without_coordinates(timetable: Timetable) -> set[int]:
-    """Ids of stops ``/stops`` describes but without a position.
+def unplaceable_stops(timetable: Timetable) -> set[int]:
+    """Ids no ``stops.txt`` row will describe.
 
-    Shared between :func:`build_stops`, which drops them from ``stops.txt``,
-    and :func:`build_trips_and_stop_times`, which must drop the matching
-    ``stop_times.txt`` rows -- otherwise the two files disagree about which
-    stops exist.
+    Two ways a stop lands here: ``/stops`` publishes it without a position, or
+    a timetable calls at it and ``/stops`` does not publish it at all. Both are
+    upstream defects and both leave the same hole, so they are one set.
+
+    Shared between :func:`build_stops`, which leaves them out of ``stops.txt``,
+    and :func:`build_trips_and_stop_times`, which drops the matching
+    ``stop_times.txt`` rows. Skipping the second half is what turns one bad
+    stop into a feed nobody can publish: the rows dangle,
+    :func:`iter_missing_stop_references` finds them, and every rebuild refuses
+    for as long as upstream leaves it that way.
     """
-    return {s.id for s in timetable.stops if s.gps_latitude is None or s.gps_longitude is None}
+    known = {s.id for s in timetable.stops}
+    placed = {
+        s.id for s in timetable.stops if s.gps_latitude is not None and s.gps_longitude is not None
+    }
+    called_at = {
+        stop.stop_id for connection in timetable.connections.values() for stop in connection.stops
+    }
+    return (known - placed) | (called_at - known)
 
 
 def build_routes(timetable: Timetable) -> list[Route]:
@@ -236,7 +249,7 @@ def build_trips_and_stop_times(
     services: dict[str, Service] = {}
     names = {s.id: s.name for s in timetable.stops}
     on_request_stops = {s.id for s in timetable.stops if s.on_request}
-    missing_coords = stops_without_coordinates(timetable)
+    unplaceable = unplaceable_stops(timetable)
     jdf_ids = {line.id: line.jdf_id for line in timetable.lines}
     from_cis = 0
     from_codes = 0
@@ -255,7 +268,7 @@ def build_trips_and_stop_times(
         for sequence, (stop, seconds) in enumerate(
             zip(connection.stops, stop_seconds(connection.stops), strict=True)
         ):
-            if stop.stop_id in missing_coords:
+            if stop.stop_id in unplaceable:
                 # Not in stops.txt (build_stops already logged this stop); a
                 # stop_times row here would dangle.
                 continue
