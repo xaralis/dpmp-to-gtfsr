@@ -44,6 +44,8 @@ from xml.etree.ElementTree import Element
 
 from defusedxml.ElementTree import fromstring
 
+from dpmp_gtfs.types import TripCalendar
+
 logger = logging.getLogger(__name__)
 
 NS = {"n": "http://www.netex.org.uk/netex"}
@@ -67,6 +69,11 @@ class LineCalendars:
     which the API reports as ``connectionId`` -- the join between the two
     sources."""
 
+    origins: dict[int, str] = field(default_factory=dict)
+    """Trip number -> a name for the calendar its days were read from, built
+    from the raw bitmaps rather than from the days they expand to. See
+    :attr:`dpmp_gtfs.types.TripCalendar.origin`."""
+
     timings: dict[int, Timings] = field(default_factory=dict)
     """Trip number -> its call times. Only used to decide whether the next
     version still means the same journey by that number."""
@@ -84,10 +91,13 @@ class LineCalendars:
 
 def build_calendars(
     paths: Iterable[Path], on_date: dt.date, horizon: dt.date
-) -> dict[tuple[str, int], frozenset[dt.date]]:
+) -> dict[tuple[str, int], TripCalendar]:
     """``(line jdf id, trip number)`` -> the days that trip runs.
 
-    Restricted to ``[on_date, horizon]``; a longer bitmap is clipped.
+    Restricted to ``[on_date, horizon]``; a longer bitmap is clipped. Each
+    answer also carries the name of the calendar it was read from, because the
+    days alone move with the window and a service needs an identity that does
+    not -- see :attr:`dpmp_gtfs.types.TripCalendar.origin`.
     """
     versions: dict[str, list[LineCalendars]] = {}
     needle = DPMP_OPERATOR.encode()
@@ -107,12 +117,12 @@ def build_calendars(
                     continue
                 versions.setdefault(parsed.jdf_id, []).append(parsed)
 
-    calendars: dict[tuple[str, int], frozenset[dt.date]] = {}
+    calendars: dict[tuple[str, int], TripCalendar] = {}
     for jdf_id, line in sorted(versions.items()):
-        days_by_trip = _days_in_force(line, on_date, horizon)
-        _warn_if_coverage_ends_early(jdf_id, days_by_trip, horizon)
-        for number, days in days_by_trip.items():
-            calendars[(jdf_id, number)] = days
+        by_trip = _days_in_force(line, on_date, horizon)
+        _warn_if_coverage_ends_early(jdf_id, by_trip, horizon)
+        for number, calendar in by_trip.items():
+            calendars[(jdf_id, number)] = calendar
 
     logger.info(
         "CIS calendars: %d lines, %d trips over %s..%s",
@@ -133,7 +143,7 @@ it that far ahead."""
 
 
 def _warn_if_coverage_ends_early(
-    jdf_id: str, days_by_trip: dict[int, frozenset[dt.date]], horizon: dt.date
+    jdf_id: str, by_trip: dict[int, TripCalendar], horizon: dt.date
 ) -> None:
     """Say so when a line's timetable runs out inside the feed's window.
 
@@ -143,21 +153,23 @@ def _warn_if_coverage_ends_early(
     honestly incomplete rather than wrong, but it is incomplete quietly, and
     an operator watching a line go dark deserves to be told which and when.
     """
-    ends = [max(days) for days in days_by_trip.values() if days and max(days) < horizon - GRACE]
+    ends = [
+        max(c.days) for c in by_trip.values() if c.days and max(c.days) < horizon - GRACE
+    ]
     if ends:
         logger.warning(
             "line %s: %d of %d trips have no CIS days after %s -- the next "
             "timetable renumbers them",
             jdf_id,
             len(ends),
-            len(days_by_trip),
+            len(by_trip),
             max(ends),
         )
 
 
 def _days_in_force(
     versions: list[LineCalendars], on_date: dt.date, horizon: dt.date
-) -> dict[int, frozenset[dt.date]]:
+) -> dict[int, TripCalendar]:
     """Merge one line's versions, letting each own the dates it is in force on.
 
     Only trip numbers the *current* version has are reported, and a later
@@ -189,16 +201,21 @@ def _days_in_force(
     # "CIS has never heard of it", and only the second sends the builder back
     # to the API's fixed codes.
     trips: dict[int, set[dt.date]] = {number: set() for number in current.trips}
-    for index, dates in owned.items():
+    origins: dict[int, list[str]] = {number: [] for number in current.trips}
+    for index in sorted(owned, key=lambda i: _sort_key(versions[i])):
         version = versions[index]
         for number, days in version.trips.items():
             if number not in trips:
                 continue
             if version is not current and not _same_journey(version, current, number):
                 continue
-            trips[number].update(days & dates)
+            trips[number].update(days & owned[index])
+            origins[number].append(version.origins.get(number, ""))
 
-    return {number: frozenset(days) for number, days in trips.items()}
+    return {
+        number: TripCalendar(days=frozenset(days), origin="+".join(origins[number]))
+        for number, days in trips.items()
+    }
 
 
 def _same_journey(later: LineCalendars, current: LineCalendars, number: int) -> bool:
@@ -271,17 +288,23 @@ def _parse(blob: bytes, on_date: dt.date, horizon: dt.date, source: str) -> Line
         return None
 
     day_types = _day_type_dates(root, on_date, horizon)
+    day_type_bitmaps = _day_type_bitmaps(root)
 
     trips: dict[int, frozenset[dt.date]] = {}
+    origins: dict[int, str] = {}
     timings: dict[int, Timings] = {}
     for journey in root.iterfind(".//n:ServiceJourney", NS):
         name = journey.findtext("n:Name", namespaces=NS)
         if name is None or not name.isdigit():
             continue
         days: set[dt.date] = set()
+        bitmaps: list[str] = []
         for ref in journey.iterfind("n:dayTypes/n:DayTypeRef", NS):
-            days |= day_types.get(ref.get("ref") or "", frozenset())
+            key = ref.get("ref") or ""
+            days |= day_types.get(key, frozenset())
+            bitmaps.extend(day_type_bitmaps.get(key, ()))
         trips[int(name)] = frozenset(days)
+        origins[int(name)] = ",".join(sorted(bitmaps))
         timings[int(name)] = _timings(journey)
 
     if not trips:
@@ -290,10 +313,41 @@ def _parse(blob: bytes, on_date: dt.date, horizon: dt.date, source: str) -> Line
         jdf_id=jdf_id,
         valid_from=valid_from,
         trips=trips,
+        origins=origins,
         timings=timings,
         valid_to=_date(line.findtext("n:ValidBetween/n:ToDate", namespaces=NS)),
         source=source,
     )
+
+
+def _day_type_bitmaps(root: Element) -> dict[str, tuple[str, ...]]:
+    """``DayType`` id -> the raw operating periods behind it.
+
+    The same pairing :func:`_day_type_dates` walks, but kept as the archive
+    spells it -- ``FromDate`` and the bitmap, neither of which moves when the
+    feed's window does. Expanding the bitmap answers *which days*; this answers
+    *which calendar*, and only the second one can name a service.
+    """
+    periods = {
+        period.get("id") or "": (
+            f"{period.findtext('n:FromDate', namespaces=NS)}:"
+            f"{period.findtext('n:ValidDayBits', namespaces=NS)}"
+        )
+        for period in root.iterfind(".//n:UicOperatingPeriod", NS)
+    }
+
+    out: dict[str, list[str]] = {}
+    for assignment in root.iterfind(".//n:DayTypeAssignment", NS):
+        if assignment.findtext("n:isAvailable", namespaces=NS) == "false":
+            continue
+        day_type = assignment.find("n:DayTypeRef", NS)
+        period = assignment.find("n:OperatingPeriodRef", NS)
+        if day_type is None or period is None:
+            continue
+        if raw := periods.get(period.get("ref") or ""):
+            out.setdefault(day_type.get("ref") or "", []).append(raw)
+
+    return {key: tuple(sorted(raw)) for key, raw in out.items()}
 
 
 def _timings(journey: Element) -> Timings:

@@ -1,14 +1,18 @@
 import datetime as dt
 import logging
+import zipfile
+from pathlib import Path
 
 import pytest
 
 from dpmp_gtfs.api.models import Connection, ConnectionStop, Line
 from dpmp_gtfs.api.models import Stop as ApiStop
+from dpmp_gtfs.cis.calendars import build_calendars
 from dpmp_gtfs.ids import route_id, stop_id, trip_id
 from dpmp_gtfs.static.builder import (
     ROUTE_TYPE_BUS,
     ROUTE_TYPE_TROLLEYBUS,
+    build_feed,
     build_stops,
     build_trips_and_stop_times,
     prune_unserved_stops,
@@ -16,7 +20,7 @@ from dpmp_gtfs.static.builder import (
 )
 from dpmp_gtfs.static.calendar import days_between, observed_holidays
 from dpmp_gtfs.timeutil import format_gtfs_time
-from dpmp_gtfs.types import Stop, StopTime, Timetable
+from dpmp_gtfs.types import Feed, Stop, StopTime, Timetable, TripCalendar
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
 YEAR = (dt.date(2026, 8, 10), dt.date(2027, 8, 10))
@@ -411,7 +415,7 @@ def _line_1_timetable(
         ],
         lines=[Line.model_validate({"id": "1", "jdfId": "655001"})],
         connections={("1", number): c for number, c in connections.items()},
-        calendars=calendars,
+        calendars={key: TripCalendar(days, origin=str(key)) for key, days in calendars.items()},
     )
 
 
@@ -496,3 +500,119 @@ def test_a_trip_cis_says_has_stopped_running_is_dropped(
 
     assert (trips, stop_times, services) == ([], [], [])
     assert "runs on no day of the feed's validity window" in caplog.text
+
+
+# --- service ids across nightly rebuilds --------------------------------------
+#
+# The window slides forward a day every night, so every date the build works
+# from erodes. An id built out of those dates gets rewritten for nothing, and
+# worse, an id that changes meaning tells a consumer diffing feeds by service_id
+# that a calendar gained days when nothing happened. This walks real CIS
+# calendars over a real timetable changeover and judges the result only by what
+# the written feed encodes.
+
+NETEX = Path(__file__).parent / "fixtures" / "netex"
+CHANGEOVER = dt.date(2026, 8, 31)
+
+
+TILING_TRIPS = {"9": ("655009", (1, 23, 31)), "18": ("655018", (140, 205, 229))}
+"""The trips the tiling fixtures describe.
+
+Two lines rather than one on purpose: their seasonal services run out on the
+same day, which is the case where naming a service after the days it runs on
+stops working -- the ids have to differ, and the difference cannot come from
+anything inside the window."""
+
+
+def _tiling_timetable(calendars: dict[tuple[str, int], TripCalendar]) -> Timetable:
+    """Lines 9 and 18 as the API serves them, over the fixtures' trips."""
+    stops = [
+        ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
+        ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.01, "gpsLon": 15.01}),
+    ]
+    connections = {
+        (line_id, number): Connection.model_validate(
+            {
+                "lineId": line_id,
+                "connectionId": number,
+                "fixedCodes": ["X"],
+                "stops": [
+                    {"stopId": 1, "platformId": "1", "departureTime": "07:08:00"},
+                    {"stopId": 2, "platformId": "1", "departureTime": "07:20:00"},
+                ],
+            }
+        )
+        for line_id, (_, numbers) in TILING_TRIPS.items()
+        for number in numbers
+    }
+    return Timetable(
+        stops=stops,
+        lines=[
+            Line.model_validate({"id": line_id, "jdfId": jdf_id})
+            for line_id, (jdf_id, _) in TILING_TRIPS.items()
+        ],
+        connections=connections,
+        calendars=calendars,
+    )
+
+
+def _as_published(feed: Feed) -> dict[str, tuple[str, frozenset[dt.date]]]:
+    """Trip -> its service id and the days a consumer would read it as running.
+
+    Reconstructed from the weekday columns of ``calendar.txt`` and the rows of
+    ``calendar_dates.txt`` and nothing else, so that the assertion below cannot
+    be satisfied by agreeing with the naming scheme's own idea of sameness.
+    """
+    weekdays = {s.service_id: s.days for s in feed.services}
+    overrides: dict[str, dict[dt.date, bool]] = {}
+    for exception in feed.calendar_exceptions:
+        overrides.setdefault(exception.service_id, {})[exception.date] = exception.added
+
+    published = {}
+    for trip in feed.trips:
+        days = frozenset(
+            date
+            for date in days_between(feed.start_date, feed.end_date)
+            if overrides.get(trip.service_id, {}).get(
+                date, date.weekday() in weekdays[trip.service_id]
+            )
+        )
+        published[trip.trip_id] = (trip.service_id, days)
+    return published
+
+
+def test_a_service_id_keeps_its_meaning_across_a_timetable_changeover(tmp_path: Path) -> None:
+    """Builds on ten consecutive nights, five either side of 31 August. Where
+    two nights publish a trip on the same dates, they must call it by the same
+    name -- and where they call it by the same name, it must mean the same
+    dates."""
+    archive = tmp_path / "netex.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        for jdf_id, _ in TILING_TRIPS.values():
+            for source in sorted(NETEX.glob(f"line-{jdf_id}-*.xml")):
+                zf.write(source, source.name)
+
+    previous: tuple[dt.date, dt.date, dict[str, tuple[str, frozenset[dt.date]]]] | None = None
+
+    for offset in range(-5, 5):
+        start = CHANGEOVER + dt.timedelta(days=offset)
+        end = start + dt.timedelta(days=365)
+        feed = build_feed(
+            _tiling_timetable(build_calendars([archive], start, end)),
+            start_date=start,
+        )
+        current = (start, end, _as_published(feed))
+
+        if previous is not None:
+            (was_start, was_end, before), (_, _, after) = previous, current
+            overlap = frozenset(days_between(max(was_start, start), min(was_end, end)))
+            for trip in before.keys() & after.keys():
+                old_id, old_days = before[trip]
+                new_id, new_days = after[trip]
+                if (old_days & overlap) == (new_days & overlap):
+                    assert old_id == new_id, f"{trip} renamed {old_id} -> {new_id} on {start}"
+                if old_id == new_id:
+                    assert (old_days & overlap) == (new_days & overlap), (
+                        f"{old_id} means different days on {was_start} and {start}"
+                    )
+        previous = current

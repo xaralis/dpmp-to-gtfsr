@@ -35,6 +35,7 @@ from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.service_watch import load_unserved, state_path
 from dpmp_gtfs.static.writer import write_feed
 from dpmp_gtfs.timeutil import PRAGUE
+from dpmp_gtfs.types import TripCalendar
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class Scheduler:
         self.state.static_phase = message
         logger.info("static build: %s", message)
 
-    async def _fetch_calendars(self, today: dt.date) -> dict[tuple[str, int], frozenset[dt.date]]:
+    async def _fetch_calendars(self, today: dt.date) -> dict[tuple[str, int], TripCalendar]:
         """Days of operation, from CIS, covering the whole validity window.
 
         Raises rather than returning what it has: the API's own days of

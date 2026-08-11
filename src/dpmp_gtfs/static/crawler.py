@@ -16,7 +16,6 @@ timetable on about a third of trips.
 """
 
 import asyncio
-import datetime as dt
 import logging
 from typing import Protocol
 
@@ -24,7 +23,7 @@ from dpmp_gtfs.api.models import Connection, Line, Stop
 from dpmp_gtfs.exceptions import DpmpApiError
 from dpmp_gtfs.static.direction import assign_directions
 from dpmp_gtfs.static.discovery import discover_trips
-from dpmp_gtfs.types import Timetable
+from dpmp_gtfs.types import Timetable, TripCalendar
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class SupportsTimetable(Protocol):
 
 async def crawl(
     api: SupportsTimetable,
-    calendars: dict[tuple[str, int], frozenset[dt.date]],
+    calendars: dict[tuple[str, int], TripCalendar],
     attempts: int = DEFAULT_ATTEMPTS,
     backoff: float = DEFAULT_BACKOFF,
 ) -> Timetable:
@@ -80,7 +79,7 @@ async def crawl(
 
 
 async def _crawl_once(
-    api: SupportsTimetable, calendars: dict[tuple[str, int], frozenset[dt.date]]
+    api: SupportsTimetable, calendars: dict[tuple[str, int], TripCalendar]
 ) -> Timetable:
     stops, lines = await asyncio.gather(api.stops(), api.lines())
     logger.info("crawling %d lines, %d stops", len(lines), len(stops))

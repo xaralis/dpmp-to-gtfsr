@@ -7,6 +7,7 @@ behaviour lives with the module that owns it.
 """
 
 import datetime as dt
+import hashlib
 from dataclasses import dataclass, field
 
 from dpmp_gtfs.api.models import Connection, Line
@@ -60,7 +61,7 @@ class Timetable:
     """``(line_id, connection_id)`` -> ``direction_id``, derived from stop order."""
     connections: dict[tuple[str, int], Connection] = field(default_factory=dict)
     """``(line_id, connection_id)`` -> the trip's stop times, from the API."""
-    calendars: dict[tuple[str, int], frozenset[dt.date]] = field(default_factory=dict)
+    calendars: dict[tuple[str, int], TripCalendar] = field(default_factory=dict)
     """``(line jdf id, connection_id)`` -> the days that trip runs, from CIS.
 
     Keyed by the JDF line number rather than the API's ``lineId``, because that
@@ -89,6 +90,24 @@ class TripGeometry:
     """Cumulative metres at each point."""
     stop_distances: tuple[float, ...]
     """Cumulative metres at each stop, for ``shape_dist_traveled``."""
+
+
+@dataclass(frozen=True, slots=True)
+class TripCalendar:
+    """The days one trip runs on, and where in CIS they came from."""
+
+    days: frozenset[dt.date]
+    """Restricted to the feed's window, so this shrinks from the front every
+    night as the window slides forward."""
+    origin: str
+    """A stable name for the calendar these days were read from.
+
+    Everything else about a service is window-relative, and a service id built
+    out of window-relative things is rewritten nightly for no reason. This is
+    not: it identifies the ``DayType`` bitmaps in the archive that the days came
+    from, which are fixed until DPMP files a new timetable. It is what keeps two
+    services that share a weekly pattern apart without either of them being
+    renamed as the window moves. Empty when the days did not come from CIS."""
 
 
 DAY_NAMES = ("mo", "tu", "we", "th", "fr", "sa", "su")
@@ -130,14 +149,15 @@ class Service:
     and DPMP runs three different weekday timetables depending on whether
     schools are in session -- a difference no set of seven weekdays can carry.
     """
-    variant: str = ""
-    """Which of several services sharing a weekly pattern this one is.
+    origin: str = ""
+    """Which CIS calendar the exceptions were read from -- see
+    :attr:`TripCalendar.origin`.
 
-    Assigned across the whole feed by
-    :func:`dpmp_gtfs.static.calendar.named_services`, not derived here: term
-    time and school holidays are both ``wd`` and neither can be told from the
-    other by looking at itself. Empty means there is nothing to tell it apart
-    from and the id stays bare.
+    Carried only by services that have exceptions, and only so that they can be
+    told apart: term time and the school holidays are both ``wd`` and differ
+    only in the days they take off. Services without exceptions leave it empty
+    and keep sharing one calendar row across the whole network, which is the
+    ordinary case and by far the commonest.
     """
 
     @property
@@ -176,8 +196,19 @@ class Service:
 
     @property
     def service_id(self) -> str:
-        """A legible name: ``wd``, ``sa-su+h``, ``mo-fr``, ``dates-20260828``."""
-        return f"{self.base_id}-{self.variant}" if self.variant else self.base_id
+        """A legible name: ``wd``, ``sa-su+h``, ``mo-fr``, ``wd-a3f21c``.
+
+        The suffix is a digest of :attr:`origin` rather than of anything about
+        the days themselves. Two builds a night apart describe the same service
+        over windows that differ by a day, so a suffix drawn from the days --
+        a hash of them, their last one, or a position in a list ordered by them
+        -- renames services that have not changed. The archive the days were
+        read from does not move.
+        """
+        if not self.origin:
+            return self.base_id
+        digest = hashlib.blake2s(self.origin.encode(), digest_size=3).hexdigest()
+        return f"{self.base_id}-{digest}"
 
     @property
     def weekday_flags(self) -> tuple[int, int, int, int, int, int, int]:

@@ -56,9 +56,9 @@ def test_each_trip_gets_the_days_its_day_type_marks(tmp_path: Path) -> None:
     trip; CIS, DPMP's own timetable and the paper stop sign all say Mon-Fri."""
     calendars = build_calendars([archive(tmp_path, CURRENT)], START, END)
 
-    assert calendars[("655001", 46)] == WEEKDAYS
-    assert calendars[("655001", 3)] == WEEKEND
-    assert calendars[("655001", 382)] == WEEKDAYS | WEEKEND
+    assert calendars[("655001", 46)].days == WEEKDAYS
+    assert calendars[("655001", 3)].days == WEEKEND
+    assert calendars[("655001", 382)].days == WEEKDAYS | WEEKEND
 
 
 def test_a_state_holiday_runs_the_weekend_service(tmp_path: Path) -> None:
@@ -67,8 +67,8 @@ def test_a_state_holiday_runs_the_weekend_service(tmp_path: Path) -> None:
     holiday = dt.date(2026, 9, 28)
     calendars = build_calendars([archive(tmp_path, CURRENT)], holiday, holiday)
 
-    assert calendars[("655001", 3)] == frozenset({holiday})
-    assert calendars[("655001", 46)] == frozenset()
+    assert calendars[("655001", 3)].days == frozenset({holiday})
+    assert calendars[("655001", 46)].days == frozenset()
 
 
 def test_days_outside_the_window_are_dropped(tmp_path: Path) -> None:
@@ -76,7 +76,7 @@ def test_days_outside_the_window_are_dropped(tmp_path: Path) -> None:
     other four."""
     week = build_calendars([archive(tmp_path, CURRENT)], START, START + dt.timedelta(days=4))
 
-    assert week[("655001", 46)] == frozenset(
+    assert week[("655001", 46)].days == frozenset(
         {START + dt.timedelta(days=offset) for offset in range(5)}
     )
 
@@ -86,10 +86,10 @@ def test_the_version_in_force_replaces_the_superseded_one(tmp_path: Path) -> Non
     describe trip 60 -- as a weekday trip in January's version and a weekend
     one in July's. Unioning them would put it on the road all week."""
     old = build_calendars([archive(tmp_path, SUPERSEDED, name="old.zip")], START, END)
-    assert old[("655001", 60)] == WEEKDAYS
+    assert old[("655001", 60)].days == WEEKDAYS
 
     both = build_calendars([archive(tmp_path, CURRENT, SUPERSEDED)], START, END)
-    assert both[("655001", 60)] == WEEKEND
+    assert both[("655001", 60)].days == WEEKEND
 
 
 def test_a_version_that_has_not_started_yet_is_ignored(tmp_path: Path) -> None:
@@ -101,7 +101,7 @@ def test_a_version_that_has_not_started_yet_is_ignored(tmp_path: Path) -> None:
     )
 
     assert ("655001", 46) not in calendars, "46 exists only in July's version"
-    assert calendars[("655001", 60)] == frozenset(
+    assert calendars[("655001", 60)].days == frozenset(
         {march + dt.timedelta(days=offset) for offset in range(5)}
     )
 
@@ -133,7 +133,7 @@ def test_a_trip_keeps_running_when_the_next_version_still_means_it(tmp_path: Pat
     its."""
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    days = calendars[("655009", 1)]
+    days = calendars[("655009", 1)].days
     assert max(days) == SEPTEMBER
     assert CHANGEOVER in days
 
@@ -144,7 +144,7 @@ def test_a_trip_renumbered_at_its_first_stop_stops_at_the_changeover(tmp_path: P
     bus that calls there."""
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    days = calendars[("655009", 31)]
+    days = calendars[("655009", 31)].days
     assert days, "the trip still runs while its own version is in force"
     assert max(days) < CHANGEOVER
 
@@ -156,7 +156,7 @@ def test_a_trip_that_diverges_only_later_in_its_run_also_stops(tmp_path: Path) -
     the test that says the comparison has to be every call time."""
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    days = calendars[("655009", 23)]
+    days = calendars[("655009", 23)].days
     assert days
     assert max(days) < CHANGEOVER
 
@@ -201,4 +201,29 @@ def test_a_journey_with_no_times_at_all_is_not_extended(tmp_path: Path) -> None:
 
     calendars = build_calendars([archive(tmp_path, *stripped)], START, SEPTEMBER)
 
-    assert max(calendars[("655009", 1)]) < CHANGEOVER
+    assert max(calendars[("655009", 1)].days) < CHANGEOVER
+
+
+def test_the_origin_does_not_move_when_the_window_does(tmp_path: Path) -> None:
+    """A trip's days shrink from the front every night as the feed's window
+    slides. What the days were read from does not, and that is the only thing a
+    service id can safely be built out of."""
+    zipped = archive(tmp_path, SUMMER, YEAR_ROUND)
+
+    today = build_calendars([zipped], START, SEPTEMBER)
+    tomorrow = build_calendars(
+        [zipped], START + dt.timedelta(days=1), SEPTEMBER + dt.timedelta(days=1)
+    )
+
+    key = ("655009", 1)
+    assert today[key].days != tomorrow[key].days, "the days did move"
+    assert today[key].origin == tomorrow[key].origin
+    assert today[key].origin, "and it says something"
+
+
+def test_trips_on_different_calendars_get_different_origins(tmp_path: Path) -> None:
+    """Otherwise two services that share a weekly pattern would share an id and
+    one of them would inherit the other's days."""
+    calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+
+    assert calendars[("655009", 1)].origin != calendars[("655009", 23)].origin

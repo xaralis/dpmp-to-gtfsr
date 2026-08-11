@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from dpmp_gtfs.api.models import Connection, ConnectionStop
+from dpmp_gtfs.exceptions import FeedBuildError
 from dpmp_gtfs.ids import route_id, station_id, stop_id, trip_id
 from dpmp_gtfs.timeutil import DAY, format_gtfs_time
 from dpmp_gtfs.types import (
@@ -23,12 +24,7 @@ from dpmp_gtfs.types import (
 )
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
-from .calendar import (
-    calendar_exceptions,
-    named_services,
-    service_from_codes,
-    service_from_dates,
-)
+from .calendar import calendar_exceptions, service_from_codes, service_from_dates
 from .shapes import ShapeCache, ValhallaRouter, build_shapes
 
 logger = logging.getLogger(__name__)
@@ -238,11 +234,8 @@ def build_trips_and_stop_times(
     timetable: Timetable, start: dt.date, end: dt.date
 ) -> tuple[list[Trip], list[StopTime], list[Service]]:
     trips: list[Trip] = []
-    trip_services: list[Service] = []
-    """One per entry in ``trips``. The service ids cannot be handed out until
-    every service is known, because what distinguishes two services sharing a
-    weekly pattern is the other ones -- see :func:`named_services`."""
     stop_times: list[StopTime] = []
+    services: dict[str, Service] = {}
     names = {s.id: s.name for s in timetable.stops}
     on_request_stops = {s.id for s in timetable.stops if s.on_request}
     missing_coords = stops_without_coordinates(timetable)
@@ -303,8 +296,8 @@ def build_trips_and_stop_times(
             )
             continue
 
-        dates = timetable.calendars.get((jdf_ids.get(line_id, ""), connection_number))
-        if dates is None:
+        calendar = timetable.calendars.get((jdf_ids.get(line_id, ""), connection_number))
+        if calendar is None:
             # CIS does not know this trip. Its fixed codes are the weaker
             # source -- that is the whole reason CIS is consulted first -- but
             # for a trip with no calendar at all they beat dropping it.
@@ -316,7 +309,7 @@ def build_trips_and_stop_times(
             )
             service = service_from_codes(connection.fixed_codes)
         else:
-            service = service_from_dates(dates, start, end)
+            service = service_from_dates(calendar.days, start, end, calendar.origin)
 
         if not service.runs_at_all:
             # Nothing places this trip in the year: either it carries no
@@ -333,7 +326,7 @@ def build_trips_and_stop_times(
 
         # Counted here rather than where the service was chosen, so that the
         # summaries below add up to the trips the feed actually carries.
-        if dates is None:
+        if calendar is None:
             from_codes += 1
         else:
             from_cis += 1
@@ -343,21 +336,23 @@ def build_trips_and_stop_times(
         trips.append(
             Trip(
                 route_id=route_id(line_id),
-                service_id="",
+                service_id=service.service_id,
                 trip_id=tid,
                 trip_headsign=names.get(surviving_stops[-1].stop_id, ""),
                 direction_id=timetable.directions.get(key, 0),
                 wheelchair_accessible=1 if connection.low_floor else 0,
             )
         )
-        trip_services.append(service)
+        services.setdefault(service.service_id, service)
         stop_times.extend(trip_stop_times)
 
-    naming = named_services(set(trip_services))
-    named = [
-        replace(trip, service_id=naming[service].service_id)
-        for trip, service in zip(trips, trip_services, strict=True)
-    ]
+    for service_id, service in services.items():
+        # Two services on one id would put two rows in calendar.txt claiming the
+        # same name, and consumers would keep whichever they read last. It
+        # cannot happen while every service with exceptions carries the origin
+        # that distinguishes it, so this is the check that says so.
+        if service.service_id != service_id:
+            raise FeedBuildError(f"two different services share the id {service_id!r}")
 
     total = from_cis + from_codes
     logger.log(
@@ -370,16 +365,17 @@ def build_trips_and_stop_times(
         from_cis,
         from_codes,
     )
-    logger.log(
-        # A trip whose CIS days are too few for any weekday to carry a majority
-        # is described entirely by calendar_dates.txt. That is normal for the
-        # weeks either side of a timetable change; at a tenth of the network it
-        # means the timetable this feed describes is running out.
-        logging.ERROR if no_weekly_pattern > len(named) * MAX_FALLBACK_SHARE else logging.INFO,
-        "calendars: %d trips run on too few days to have a weekly pattern",
+    # Not an error and not a threshold: a trip whose CIS days are too few for
+    # any weekday to carry a majority is described entirely by
+    # calendar_dates.txt, which is what the weeks around a timetable change look
+    # like. Its own prefix, so that an operator alerting on drift in the line
+    # above is not woken by the seasons.
+    logger.warning(
+        "seasonal calendars: %d trips run for too few days to have a weekly "
+        "pattern, and stop when the timetable they belong to does",
         no_weekly_pattern,
     )
-    return named, stop_times, sorted(naming.values(), key=lambda s: s.service_id)
+    return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
 
 
 def prune_unserved_stops(
