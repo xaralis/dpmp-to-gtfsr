@@ -37,8 +37,6 @@ class Departure:
     delay_seconds: int | None
     """``None`` when no vehicle is running this trip yet, which is not the same
     as "on time"."""
-    delay_measured: bool
-    """False when the delay is the countdown-derived lower bound."""
     stop_id: str
     """The platform this departure actually leaves from, which is not what was
     asked for when the board is for a whole station."""
@@ -73,7 +71,6 @@ def build_departures(
                 expected=expected.astimezone(PRAGUE).strftime("%H:%M"),
                 in_seconds=max(0, int((expected - now).total_seconds())),
                 delay_seconds=delay,
-                delay_measured=bool(vehicle and vehicle.delay_measured),
                 stop_id=stop.stop_id,
                 platform=stop.stop_id.partition("P")[2],
             )

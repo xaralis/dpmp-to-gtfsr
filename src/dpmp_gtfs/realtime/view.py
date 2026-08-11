@@ -65,7 +65,6 @@ def build_vehicle_views(
                 longitude=vehicle.gps_longitude,
                 reported_at=now.astimezone(PRAGUE).isoformat(timespec="seconds"),
                 delay_seconds=int(delay.total_seconds()) if delay is not None else None,
-                delay_measured=delay is not None,
                 previous_stop=_stop_view(previous) if previous else None,
                 next_stop=_stop_view(upcoming) if upcoming else None,
                 heading=_bearing((vehicle.gps_latitude, vehicle.gps_longitude), upcoming.position)
@@ -103,11 +102,6 @@ class VehicleView:
     """Positive when late. ``None`` when the upstream reports no delay at all
     for this vehicle -- typically one waiting at its first stop, which is a
     large share of them at any moment."""
-    delay_measured: bool
-    """True whenever ``delay_seconds`` is not ``None``. The upstream's
-    ``currentDelay`` is a real signed delay rather than a countdown, so unlike
-    the old API there is no separate conservative lower-bound estimate to tell
-    apart from an actual measurement."""
     previous_stop: StopView | None
     next_stop: StopView | None
     heading: float | None

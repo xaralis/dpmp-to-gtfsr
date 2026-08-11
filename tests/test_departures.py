@@ -117,7 +117,6 @@ def test_a_delay_shifts_the_expected_time_but_not_the_timetable() -> None:
         longitude=15.0,
         reported_at="",
         delay_seconds=120,
-        delay_measured=True,
         previous_stop=None,
         next_stop=None,
         heading=None,

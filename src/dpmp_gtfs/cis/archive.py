@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 CHUNK = 1 << 20
 
 
-class CisUnavailable(DpmpGtfsError):  # noqa: N818 -- name fixed by the task interface
+class CisUnavailable(DpmpGtfsError):  # noqa: N818 -- reads as a condition, not an Error
     """CIS could not be reached and nothing usable was cached."""
 
 

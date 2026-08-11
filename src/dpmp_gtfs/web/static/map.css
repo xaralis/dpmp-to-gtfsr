@@ -182,7 +182,6 @@
   .veh-pop .early { color: var(--lime); font-weight: 700; }
   .veh-pop .ontime { color: var(--teal); font-weight: 700; }
   .veh-pop .unknown { color: var(--text-muted); }
-  .veh-pop .est { font-size: .72rem; color: var(--text-muted); }
 
   /* Departure board in a stop popup. */
   .dep-pop { min-width: 268px; max-width: 340px; }

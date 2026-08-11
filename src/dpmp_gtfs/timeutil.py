@@ -16,8 +16,8 @@ import datetime as dt
 from zoneinfo import ZoneInfo
 
 PRAGUE = ZoneInfo("Europe/Prague")
-"""Every scheduled time in the upstream API is local. Only ``state_dtime`` is
-not -- see :mod:`dpmp_gtfs.api.models`."""
+"""Every scheduled time in the upstream API is local. The one exception is the
+snapshot time on ``/vehicles``, which is UTC with a ``Z`` suffix."""
 
 DAY = 24 * 3600
 

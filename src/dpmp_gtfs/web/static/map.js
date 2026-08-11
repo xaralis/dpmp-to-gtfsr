@@ -380,10 +380,7 @@
     var text = mins ? mins + " min " + secs + " s" : secs + " s";
     var cls = d > 45 ? "late" : (d < -45 ? "early" : "ontime");
     var label = d > 45 ? ("+" + text) : (d < -45 ? ("−" + text) : "jede načas");
-    // A measured value comes from watching the vehicle pass a stop; the
-    // fallback only ever proves lateness, never punctuality.
-    var note = v.delay_measured ? "" : '<div class="est">odhad, dolní mez</div>';
-    return '<span class="' + cls + '">' + escapeHtml(label) + "</span>" + note;
+    return '<span class="' + cls + '">' + escapeHtml(label) + "</span>";
   }
 
   function vehiclePopup(v) {

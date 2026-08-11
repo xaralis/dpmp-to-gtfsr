@@ -102,13 +102,11 @@ def test_a_vehicle_with_no_next_stop_still_produces_a_view() -> None:
 def test_delay_is_none_when_the_upstream_reports_none() -> None:
     v = _view(_vehicle(currentDelay=None))
     assert v.delay_seconds is None
-    assert v.delay_measured is False
 
 
-def test_a_reported_delay_is_marked_as_measured() -> None:
+def test_a_reported_delay_is_read_as_seconds() -> None:
     v = _view(_vehicle(currentDelay="PT2M0S"))
     assert v.delay_seconds == 120
-    assert v.delay_measured is True
 
 
 def test_an_unparseable_delay_shows_as_zero_not_a_raise() -> None:
@@ -118,13 +116,11 @@ def test_an_unparseable_delay_shows_as_zero_not_a_raise() -> None:
     same product decision as the realtime feed."""
     v = _view(_vehicle(currentDelay="n/a"))
     assert v.delay_seconds == 0
-    assert v.delay_measured is True
 
 
 def test_an_early_vehicle_has_a_negative_delay() -> None:
     v = _view(_vehicle(currentDelay="-PT1M0S"))
     assert v.delay_seconds == -60
-    assert v.delay_measured is True
 
 
 # --- classification and payload ---------------------------------------------
