@@ -30,6 +30,22 @@ AGENCY_ROWS = [
     }
 ]
 
+CALENDAR_COLUMNS = (
+    "service_id",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "start_date",
+    "end_date",
+)
+"""Named rather than read off the first row, because there may be no rows: a
+feed whose services are all seasonal describes every one of them in
+``calendar_dates.txt`` alone."""
+
 FEED_PUBLISHER_NAME = "dpmp-to-gtfsr (neoficiální)"
 FEED_PUBLISHER_URL = "https://github.com/xaralis/dpmp-to-gtfsr"
 
@@ -135,6 +151,13 @@ def feed_to_files(feed: Feed) -> dict[str, bytes]:
 
     for service in feed.services:
         mon, tue, wed, thu, fri, sat, sun = service.weekday_flags
+        if not any(service.weekday_flags):
+            # A seasonal service runs on a handful of dates and no weekday
+            # carries a majority, so every day it runs is already a
+            # calendar_dates.txt row. A calendar.txt row of seven zeroes on top
+            # of that adds nothing and asserts something odd -- a service that
+            # never runs -- which is why validators flag it.
+            continue
         calendar_rows.append(
             {
                 "service_id": service.service_id,
@@ -156,7 +179,7 @@ def feed_to_files(feed: Feed) -> dict[str, bytes]:
         "routes.txt": _csv(routes, ("route_id", "agency_id", *route_columns[1:])),
         "trips.txt": _csv(_as_csv_rows(feed.trips, trip_columns), trip_columns),
         "stop_times.txt": _csv(_as_csv_rows(feed.stop_times, stop_time_columns), stop_time_columns),
-        "calendar.txt": _csv(calendar_rows, list(calendar_rows[0])),
+        "calendar.txt": _csv(calendar_rows, CALENDAR_COLUMNS),
     }
     exception_rows = [
         {
