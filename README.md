@@ -85,8 +85,8 @@ podruhé jen ověřují podmíněným dotazem, takže noční přestavba je rych
 
 Nasazení na veřejnou adresu:
 
-- **[Cloudflare Tunnel](docker/deploy-tunnel.md)** — pro stroj, kde už něco běží.
-  Žádné porty, žádný nginx, žádný certbot, žádný zásah do toho, co tam je.
+- **Kontejnerový obraz** `ghcr.io/xaralis/dpmp-to-gtfsr` publikuje workflow
+  [Image](.github/workflows/image.yml) při každém pushi do `main` (tag `sha-<commit>` a `latest`).
 - **[Vlastní instance](docker/deploy-lightsail.md)** — když má služba stroj pro sebe.
 
 Všechny volby jdou nastavit proměnnými s prefixem `DPMP_` — interval obnovy,
