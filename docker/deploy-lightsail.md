@@ -1,9 +1,7 @@
 # Nasazení na vlastní instanci
 
 Tenhle postup platí pro stroj, kde služba běží **sama** a může si vzít porty
-80 a 443. Pokud na stroji už něco jede, použij místo toho
-[Cloudflare Tunnel](deploy-tunnel.md) — je jednodušší a nesahá na nic
-existujícího.
+80 a 443.
 
 ## Proč instance, a ne Container Service
 
