@@ -21,7 +21,7 @@ from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.cis import build_calendars, fetch_archives
 from dpmp_gtfs.config import Settings
-from dpmp_gtfs.exceptions import FeedBuildError
+from dpmp_gtfs.exceptions import DpmpApiError, FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
 from dpmp_gtfs.realtime.index import StaticIndex
 from dpmp_gtfs.realtime.view import VehicleView, build_vehicle_views
@@ -253,9 +253,24 @@ class Scheduler:
                 except Exception as exc:
                     # Keep serving the last good feed. Replacing it with an
                     # empty one would assert that no vehicles are running.
-                    logger.warning("realtime refresh failed: %r", exc)
-                    self.state.realtime_error = repr(exc)
+                    self._realtime_failed(exc)
                 await asyncio.sleep(self.settings.realtime_interval)
+
+    def _realtime_failed(self, exc: Exception) -> None:
+        """Log a failed refresh at the level it deserves.
+
+        The upstream going away for a few minutes is routine, so
+        :class:`DpmpApiError` stays a warning. Anything else means this code
+        met something it does not handle, and is an error -- which is what
+        gets reported -- but only the first time in a row: the loop retries
+        every few seconds, and the same traceback four times a minute is noise.
+        """
+        error = repr(exc)
+        if isinstance(exc, DpmpApiError) or error == self.state.realtime_error:
+            logger.warning("realtime refresh failed: %s", error)
+        else:
+            logger.error("realtime refresh failed", exc_info=exc)
+        self.state.realtime_error = error
 
 
 @dataclass(slots=True)

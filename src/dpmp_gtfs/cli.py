@@ -12,6 +12,7 @@ import typer
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.cis import build_calendars, fetch_archives
 from dpmp_gtfs.config import settings
+from dpmp_gtfs.error_tracking import init_error_tracking
 from dpmp_gtfs.static.builder import (
     VALIDITY_DAYS,
     build_feed,
@@ -29,6 +30,14 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
 )
 logger = logging.getLogger("dpmp_gtfs")
+
+
+@app.callback()
+def main() -> None:
+    # Here rather than in ``serve`` alone: ``build-static`` is a twenty-minute
+    # job whose failures matter just as much. Without ``--reload`` uvicorn
+    # serves from this same process, so the app is covered too.
+    init_error_tracking()
 
 
 @app.command("build-static")

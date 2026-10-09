@@ -37,6 +37,12 @@ ENV PATH="/app/.venv/bin:$PATH" \
 RUN mkdir -p /data && chown app:app /data
 VOLUME ["/data"]
 
+# The commit the image was built from, reported with every error so an event
+# can be traced to the code that raised it. CI passes the short SHA the image
+# is tagged with; a local build leaves it empty and reports no release.
+ARG SENTRY_RELEASE=""
+ENV SENTRY_RELEASE=$SENTRY_RELEASE
+
 USER app
 WORKDIR /app
 EXPOSE 8000

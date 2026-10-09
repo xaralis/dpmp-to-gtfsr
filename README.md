@@ -93,6 +93,13 @@ Všechny volby jdou nastavit proměnnými s prefixem `DPMP_` — interval obnovy
 hodina noční přestavby, vypnutí geometrie tras a další, viz
 [`config.py`](src/dpmp_gtfs/config.py).
 
+Chyby umí služba hlásit do Sentry nebo čehokoliv, co mluví jeho protokolem
+(v produkci self-hostovaný GlitchTip). Zapíná se proměnnou `SENTRY_DSN`; bez
+ní se nikam nic neposílá. Hlásí se jen chyby, žádné traces ani osobní údaje —
+včetně těch, které služba sama zachytí a jen zaloguje, třeba nepovedené noční
+přestavby. `SENTRY_ENVIRONMENT` je výchozí `production`, `SENTRY_RELEASE`
+nastavuje obraz na commit, ze kterého vznikl.
+
 ## Vývoj
 
 ```bash
