@@ -17,6 +17,7 @@ import pytest
 
 from dpmp_gtfs.cis import CisUnavailable
 from dpmp_gtfs.config import Settings
+from dpmp_gtfs.exceptions import DpmpApiError
 from dpmp_gtfs.types import Timetable
 from dpmp_gtfs.web import scheduler as scheduler_module
 from dpmp_gtfs.web.scheduler import Scheduler
@@ -251,3 +252,36 @@ async def test_a_second_rebuild_is_skipped_while_one_is_in_flight(
     gate.set()
     await first
     assert not sched._build_lock.locked()
+
+
+async def test_an_upstream_outage_in_the_realtime_loop_stays_a_warning(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The API going away for minutes is routine. Logged as an error, every
+    outage would page someone through error tracking, four times a minute."""
+    sched = Scheduler(_settings(tmp_path))
+
+    with caplog.at_level(logging.WARNING, logger="dpmp_gtfs.web.scheduler"):
+        sched._realtime_failed(DpmpApiError("vehicles failed after 4 attempts"))
+
+    assert [r.levelno for r in caplog.records] == [logging.WARNING]
+    assert sched.state.realtime_error is not None
+
+
+async def test_an_unexpected_realtime_failure_is_an_error_once(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Anything but an outage is reported, with its traceback -- but a loop
+    retrying the same failure must not report it again on every tick."""
+    sched = Scheduler(_settings(tmp_path))
+
+    with caplog.at_level(logging.WARNING, logger="dpmp_gtfs.web.scheduler"):
+        for _ in range(3):
+            sched._realtime_failed(KeyError("trip_id"))
+
+    assert [r.levelno for r in caplog.records] == [
+        logging.ERROR,
+        logging.WARNING,
+        logging.WARNING,
+    ]
+    assert caplog.records[0].exc_info is not None

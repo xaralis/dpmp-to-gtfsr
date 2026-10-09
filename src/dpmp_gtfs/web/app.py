@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from google.protobuf.json_format import MessageToDict
+from sentry_sdk.integrations.asyncio import enable_asyncio_integration
 
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.config import settings as default_settings
@@ -35,6 +36,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # The scheduler's tasks are only awaited at shutdown, so one that dies
+        # would otherwise go unnoticed until then. This needs the running
+        # loop, hence here and not at init; it does nothing without SENTRY_DSN.
+        enable_asyncio_integration()
         await scheduler.start()
         try:
             yield
