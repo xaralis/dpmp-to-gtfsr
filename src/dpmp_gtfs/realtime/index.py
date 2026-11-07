@@ -9,13 +9,20 @@ time the vehicle says it is due there, on a day it runs.
 """
 
 import datetime as dt
+import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from dpmp_gtfs.api.models import Vehicle, parse_hhmmss
+from dpmp_gtfs.api.models import Vehicle
 from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.ids import station_id, trip_id
 from dpmp_gtfs.timeutil import DAY, PRAGUE
+
+
+logger = logging.getLogger(__name__)
+
+_DUE = re.compile(r"^(\d{2,}):([0-5]\d):([0-5]\d)$")
 
 
 class StaticIndex:
@@ -71,13 +78,11 @@ class StaticIndex:
         by.
         """
         numbered = self._by_trip_id.get(trip_id(vehicle.line_id, vehicle.connection_id))
-        due = vehicle.next_stop_scheduled_departure
-        if vehicle.next_stop_id is None or not due:
+        seconds = _due_seconds(vehicle)
+        if vehicle.next_stop_id is None or seconds is None:
             return numbered
 
-        time = parse_hhmmss(due)
-        seconds = time.hour * 3600 + time.minute * 60 + time.second
-        calls = self._by_call.get((vehicle.line_id, vehicle.next_stop_id, seconds), [])
+        calls = self._by_call.get((vehicle.line_id, vehicle.next_stop_id, seconds % DAY), [])
         running = [trip for trip, stop in calls if self._runs_around(trip, stop, now)]
 
         if numbered in running:
@@ -310,6 +315,23 @@ class ScheduledStop:
     the feed to turn an id into something a passenger recognises."""
     position: tuple[float, float] | None = None
     """Latitude/longitude, for working out which way a vehicle is heading."""
+
+
+def _due_seconds(vehicle: Vehicle) -> int | None:
+    """When the vehicle is due at its next stop, or ``None`` if it does not say.
+
+    Hours run past 24 after midnight, ``24:18:00``. Anything unreadable counts as
+    not saying: one bad value must not cost the whole snapshot its realtime feed.
+    """
+    due = vehicle.next_stop_scheduled_departure
+    if not due:
+        return None
+    match = _DUE.match(due)
+    if match is None:
+        logger.warning("vehicle %s has an unreadable due time: %r", vehicle.vid, due)
+        return None
+    hours, minutes, seconds = (int(part) for part in match.groups())
+    return hours * 3600 + minutes * 60 + seconds
 
 
 def _parse_date(value: str) -> dt.date:

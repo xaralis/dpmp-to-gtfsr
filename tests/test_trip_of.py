@@ -6,6 +6,9 @@ In CIS trip 383 is another journey an hour earlier, and the 20:41 is trip 397.
 """
 
 import datetime as dt
+import logging
+
+import pytest
 
 from dpmp_gtfs.api.models import Vehicle
 from dpmp_gtfs.realtime.index import ScheduledStop, ScheduledTrip, ServiceCalendar, StaticIndex
@@ -125,3 +128,25 @@ def test_a_vehicle_that_does_not_say_where_it_is_due_has_only_its_number():
 
     assert index.trip_of(_vehicle(383, due=None), SATURDAY) is AN_HOUR_EARLIER
     assert index.trip_of(_vehicle(383, stop=None), SATURDAY) is AN_HOUR_EARLIER
+
+
+def test_a_due_time_written_past_24_hours_finds_the_call_after_midnight():
+    """``parse_hhmmss`` raises on this, and one raise lost the whole snapshot."""
+    late = _trip("L1C322", (JESNICANKY, 24 * 3600 + 18 * 60), (SLOVANY, 24 * 3600 + 23 * 60))
+
+    found = _index(late).trip_of(_vehicle(1, due="24:18:00"), SHORTLY_AFTER_MIDNIGHT)
+
+    assert found is late
+
+
+@pytest.mark.parametrize("due", ["garbage", "20:99:00", "20:41"])
+def test_an_unreadable_due_time_counts_as_none_and_is_logged(
+    due: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    index = _index(AN_HOUR_EARLIER, THE_ONE_DUE)
+
+    with caplog.at_level(logging.WARNING):
+        found = index.trip_of(_vehicle(383, due=due), SATURDAY)
+
+    assert found is AN_HOUR_EARLIER
+    assert "unreadable due time" in caplog.text
