@@ -99,14 +99,14 @@ async def test_a_failed_rebuild_is_reported(
     stub_cis: object,
     transport: RecordingTransport,
 ) -> None:
-    """The case this was added for: the nightly crawl failing on one trip,
+    """The case this was added for: the nightly build failing,
     caught by the scheduler, and so far visible only in the pod's log."""
     error_tracking.init_error_tracking()
 
-    async def failing_crawl(api: Any, calendars: Any) -> Timetable:
-        raise DpmpApiError("connections/811/1 failed after 4 attempts")
+    async def failing_load(api: Any, calendars: Any) -> Timetable:
+        raise DpmpApiError("stops failed after 4 attempts")
 
-    monkeypatch.setattr(scheduler_module, "crawl", failing_crawl)
+    monkeypatch.setattr(scheduler_module, "load_timetable", failing_load)
 
     await Scheduler(Settings(data_dir=tmp_path, shapes_enabled=False)).rebuild_static()
     sentry_sdk.flush()
@@ -115,4 +115,4 @@ async def test_a_failed_rebuild_is_reported(
     assert event["level"] == "error"
     [exception] = event["exception"]["values"]
     assert exception["type"] == "DpmpApiError"
-    assert "connections/811/1" in exception["value"]
+    assert "stops failed" in exception["value"]

@@ -39,9 +39,10 @@ logger = logging.getLogger(__name__)
 VALHALLA_URL = "https://valhalla1.openstreetmap.de/route"
 EARTH_RADIUS_M = 6371000.0
 
-# Valhalla caps a single request's locations; no Pardubice route comes close
-# (the longest calls at 48 stops), but the guard keeps a future change honest.
-MAX_LOCATIONS = 100
+MAX_LOCATIONS = 10
+"""What the community instance accepts in one request, measured in November 2026
+("Exceeded max locations: 10"). A longer sequence goes as several requests that
+share a stop, so its legs still map one-to-one onto the gaps between stops."""
 
 
 def build_shapes(
@@ -127,9 +128,18 @@ class ValhallaRouter:
         """
         if len(coordinates) < 2:
             raise RoutingError("a shape needs at least two stops")
-        if len(coordinates) > MAX_LOCATIONS:
-            raise RoutingError(f"{len(coordinates)} stops exceeds the router's limit")
 
+        legs: list[str] = []
+        lengths: list[float] = []
+        step = MAX_LOCATIONS - 1
+        for start in range(0, len(coordinates) - 1, step):
+            part_legs, part_lengths = self._route(coordinates[start : start + MAX_LOCATIONS])
+            legs.extend(part_legs)
+            lengths.extend(part_lengths)
+        return legs, lengths
+
+    def _route(self, coordinates: list[LatLon]) -> tuple[list[str], list[float]]:
+        """One request's worth of :meth:`get_route_geometry`."""
         payload = {
             "locations": [{"lat": lat, "lon": lon, "type": "break"} for lat, lon in coordinates],
             "costing": "bus",
@@ -138,7 +148,7 @@ class ValhallaRouter:
 
         # The pause applies however the request turns out. It used to sit on
         # the success path only, which meant a router answering 429 or 5xx --
-        # exactly when it is under strain -- got the next of up to 218 requests
+        # exactly when it is under strain -- got the next of hundreds of requests
         # with no pause at all.
         try:
             try:

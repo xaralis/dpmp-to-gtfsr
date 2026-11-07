@@ -7,7 +7,7 @@ import pytest
 
 from dpmp_gtfs.api.models import Connection, ConnectionStop, Line
 from dpmp_gtfs.api.models import Stop as ApiStop
-from dpmp_gtfs.cis.calendars import build_calendars
+from dpmp_gtfs.cis.timetable import read_timetable
 from dpmp_gtfs.ids import route_id, stop_id, trip_id
 from dpmp_gtfs.static.builder import (
     ROUTE_TYPE_BUS,
@@ -263,7 +263,7 @@ def test_a_stop_time_referencing_a_coordinateless_stop_is_dropped() -> None:
 def test_a_trip_with_fewer_than_two_usable_stops_is_dropped() -> None:
     stops = [
         ApiStop.model_validate({"id": 1, "name": "A", "gpsLat": 50.0, "gpsLon": 15.0}),
-        ApiStop.model_validate({"id": 2, "name": "B", "gpsLat": 50.01, "gpsLon": 15.01}),
+        ApiStop.model_validate({"id": 2, "name": "B"}),
     ]
     lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
     connection = Connection.model_validate(
@@ -273,7 +273,7 @@ def test_a_trip_with_fewer_than_two_usable_stops_is_dropped() -> None:
             "fixedCodes": ["X", "@"],
             "stops": [
                 {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
-                {"stopId": 2, "platformId": "", "departureTime": "04:10:00"},
+                {"stopId": 2, "platformId": "1", "departureTime": "04:10:00"},
             ],
         }
     )
@@ -329,11 +329,11 @@ def test_a_calendarless_trip_is_dropped_without_taking_the_feed_with_it(
 
 def test_trip_headsign_comes_from_the_last_surviving_stop() -> None:
     """The naive ``connection.stops[-1]`` would read "Nowhere" here, even though
-    that stop was dropped for lacking a numeric platform."""
+    that stop was dropped for lacking a position."""
     stops = [
         ApiStop.model_validate({"id": 1, "name": "Start", "gpsLat": 50.0, "gpsLon": 15.0}),
         ApiStop.model_validate({"id": 2, "name": "Middle", "gpsLat": 50.01, "gpsLon": 15.01}),
-        ApiStop.model_validate({"id": 3, "name": "Nowhere", "gpsLat": 50.02, "gpsLon": 15.02}),
+        ApiStop.model_validate({"id": 3, "name": "Nowhere"}),
     ]
     lines = [Line.model_validate({"id": "1", "jdfId": "655001"})]
     connection = Connection.model_validate(
@@ -344,7 +344,7 @@ def test_trip_headsign_comes_from_the_last_surviving_stop() -> None:
             "stops": [
                 {"stopId": 1, "platformId": "1", "departureTime": "04:00:00"},
                 {"stopId": 2, "platformId": "1", "departureTime": "04:05:00"},
-                {"stopId": 3, "platformId": "", "departureTime": "04:10:00"},
+                {"stopId": 3, "platformId": "1", "departureTime": "04:10:00"},
             ],
         }
     )
@@ -636,7 +636,7 @@ def test_a_service_id_keeps_its_meaning_across_a_timetable_changeover(tmp_path: 
         start = CHANGEOVER + dt.timedelta(days=offset)
         end = start + dt.timedelta(days=365)
         feed = build_feed(
-            _tiling_timetable(build_calendars([archive], start, end)),
+            _tiling_timetable(read_timetable([archive], start, end).calendars),
             start_date=start,
         )
         current = (start, end, _as_published(feed))

@@ -66,7 +66,9 @@ def build_coverage(path: Path) -> dict[str, Any]:
         )
 
     all_stops = tables["stops.txt"]
-    stops = [s for s in all_stops if s["location_type"] == "1"]
+    # A stop with no parent is what the map offers to click: a parent station,
+    # or a stop whose calls name no platform and so has no children.
+    stops = [s for s in all_stops if not s.get("parent_station")]
     platforms = {s["stop_id"]: s for s in all_stops if s["location_type"] == "0"}
 
     # Which lines call at each platform. Emitted once per platform with a list

@@ -4,19 +4,20 @@ GTFS a GTFS-Realtime feed pro pardubickou MHD.
 
 Dopravní podnik města Pardubic provozuje [online.dpmp.cz](https://online.dpmp.cz/), která ukazuje
 polohu spojů v reálném čase, ale nepublikuje žádný export v průmyslovém standardu. Její backend
-je `api.mhdonline.cz` — hromadný seznam spojů ale ani ten neumí, takže si ho tenhle projekt
-dohledává sám, spoj po spoji (podrobnosti v [`docs/upstream-api.md`](docs/upstream-api.md)).
+je `api.mhdonline.cz`: odtud jsou zastávky a polohy vozů. Jízdní řád z něj číst nejde, ten je
+z veřejného registru [CIS JŘ](https://portal.cisjr.cz/), kam ho DPMP odevzdává (podrobnosti
+v [`docs/upstream-api.md`](docs/upstream-api.md)).
 
 Chybí ale dvě věci: **GTFS jako standardní formát**, na kterém staví většina zahraničních
 konzumentů (Google Maps pardubickou MHD nezná), a hlavně **realtime** — polohy vozidel a
 zpoždění nejsou nikde v tomhle formátu k dispozici, přestože je DPMP ve své aplikaci ukazuje.
 
-Tahle služba ten most staví: z veřejného API aplikace sestaví
+Tahle služba ten most staví: z registru a veřejného API aplikace sestaví
 [GTFS](https://gtfs.org/schedule/) i [GTFS Realtime](https://gtfs.org/realtime/) a vystaví je
 přes HTTP.
 
-> **Neoficiální projekt.** Není provozovaný ani schválený DPMP. Staví na veřejně dostupném API
-> jejich vlastní webové aplikace. Ideálním výsledkem je, že feed převezme sám dopravní podnik.
+> **Neoficiální projekt.** Není provozovaný ani schválený DPMP. Staví na CIS JŘ a na veřejně
+> dostupném API jejich vlastní webové aplikace. Ideálním výsledkem je, že feed převezme sám dopravní podnik.
 
 ## Feedy
 
@@ -25,12 +26,12 @@ přes HTTP.
 | `GET /gtfs.zip` | statický feed (jízdní řády, zastávky, linky) |
 | `GET /gtfs-rt.pb` | realtime — polohy vozidel a predikce příjezdů |
 | `GET /gtfs-rt.json` | totéž v JSON, pro ladění |
-| `GET /healthz` | stáří feedů a poslední chyba |
+| `GET /healthz` | stáří feedů a poslední chyba; `healthy` je `false` i když selhala přestavba, stavový kód 503 jen když není co vydat (`serving`) |
 
 Homepage se stavem služby je na `/`, dokumentace feedů na `/docs`.
 
 > **Trasy v `shapes.txt` jsou odhad.** Zastávky, časy a spoje pocházejí přímo
-> z API dopravního podniku, ale geometrii jízdy po ulicích v použitelné podobě
+> z dat dopravního podniku, ale geometrii jízdy po ulicích v použitelné podobě
 > nikdo nepublikuje, takže se dopočítává routováním. Podrobnosti níž.
 
 ## Spuštění
@@ -51,7 +52,7 @@ byla restart, ne commit.
 
 ```bash
 uv sync
-uv run dpmp-gtfs build-static    # jednou, ~20 min (registr CIS + jízdní řády + geometrie)
+uv run dpmp-gtfs build-static    # jednou (registr CIS + zastávky + geometrie)
 uv run dpmp-gtfs serve           # http://localhost:8000
 ```
 
@@ -79,9 +80,9 @@ docker compose --env-file .env -f docker/compose.yaml up -d
 `--env-file .env` není volitelné: bez něj by compose hledal `docker/.env`,
 tedy jiný soubor než ten, ze kterého čte `dpmp-gtfs serve`.
 
-První start postaví feed od nuly (~20 min: 300 MB archivů CIS, ~4 400 dotazů
-na API a geometrie tras), další starty ho načtou z volume (~5 s). Archivy se
-podruhé jen ověřují podmíněným dotazem, takže noční přestavba je rychlejší.
+První start postaví feed od nuly (300 MB archivů CIS, dva dotazy na API a geometrie
+tras), další starty ho načtou z volume (~5 s) a postaví ho hned jen tehdy, když je
+starší než 30 hodin. Archivy se podruhé jen ověřují podmíněným dotazem.
 
 Nasazení na veřejnou adresu:
 
@@ -108,19 +109,6 @@ uv run pytest
 uv run ruff check .
 ```
 
-Úplná přestavba statického feedu je zhruba 4 400 requestů a asi dvacet minut —
-většinu z toho spolkne hledání konce každé linky, které potřebuje padesát 404
-za sebou, aby si bylo jisté. Pro cokoliv, co se projeví až na konci buildu, se
-proto hodí zapnout cache odpovědí:
-
-```bash
-DPMP_HTTP_CACHE=1 uv run dpmp-gtfs build-static
-```
-
-Ukládá i ty 404. Jízdní řády platí 12 hodin, `vehicles` a `events` pět minut,
-neznámý endpoint taky pět minut. **V produkci zůstává vypnutá** — noční
-přestavba musí vidět jízdní řád, který platí teď.
-
 ## Poznámky k datům
 
 Několik vlastností zdrojového API, které nejsou zřejmé a stály za ověření:
@@ -130,29 +118,25 @@ Několik vlastností zdrojového API, které nejsou zřejmé a stály za ověře
 - **`currentDelay` chybějící nebo `null` znamená, že se pro to vozidlo nepublikuje žádný
   `TripUpdate`** — chybějící údaj není nula. Přítomné, ale nerozparsovatelné `currentDelay` se
   naopak zaloguje a počítá jako nulové zpoždění, takže spoj v feedu zůstane.
-- **Dny provozu z API neodpovídají jízdnímu řádu.** Zhruba u třetiny spojů říká `fixedCodes`
-  jiný den, než má dopravní podnik vyvěšený: spoj 46 linky 1 (06:36 ze Slovany,točna) je podle
-  API víkendový a podle jízdního řádu i podle CIS jede v pracovních dnech. Proto se dny provozu
-  berou z CIS a z API jen zbytek. Doloženo v [`docs/dpmp-hlaseni-kalendare.md`](docs/dpmp-hlaseni-kalendare.md),
-  nahlášeno dopravnímu podniku.
+- **Čísla spojů API a CIS nejsou totéž.** Asi třetina vozů hlásí číslo, které je v CIS jiná jízda
+  téže linky, proto se vůz páruje podle příští zastávky a času, ne podle čísla.
 - **Souřadnice zastávky jsou nepovinné** — jedna zastávka (`Opočínek,rozvodna`) je publikovaná
   úplně bez nich, a feed takové zastávky přeskočí.
-- **Souřadnice nástupišť zmizely.** `/stops` vrací jeden bod na stanici, takže všechna její
-  nástupiště ho sdílejí. Proti datům starého API se tím posunulo 357 zastávkových bodů.
+- **Nástupiště ve feedu nejsou.** `/stops` vrací jeden bod na stanici a CIS nástupiště nezná, takže
+  zastávky jsou `S16`, ne `S16P2`.
 - **`gps_course` je vždy `null`** — ve všech nahraných snímcích, u všech vozidel, stejně jako
   u staršího API. Směr vozidla se proto počítá z jízdního řádu, ne z kompasu vozu.
 
 Podrobnosti i s důkazy v [`docs/upstream-api.md`](docs/upstream-api.md).
 
-### Dny provozu jsou z CIS, ne z API
+### Jízdní řád je z CIS, ne z API
 
-Všechno ostatní ve feedu je z `api.mhdonline.cz`, ale **dny provozu se berou
-z celostátního registru CIS JŘ** (`portal.cisjr.cz`), kam DPMP jízdní řády
-odevzdává jako primární zdroj. Důvod je prostý: kódy dnů provozu z API zhruba
-u třetiny spojů neodpovídají jízdnímu řádu, který DPMP samo vyvěšuje. Spoj 46
-linky 1, 06:36 ze Slovany,točna — vyvěšený jízdní řád i CIS říkají pracovní
-den, API říká víkend. Dopravnímu podniku je to nahlášené; než se to spraví,
-platí CIS.
+Spoje, časy a dny provozu se berou z **celostátního registru CIS JŘ**
+(`portal.cisjr.cz`), kam DPMP jízdní řády odevzdává jako primární zdroj.
+`api.mhdonline.cz` odpovídá na `connections/{linka}/{spoj}` jen pro spoj, na kterém
+zrovna jede vůz, u ostatních vrací 403, ať se ptá kdokoli. Vyvěšené jízdní řády
+na dpmp.cz sedí na feed na 195 ze 205 porovnaných kombinací zastávky a dne včetně
+prázdninového režimu.
 
 ### Trasy jsou odhad
 
@@ -173,7 +157,7 @@ Pokusili jsme se získat data od zdroje a nestačí na to:
   obsloužit, o 8–11 m, geometrie ze starého API o stovky metrů. Ani na 98 sekvencích, kde
   sedí nejlíp, nevyhraje ani jednou.
 - NeTEx z registru CIS je mechanický převod z JDF a geometrii tras nenese; nemá dokonce ani
-  souřadnice zastávek — ty se proto dál berou z `api.mhdonline.cz`.
+  souřadnice zastávek — ty se proto berou z `api.mhdonline.cz`.
 
 **Co z toho plyne pro konzumenty:** zastávky, časy a spoje berte jako data dopravního
 podniku, tvar trasy mezi zastávkami jako odhad. Routování může zvolit jinou, byť

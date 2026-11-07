@@ -1,4 +1,4 @@
-"""Turns a crawled :class:`Timetable` into GTFS records."""
+"""Turns a :class:`Timetable` into GTFS records."""
 
 import datetime as dt
 import logging
@@ -21,6 +21,7 @@ from dpmp_gtfs.types import (
     Timetable,
     Trip,
     TripGeometry,
+    TripNumber,
 )
 from dpmp_gtfs.upstream import TROLLEYBUS_LINES
 
@@ -119,16 +120,13 @@ def with_shapes(feed: Feed, cache_path: Path, router: ValhallaRouter | None = No
 
 
 def build_stops(timetable: Timetable) -> list[Stop]:
-    """One parent station per stop plus one child per platform in service.
+    """One stop per place vehicles call at.
 
-    Timetables and realtime both address platforms, so the children carry the
-    actual service; the parent exists so consumers can group them and so that
-    transfers between platforms are understood.
-
+    A stop whose calls name no platform -- every CIS journey, CIS does not know
+    platforms -- is a plain ``location_type`` 0 stop, ``S16``. One whose calls do
+    is a parent station with a child per platform in service, ``S16P2``.
     Platforms inherit the parent's position: no upstream publishes per-platform
-    coordinates any more (see :mod:`dpmp_gtfs.upstream`). Their numbers are
-    real, so the ids and ``platform_code`` are unchanged -- only the geometry
-    is coarser than it used to be.
+    coordinates any more (see :mod:`dpmp_gtfs.upstream`).
 
     A handful of stops (e.g. 147, "Opočínek,rozvodna") publish no coordinates at
     all; those are skipped rather than published with a nonsensical position.
@@ -137,6 +135,7 @@ def build_stops(timetable: Timetable) -> list[Stop]:
     """
     stops: list[Stop] = []
     used = used_platforms(timetable)
+    no_platform = stations_called_without_platform(timetable)
     known_ids = {s.id for s in timetable.stops}
 
     for api_stop in timetable.stops:
@@ -152,7 +151,7 @@ def build_stops(timetable: Timetable) -> list[Stop]:
                 stop_name=api_stop.name,
                 stop_lat=api_stop.gps_latitude,
                 stop_lon=api_stop.gps_longitude,
-                location_type=1,
+                location_type=0 if api_stop.id in no_platform else 1,
                 parent_station="",
                 platform_code="",
                 wheelchair_boarding=step_free,
@@ -172,7 +171,7 @@ def build_stops(timetable: Timetable) -> list[Stop]:
                 )
             )
 
-    for number in sorted(set(used) - known_ids):
+    for number in sorted((set(used) | no_platform) - known_ids):
         logger.warning(
             "stop %s is used by timetables but is unknown to /stops; the calls "
             "at it are dropped and the trips keep the rest of their route",
@@ -211,7 +210,7 @@ def build_routes(timetable: Timetable) -> list[Route]:
 
     ``/lines`` returns only ``{id, jdfId, enabled}`` -- the stop list the old
     API published alongside it is gone -- so the longest trip stands in for the
-    line's shape. It is already fetched, so this costs nothing.
+    line's shape.
     """
     names = {s.id: s.name for s in timetable.stops}
     longest: dict[str, Connection] = {}
@@ -255,7 +254,7 @@ def build_trips_and_stop_times(
     from_codes = 0
     no_weekly_pattern = 0
 
-    for key, connection in sorted(timetable.connections.items()):
+    for key, connection in sorted(timetable.connections.items(), key=_trip_order):
         line_id, connection_number = key
         if not connection.stops:
             logger.warning("trip %s/%s has no stops, skipping", line_id, connection_number)
@@ -272,17 +271,8 @@ def build_trips_and_stop_times(
                 # Not in stops.txt (build_stops already logged this stop); a
                 # stop_times row here would dangle.
                 continue
-            if not stop.platform_id.isdigit():
-                logger.warning(
-                    "trip %s stop %s has no numeric platform (%r), skipping the stop",
-                    tid,
-                    stop.stop_id,
-                    stop.platform_id,
-                )
-                continue
-
             # "Zastávka na znamení" -- the bus only calls if asked.
-            on_request = stop.stop_id in on_request_stops
+            on_request = stop.on_request or stop.stop_id in on_request_stops
             boarding = COORDINATE_WITH_DRIVER if on_request else REGULAR
             time = format_gtfs_time(seconds)
             trip_stop_times.append(
@@ -290,7 +280,7 @@ def build_trips_and_stop_times(
                     trip_id=tid,
                     arrival_time=time,
                     departure_time=time,
-                    stop_id=stop_id(stop.stop_id, int(stop.platform_id)),
+                    stop_id=_boarding_stop_id(stop),
                     stop_sequence=sequence,
                     pickup_type=boarding,
                     drop_off_type=boarding,
@@ -387,6 +377,18 @@ def build_trips_and_stop_times(
             no_weekly_pattern,
         )
     return trips, stop_times, sorted(services.values(), key=lambda s: s.service_id)
+
+
+def _trip_order(item: tuple[tuple[str, TripNumber], Connection]) -> tuple[str, int, str]:
+    """Plain trip numbers first, each followed by its dated namesakes."""
+    (line_id, number), connection = item
+    return line_id, connection.connection_id, str(number)
+
+
+def _boarding_stop_id(stop: ConnectionStop) -> str:
+    if stop.platform_id.isdigit():
+        return stop_id(stop.stop_id, int(stop.platform_id))
+    return station_id(stop.stop_id)
 
 
 def prune_unserved_stops(
@@ -503,6 +505,16 @@ def used_platforms(timetable: Timetable) -> dict[int, set[int]]:
             if stop.platform_id.isdigit():
                 used.setdefault(stop.stop_id, set()).add(int(stop.platform_id))
     return used
+
+
+def stations_called_without_platform(timetable: Timetable) -> set[int]:
+    """Stops some trip calls at without saying which platform."""
+    return {
+        stop.stop_id
+        for connection in timetable.connections.values()
+        for stop in connection.stops
+        if not stop.platform_id.isdigit()
+    }
 
 
 def stop_seconds(stops: list[ConnectionStop]) -> list[int]:

@@ -32,7 +32,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     DPMP_DATA_DIR=/data
 
-# The built feed lives on a volume: a cold start would otherwise have to crawl
+# The built feed lives on a volume: a cold start would otherwise have to build
 # ~2,700 trips before the service could answer anything.
 RUN mkdir -p /data && chown app:app /data
 VOLUME ["/data"]

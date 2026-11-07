@@ -1,4 +1,4 @@
-"""Tests for reading days of operation out of the NeTEx archives.
+"""Tests for reading journeys and their days out of the NeTEx archives.
 
 The fixtures are slices of the real archive published on 2026-08-07, cut down
 to a few journeys each but with their ``ValidDayBits`` and passing times
@@ -26,7 +26,8 @@ from pathlib import Path
 
 import pytest
 
-from dpmp_gtfs.cis.calendars import build_calendars
+from dpmp_gtfs.cis.timetable import read_timetable
+from dpmp_gtfs.types import TripCalendar, TripNumber
 
 FIXTURES = Path(__file__).parent / "fixtures" / "netex"
 CURRENT = FIXTURES / "line-655001-2026-07-01.xml"
@@ -41,6 +42,12 @@ END = dt.date(2026, 8, 23)
 
 WEEKDAYS = frozenset({dt.date(2026, 8, day) for day in (10, 11, 12, 13, 14, 17, 18, 19, 20, 21)})
 WEEKEND = frozenset({dt.date(2026, 8, day) for day in (15, 16, 22, 23)})
+
+
+def build_calendars(
+    paths: list[Path], on_date: dt.date, horizon: dt.date
+) -> dict[tuple[str, TripNumber], TripCalendar]:
+    return read_timetable(paths, on_date, horizon).calendars
 
 
 def archive(tmp_path: Path, *sources: Path, name: str = "netex.zip") -> Path:
@@ -149,6 +156,18 @@ def test_a_trip_renumbered_at_its_first_stop_stops_at_the_changeover(tmp_path: P
     assert max(days) < CHANGEOVER
 
 
+def test_the_later_journey_under_a_reused_number_is_a_trip_of_its_own(tmp_path: Path) -> None:
+    """This is what used to leave a feed that ran out on 31 August: nothing past
+    a changeover existed unless the number happened to mean the same journey."""
+    cis = read_timetable([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+    dated = ("655009", "31-20260701")
+
+    assert min(cis.calendars[dated].days) == CHANGEOVER
+    assert max(cis.calendars[dated].days) == SEPTEMBER
+    first = cis.journeys[("655009", 31)].calls[0].departure
+    assert (first, cis.journeys[dated].calls[0].departure) == ("07:50:00", "07:53:00")
+
+
 def test_a_trip_that_diverges_only_later_in_its_run_also_stops(tmp_path: Path) -> None:
     """Trip 23 leaves at 07:08 either side of the changeover and is a minute
     apart from the eighth stop onwards. Comparing only the first departure
@@ -161,13 +180,43 @@ def test_a_trip_that_diverges_only_later_in_its_run_also_stops(tmp_path: Path) -
     assert max(days) < CHANGEOVER
 
 
-def test_only_the_trips_of_the_version_in_force_are_reported(tmp_path: Path) -> None:
-    """The API serves the timetable in force today, so its trip numbers are
-    that version's. A number only a later version has belongs to a journey this
-    feed does not carry."""
+def test_the_same_journey_is_one_trip_and_a_changed_one_two(tmp_path: Path) -> None:
     calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
 
-    assert set(calendars) == {("655009", 1), ("655009", 23), ("655009", 31)}
+    assert set(calendars) == {
+        ("655009", 1),
+        ("655009", 23),
+        ("655009", "23-20260701"),
+        ("655009", 31),
+        ("655009", "31-20260701"),
+    }
+
+
+def test_of_two_versions_starting_together_the_one_that_ends_goes_first(tmp_path: Path) -> None:
+    """Line 21 has one version from 2026-09-01 to 2035 and another to 12 December,
+    and vehicles run the second now. Ranked the other way the short one would
+    never get a day at all."""
+    long = tmp_path / "long.xml"
+    long.write_text(
+        YEAR_ROUND.read_text(encoding="utf8").replace("07:53:00", "07:58:00"), encoding="utf8"
+    )
+    short = tmp_path / "short.xml"
+    short.write_text(
+        re.sub(
+            r"(<Line [^>]*>\s*<ValidBetween>\s*<FromDate>[^<]+</FromDate>\s*)"
+            r"<ToDate>[^<]+</ToDate>",
+            r"\g<1><ToDate>2026-09-15T00:00:00</ToDate>",
+            YEAR_ROUND.read_text(encoding="utf8"),
+            count=1,
+        ),
+        encoding="utf8",
+    )
+
+    cis = read_timetable([archive(tmp_path, long, short)], CHANGEOVER, SEPTEMBER)
+
+    assert cis.journeys[("655009", 31)].calls[0].departure == "07:53:00", "short, from the start"
+    assert max(cis.calendars[("655009", 31)].days) <= dt.date(2026, 9, 15)
+    assert cis.journeys[("655009", "31-20260701")].calls[0].departure == "07:58:00", "then long"
 
 
 def test_a_line_whose_timetable_runs_out_says_so(
@@ -177,9 +226,9 @@ def test_a_line_whose_timetable_runs_out_says_so(
     incomplete quietly, and an operator watching a line go dark deserves to be
     told which and when."""
     with caplog.at_level(logging.WARNING):
-        build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+        build_calendars([archive(tmp_path, SUMMER)], START, SEPTEMBER)
 
-    assert "line 655009: 2 of 3 trips have no CIS days after" in caplog.text
+    assert "line 655009: CIS has no service after" in caplog.text
 
 
 def test_a_journey_with_no_times_at_all_is_not_extended(tmp_path: Path) -> None:
@@ -219,6 +268,16 @@ def test_the_origin_does_not_move_when_the_window_does(tmp_path: Path) -> None:
     assert today[key].days != tomorrow[key].days, "the days did move"
     assert today[key].origin == tomorrow[key].origin
     assert today[key].origin, "and it says something"
+
+
+def test_one_bitmap_under_two_versions_turns_gets_two_origins(tmp_path: Path) -> None:
+    """Same bitmap, same weekly pattern, different days: read without saying
+    whose turn it was, these two refused to build as one service id."""
+    calendars = build_calendars([archive(tmp_path, SUMMER, YEAR_ROUND)], START, SEPTEMBER)
+
+    plain, dated = calendars[("655009", 31)], calendars[("655009", "31-20260701")]
+    assert plain.days != dated.days
+    assert plain.origin != dated.origin
 
 
 def test_trips_on_different_calendars_get_different_origins(tmp_path: Path) -> None:

@@ -130,6 +130,49 @@ async def test_healthz_is_healthy_with_a_feed_loaded_from_disk(
     assert response.json()["healthy"] is True
 
 
+async def test_a_failed_rebuild_is_unhealthy_but_keeps_serving(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """The feed went stale for two months behind ``healthy: true`` while every
+    rebuild failed. Said out loud now -- but as 200, because the readiness probe
+    reads the code, and taking the pod out of service would take the live feed
+    and the last good timetable off the network as well."""
+    from dpmp_gtfs.realtime.index import StaticIndex
+
+    _write_minimal_zip(tmp_path / "gtfs.zip")
+    state = client.app.state.scheduler.state  # type: ignore[attr-defined]
+    state.index = StaticIndex.from_zip(tmp_path / "gtfs.zip")
+    state.realtime_built_at = dt.datetime.now(dt.UTC)
+    state.static_built_at = dt.datetime.now(dt.UTC)
+    state.static_error = "DpmpApiError('stops failed after 4 attempts')"
+
+    response = await client.get("/healthz")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["healthy"] is False
+    assert payload["serving"] is True
+    assert payload["static"]["fresh"] is False
+
+
+async def test_a_static_feed_past_its_rebuild_is_unhealthy_with_no_error_on_record(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """A restart forgets the error; the age of the feed on disk remembers."""
+    from dpmp_gtfs.realtime.index import StaticIndex
+
+    _write_minimal_zip(tmp_path / "gtfs.zip")
+    state = client.app.state.scheduler.state  # type: ignore[attr-defined]
+    state.index = StaticIndex.from_zip(tmp_path / "gtfs.zip")
+    state.realtime_built_at = dt.datetime.now(dt.UTC)
+    state.static_built_at = dt.datetime.now(dt.UTC) - dt.timedelta(hours=31)
+
+    payload = (await client.get("/healthz")).json()
+
+    assert payload["healthy"] is False
+    assert payload["static"]["fresh"] is False
+
+
 async def test_status_reports_no_phase_when_idle(client: httpx.AsyncClient) -> None:
     assert (await client.get("/healthz")).json()["static"]["phase"] is None
 
@@ -138,10 +181,10 @@ async def test_status_reports_the_phase_while_building(client: httpx.AsyncClient
     """Read by two consumers that must not drift apart: the log an operator
     watches and the message the map shows during a cold start."""
     state = client.app.state.scheduler.state  # type: ignore[attr-defined]
-    state.static_phase = "stahuji jízdní řády"
+    state.static_phase = "stahuji zastávky"
 
     response = await client.get("/healthz")
-    assert response.json()["static"]["phase"] == "stahuji jízdní řády"
+    assert response.json()["static"]["phase"] == "stahuji zastávky"
 
 
 async def test_healthz_answers_immediately_during_a_cold_start(
@@ -150,17 +193,17 @@ async def test_healthz_answers_immediately_during_a_cold_start(
     """The one test in this module that actually runs the lifespan: with no
     ``gtfs.zip`` on disk, ``start()`` must not await the initial build --
     otherwise nothing, including this very request, would get an answer
-    for however long the crawl takes. Health is honestly 503 while it
+    for however long the build takes. Health is honestly 503 while it
     builds, but it must answer, and the answer must carry the phase."""
     gate = asyncio.Event()
     crawling = asyncio.Event()
 
-    async def hanging_crawl(api: object, calendars: object) -> Timetable:
+    async def hanging_load(api: object, calendars: object) -> Timetable:
         crawling.set()
         await gate.wait()
         return Timetable(stops=[], lines=[])
 
-    monkeypatch.setattr(scheduler_module, "crawl", hanging_crawl)
+    monkeypatch.setattr(scheduler_module, "load_timetable", hanging_load)
 
     app = create_app(_settings(tmp_path))
     transport = httpx.ASGITransport(app=app)
@@ -178,7 +221,7 @@ async def test_healthz_answers_immediately_during_a_cold_start(
         assert response.status_code == 503
         payload = response.json()
         assert payload["healthy"] is False
-        assert payload["static"]["phase"] == "stahuji jízdní řády"
+        assert payload["static"]["phase"] == "stahuji zastávky"
     # Exiting the block above cancels the still-hanging build; a clean
     # shutdown must swallow that cancellation rather than let it escape here.
 
@@ -210,7 +253,7 @@ async def test_homepage_renders(client: httpx.AsyncClient) -> None:
 async def test_documentation_renders(client: httpx.AsyncClient) -> None:
     response = await client.get("/docs")
     assert response.status_code == 200
-    assert "S16P2" in response.text, "id scheme should be documented"
+    assert "L9C115" in response.text, "id scheme should be documented"
 
 
 async def test_openapi_explorer_moved_aside(client: httpx.AsyncClient) -> None:

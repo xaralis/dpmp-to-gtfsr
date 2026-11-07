@@ -1,15 +1,18 @@
 """Lookup structures that connect realtime observations to the static feed.
 
-``/{provider}/vehicles`` reports ``lineId`` and ``connectionId``, which are
-exactly the upstream's own line and trip identifiers -- the same pair the
-timetable endpoints use. So the join is direct, with no name matching or
-heuristics.
+``/{provider}/vehicles`` reports ``lineId`` and ``connectionId``, the API's own
+trip number. The timetable comes from CIS, whose numbers mostly agree with it but
+not always: at any moment about a third of the vehicles carry a number that is
+another journey of the same line in CIS, up to an hour away. So a number is only
+a hint. What identifies a trip is that it calls at the vehicle's next stop at the
+time the vehicle says it is due there, on a day it runs.
 """
 
 import datetime as dt
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from dpmp_gtfs.api.models import Vehicle, parse_hhmmss
 from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.ids import station_id, trip_id
 from dpmp_gtfs.timeutil import DAY, PRAGUE
@@ -41,6 +44,13 @@ class StaticIndex:
         for board in self._by_stop.values():
             board.sort(key=lambda e: (e[0], e[1]))
 
+        # What a vehicle can be recognised by: where it is due next, and when.
+        self._by_call: dict[tuple[str, int, int], list[tuple[ScheduledTrip, ScheduledStop]]] = {}
+        for trip in trips.values():
+            for stop in trip.stops:
+                key = (trip.line, stop.station, stop.seconds % DAY)
+                self._by_call.setdefault(key, []).append((trip, stop))
+
         # Under the station id as well, so a station board can be titled. The
         # platforms of a station all carry its name, so either is fine.
         self._stop_names: dict[str, str] = {}
@@ -52,9 +62,40 @@ class StaticIndex:
     def __len__(self) -> int:
         return len(self._by_trip_id)
 
-    def lookup(self, line: str, connection: int) -> ScheduledTrip | None:
-        """The trip a vehicle is running, if it is one this feed knows."""
-        return self._by_trip_id.get(trip_id(line, connection))
+    def trip_of(self, vehicle: Vehicle, now: dt.datetime) -> ScheduledTrip | None:
+        """The trip a vehicle is running, if it is one this feed knows.
+
+        ``None`` rather than a guess: a vehicle left out is a gap, a vehicle
+        attached to the wrong trip is an hour of delay that never happened.
+        A vehicle that does not say where it is due has only its number to go
+        by.
+        """
+        numbered = self._by_trip_id.get(trip_id(vehicle.line_id, vehicle.connection_id))
+        due = vehicle.next_stop_scheduled_departure
+        if vehicle.next_stop_id is None or not due:
+            return numbered
+
+        time = parse_hhmmss(due)
+        seconds = time.hour * 3600 + time.minute * 60 + time.second
+        calls = self._by_call.get((vehicle.line_id, vehicle.next_stop_id, seconds), [])
+        running = [trip for trip, stop in calls if self._runs_around(trip, stop, now)]
+
+        if numbered in running:
+            return numbered
+        if len(running) == 1:
+            return running[0]
+        heading_there = [t for t in running if t.headsign == vehicle.destination_name]
+        return heading_there[0] if len(heading_there) == 1 else None
+
+    def _runs_around(self, trip: ScheduledTrip, stop: ScheduledStop, now: dt.datetime) -> bool:
+        """Whether a call can be happening around ``now``, by the trip's calendar.
+
+        A call past 24:00 belongs to the service day before the date on the
+        clock, or to today if the vehicle is still approaching midnight.
+        """
+        today = now.astimezone(PRAGUE).date()
+        days = [today, today - dt.timedelta(days=1)] if stop.seconds >= DAY else [today]
+        return any(self._calendar.runs_on(trip.service_id, day) for day in days)
 
     def stop_name(self, stop_id: str) -> str:
         """The name a passenger knows a stop by, or empty if it is unknown."""

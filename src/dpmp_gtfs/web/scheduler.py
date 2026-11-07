@@ -19,7 +19,7 @@ from google.transit import gtfs_realtime_pb2 as rt
 
 from dpmp_gtfs.api import DpmpApiClient
 from dpmp_gtfs.archive import read_tables
-from dpmp_gtfs.cis import build_calendars, fetch_archives
+from dpmp_gtfs.cis import CisTimetable, fetch_archives, read_timetable
 from dpmp_gtfs.config import Settings
 from dpmp_gtfs.exceptions import DpmpApiError, FeedBuildError
 from dpmp_gtfs.realtime.feed import build_feed_message
@@ -31,13 +31,17 @@ from dpmp_gtfs.static.builder import (
     iter_missing_stop_references,
     with_shapes,
 )
-from dpmp_gtfs.static.crawler import crawl
 from dpmp_gtfs.static.service_watch import load_unserved, state_path
+from dpmp_gtfs.static.timetable import load_timetable
 from dpmp_gtfs.static.writer import write_feed
 from dpmp_gtfs.timeutil import PRAGUE
-from dpmp_gtfs.types import TripCalendar
 
 logger = logging.getLogger(__name__)
+
+STATIC_MAX_AGE = dt.timedelta(hours=30)
+"""How old a static feed may get before it counts as stale. It is rebuilt every
+night, so this allows a slow build and not one missed night -- a restart forgets
+the error a failed rebuild left, and the age is all that is left to say so."""
 
 
 class Scheduler:
@@ -54,7 +58,7 @@ class Scheduler:
         in the same batch (see :meth:`start`), so a cold start shortly before
         ``static_rebuild_hour`` can no longer rely on the nightly loop's
         first sleep having been computed after the initial build finished --
-        both can legitimately want to run at once. Two concurrent crawls
+        both can legitimately want to run at once. Two concurrent builds
         would both write ``gtfs.zip``; the write itself is atomic, but which
         one's result survives is then a race, and one build's success could
         be clobbered by the other's later failure."""
@@ -67,11 +71,13 @@ class Scheduler:
         The initial build, when nothing usable is on disk, runs as a
         background task rather than being awaited here. Awaiting it would
         block the ASGI lifespan itself -- and with it every route, including
-        ``/healthz`` -- for as long as a cold-start crawl of ~2,700 trips
-        takes. Coming up immediately instead costs nothing new: a request
-        arriving before the build finishes is exactly the "not ready yet"
-        state ``/vehicles.json`` and ``/healthz`` already model, not a new
-        one to invent.
+        ``/healthz`` -- for as long as a cold-start build takes. Coming up
+        immediately instead costs nothing new: a request arriving before the
+        build finishes is exactly the "not ready yet" state ``/vehicles.json``
+        and ``/healthz`` already model, not a new one to invent.
+
+        A feed on disk that is already stale is rebuilt straight away too:
+        there is nothing to gain from serving it until the next night.
         """
         self._load_static_from_disk()
 
@@ -79,7 +85,7 @@ class Scheduler:
             asyncio.create_task(self._realtime_loop(), name="realtime"),
             asyncio.create_task(self._static_loop(), name="static"),
         ]
-        if self.state.index is None:
+        if self.state.index is None or not self.state.static_is_fresh():
             logger.info("no usable static feed on disk, building one now")
             self._tasks.append(asyncio.create_task(self.rebuild_static(), name="initial-build"))
 
@@ -130,31 +136,29 @@ class Scheduler:
         self.state.static_phase = message
         logger.info("static build: %s", message)
 
-    async def _fetch_calendars(self, today: dt.date) -> dict[tuple[str, int], TripCalendar]:
-        """Days of operation, from CIS, covering the whole validity window.
+    async def _fetch_cis(self, today: dt.date) -> CisTimetable:
+        """The timetable, from CIS, covering the whole validity window.
 
-        Raises rather than returning what it has: the API's own days of
-        operation are wrong for about a third of trips, so a feed built without
-        these is a feed already known to be wrong, and keeping yesterday's is
-        strictly better than publishing it.
+        Raises rather than returning nothing: there is no other source of
+        trips, so keeping yesterday's feed is strictly better.
         """
         paths = await fetch_archives(self.settings.cis_urls, self.settings.cis_dir)
         horizon = today + dt.timedelta(days=VALIDITY_DAYS)
         # ~300 MB of zipped XML, ten seconds or so of pure CPU -- off the event
         # loop, so the realtime feed keeps ticking through it.
-        calendars = await asyncio.to_thread(build_calendars, paths, today, horizon)
-        if not calendars:
+        cis = await asyncio.to_thread(read_timetable, paths, today, horizon)
+        if not cis.calendars:
             raise FeedBuildError("the CIS archives describe no DPMP calendars")
-        return calendars
+        return cis
 
     async def rebuild_static(self) -> None:
-        """Crawl, build and publish a fresh static feed.
+        """Read, build and publish a fresh static feed.
 
         Skips rather than queues when a build is already running: the
         initial build and the nightly one are scheduled independently and
         can now legitimately overlap (see ``_build_lock``'s docstring), and
         a rebuild that starts the instant another finishes would just redo
-        the same crawl for nothing. The check-then-acquire below has no
+        the same work for nothing. The check-then-acquire below has no
         ``await`` between the two, so nothing can slip in between them.
         """
         if self._build_lock.locked():
@@ -166,11 +170,11 @@ class Scheduler:
                 today = dt.date.today()
 
                 self._phase("stahuji rejstřík CIS")
-                calendars = await self._fetch_calendars(today)
+                cis = await self._fetch_cis(today)
 
-                self._phase("stahuji jízdní řády")
+                self._phase("stahuji zastávky")
                 async with DpmpApiClient(self.settings) as api:
-                    timetable = await crawl(api, calendars)
+                    timetable = await load_timetable(api, cis)
                 feed = build_feed(timetable, start_date=today)
 
                 if self.settings.shapes_enabled:
@@ -294,9 +298,8 @@ class FeedState:
     """What the static build is doing right now, or ``None`` when idle.
 
     Read by two consumers that must not drift apart: the log an operator
-    watches and the message the map shows. A cold start is several minutes of
-    discovering and downloading trips over the network, and without this the
-    service looks hung.
+    watches and the message the map shows. A cold start is minutes of downloading
+    the registry and routing shapes, and without this the service looks hung.
     """
     trip_count: int = 0
     unserved_stops: dict[str, str] = field(default_factory=dict)
@@ -310,21 +313,41 @@ class FeedState:
         now = moment or dt.datetime.now(dt.UTC)
         return (now - self.realtime_built_at).total_seconds()
 
+    def static_is_fresh(self, moment: dt.datetime | None = None) -> bool:
+        """Whether the static feed is what tonight's timetable says.
+
+        A failed rebuild is not fresh however recent the feed it kept: for
+        months the service reported healthy while every rebuild failed on a
+        403 and the feed on disk aged past two timetable changes.
+        """
+        if self.static_error is not None:
+            return False
+        if self.static_built_at is None:
+            return True
+        now = moment or dt.datetime.now(dt.UTC)
+        return now - self.static_built_at < STATIC_MAX_AGE
+
     @property
-    def healthy(self) -> bool:
-        """Whether the service is currently serving trustworthy data.
+    def serving(self) -> bool:
+        """Whether there is anything to serve, and it can be presented as live.
 
         Deliberately strict about staleness: a realtime feed several minutes
         old is worse than an honest failure, because consumers will present it
         as current.
 
-        Health depends on having a usable static feed, not on having built one
-        in this process -- a feed loaded from disk at startup is just as valid,
-        and requiring otherwise would report an unhealthy service for the whole
-        first day.
+        This depends on having a usable static feed, not on having built one
+        in this process -- a feed loaded from disk at startup is just as valid.
+        This is what decides ``/healthz``'s status code, and so the readiness
+        probe: a failed nightly rebuild must not take the realtime feed and
+        yesterday's timetable off the network with it.
         """
         age = self.age()
         return self.index is not None and age is not None and age < 120
+
+    @property
+    def healthy(self) -> bool:
+        """Whether everything is as it should be, the static feed included."""
+        return self.serving and self.static_is_fresh()
 
 
 def read_feed_version(path: Path) -> str | None:

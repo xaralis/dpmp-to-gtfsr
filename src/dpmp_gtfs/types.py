@@ -21,6 +21,10 @@ Named for its order on purpose. GeoJSON wants the reverse (see
 checker, and swapping them puts Pardubice in the Indian Ocean without any
 error at all."""
 
+type TripNumber = int | str
+"""A trip within a line: the JDF number for the timetable in force today, or
+that number dated for a journey a later timetable has under it, ``446-20261114``."""
+
 type StopSequence = tuple[str, ...]
 """Stop ids in travel order. Identifies a :class:`TripGeometry`: every trip
 calling at the same stops in the same order shares one."""
@@ -48,21 +52,18 @@ class Feed:
 class Timetable:
     """Everything needed to build a static feed.
 
-    Almost entirely from the API: which trips a line has comes from walking its
-    trip-number space, which way each one runs from the stop order of the trips
-    just fetched. See :mod:`dpmp_gtfs.static.discovery` and
-    :mod:`dpmp_gtfs.static.direction`. Days of operation are the one exception
-    -- those come from CIS, because the API's are wrong.
+    Trips, their times, directions and days from CIS; stops and the list of
+    lines from the API. See :mod:`dpmp_gtfs.static.timetable`.
     """
 
     stops: list[ApiStop]
     lines: list[Line]
-    directions: dict[tuple[str, int], int] = field(default_factory=dict)
-    """``(line_id, connection_id)`` -> ``direction_id``, derived from stop order."""
-    connections: dict[tuple[str, int], Connection] = field(default_factory=dict)
-    """``(line_id, connection_id)`` -> the trip's stop times, from the API."""
-    calendars: dict[tuple[str, int], TripCalendar] = field(default_factory=dict)
-    """``(line jdf id, connection_id)`` -> the days that trip runs, from CIS.
+    directions: dict[tuple[str, TripNumber], int] = field(default_factory=dict)
+    """``(line_id, trip)`` -> ``direction_id``."""
+    connections: dict[tuple[str, TripNumber], Connection] = field(default_factory=dict)
+    """``(line_id, trip)`` -> the trip's stop times."""
+    calendars: dict[tuple[str, TripNumber], TripCalendar] = field(default_factory=dict)
+    """``(line jdf id, trip)`` -> the days that trip runs.
 
     Keyed by the JDF line number rather than the API's ``lineId``, because that
     is the only line identifier the two sources share."""

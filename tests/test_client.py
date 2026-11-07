@@ -59,18 +59,6 @@ async def test_refreshes_the_signature_once_on_401(vehicles_payload):
     assert len(result.vehicles) > 0
 
 
-async def test_connection_returns_none_on_404():
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(404, text="")
-
-    transport = httpx.MockTransport(handler)
-    async with (
-        httpx.AsyncClient(transport=transport, base_url=API) as raw,
-        DpmpApiClient(settings=_settings(), client=raw) as api,
-    ):
-        assert await api.connection("1", 999) is None
-
-
 async def test_one_structurally_invalid_vehicle_does_not_discard_the_snapshot(vehicles_payload):
     """Regression: ``VehiclesResponse.model_validate`` on the whole payload
     rejects every vehicle over one bad record -- the same failure shape the

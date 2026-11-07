@@ -123,6 +123,11 @@
     document.getElementById("chip-all").setAttribute("aria-pressed", String(selected === null));
   }
 
+  // CIS does not know platforms, so most stops have no number to show.
+  function platformLabel(p) {
+    return p.platform ? "nástupiště " + escapeHtml(p.platform) + " · " : "";
+  }
+
   function renderPlatforms() {
     platformLayer.clearLayers();
     if (selected === null) return;
@@ -134,8 +139,7 @@
           fillColor: "#c6f432", fillOpacity: 1
         }).bindPopup(
           '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
-          '<div class="popup-meta">nástupiště ' + escapeHtml(p.platform) +
-          " · " + escapeHtml(p.stop_id || p.id) + "</div>" +
+          '<div class="popup-meta">' + platformLabel(p) + escapeHtml(p.stop_id || p.id) + "</div>" +
           '<div class="dep-none">Načítám odjezdy…</div>'
         ).on("popupopen", function (e) { loadDepartures(p, e.popup); }).addTo(platformLayer);
 
@@ -178,7 +182,7 @@
     // departure leaves from; a platform board obviously does not.
     var isStation = id.indexOf("P") === -1;
     var meta = p.meta ? p.meta
-             : "nástupiště " + escapeHtml(p.platform) + " · " + escapeHtml(id);
+             : platformLabel(p) + escapeHtml(id);
     var head = '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
                '<div class="popup-meta">' + meta + "</div>";
 
@@ -307,7 +311,7 @@
     setInterval(paintStatus, 1000);
   }).catch(function (err) {
     // Indistinguishable from a real failure by status code alone: a cold
-    // start 404s here for as long as the crawl takes. /healthz tells the
+    // start 404s here for as long as the build takes. /healthz tells the
     // difference, so hold off blaming anything until it has answered once.
     coverageError = err;
     startBuildPoll();

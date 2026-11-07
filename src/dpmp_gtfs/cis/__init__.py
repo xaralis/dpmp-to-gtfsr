@@ -1,12 +1,19 @@
-"""The CIS JŘ timetable registry, read for one thing only: days of operation.
+"""The CIS JŘ timetable registry: the whole timetable, and its days of operation.
 
-CIS is the primary source DPMP files its timetables with, and its calendars
-agree with the published paper timetable where the API's ``fixedCodes`` do not
--- see ``docs/upstream-api.md``. Nothing else crosses this boundary: which
-trips exist, their times, stops, directions and realtime all stay with the API.
+CIS is the primary source DPMP files its timetables with, and since the API
+stopped answering for trips nobody is riding it is the only place the full
+timetable can be read -- see ``docs/upstream-api.md``. Coordinates and realtime
+stay with the API.
 """
 
 from .archive import CisUnavailable, fetch_archives
-from .calendars import build_calendars
+from .timetable import Call, CisTimetable, Journey, read_timetable
 
-__all__ = ["CisUnavailable", "build_calendars", "fetch_archives"]
+__all__ = [
+    "Call",
+    "CisTimetable",
+    "CisUnavailable",
+    "Journey",
+    "fetch_archives",
+    "read_timetable",
+]

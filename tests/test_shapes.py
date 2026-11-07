@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import polyline
 import pytest
@@ -285,6 +286,40 @@ def test_router_parses_a_successful_response() -> None:
 
     assert legs == [LEG_A]
     assert lengths == [1006.0]
+
+
+def test_a_sequence_longer_than_the_router_accepts_goes_as_several_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The community instance now refuses more than ten locations. The parts
+    share a stop, so there is still one leg per gap, in order."""
+    from itertools import pairwise
+
+    import httpx
+
+    from dpmp_gtfs.static import shapes as shapes_module
+    from dpmp_gtfs.static.shapes import ValhallaRouter
+
+    sent: list[list[tuple[float, float]]] = []
+
+    def post(url: str, json: dict[str, Any], **kwargs: object) -> httpx.Response:
+        points = [(loc["lat"], loc["lon"]) for loc in json["locations"]]
+        sent.append(points)
+        legs = [
+            {"shape": f"{a[0]}>{b[0]}", "summary": {"length": 1.0}} for a, b in pairwise(points)
+        ]
+        return httpx.Response(
+            200, json={"trip": {"legs": legs}}, request=httpx.Request("POST", url)
+        )
+
+    monkeypatch.setattr(shapes_module.httpx, "post", post)
+    stops = [(float(i), 15.0) for i in range(24)]
+
+    legs, lengths = ValhallaRouter(delay=0).get_route_geometry(stops)
+
+    assert max(len(part) for part in sent) == shapes_module.MAX_LOCATIONS
+    assert len(legs) == len(lengths) == 23
+    assert legs == [f"{float(i)}>{float(i + 1)}" for i in range(23)]
 
 
 def test_a_router_error_response_is_not_mistaken_for_a_route() -> None:

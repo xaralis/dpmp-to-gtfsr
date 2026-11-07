@@ -27,11 +27,7 @@ def route_id(line: str) -> str:
     return f"L{line}"
 
 
-def trip_id(line: str, connection: int) -> str:
-    """A trip, e.g. ``L9C115``.
-
-    ``connection`` is the upstream's own trip number, which ``/vehicles``
-    reports directly as ``connectionId`` -- so realtime maps onto static
-    without any guesswork.
-    """
+def trip_id(line: str, connection: int | str) -> str:
+    """A trip, e.g. ``L9C115``, or ``L3C446-20261114`` for a journey a later
+    timetable has under that number (:data:`dpmp_gtfs.types.TripNumber`)."""
     return f"L{line}C{connection}"

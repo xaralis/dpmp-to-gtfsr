@@ -16,9 +16,8 @@ listed here.
 
 **Platform coordinates no longer exist upstream.** ``/stops`` publishes one
 point per stop and there is no platform endpoint; CIS has no ``Quay`` elements
-at all. Platforms therefore inherit their parent's position. Their numbers are
-still real -- ``/connections`` reports them per stop -- so ``platform_code``
-and the ``S{station}P{platform}`` ids survive; only the geometry is coarser.
+at all. A trip with platform numbers would make its platforms inherit their
+parent's position, but CIS journeys have no numbers either, so stops are plain.
 
 Retired corrections
 -------------------

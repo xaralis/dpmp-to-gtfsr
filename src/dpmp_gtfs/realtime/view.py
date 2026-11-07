@@ -37,7 +37,7 @@ def build_vehicle_views(
     views: list[VehicleView] = []
 
     for vehicle in vehicles:
-        trip = index.lookup(vehicle.line_id, vehicle.connection_id)
+        trip = index.trip_of(vehicle, now)
         if trip is None:
             continue
 

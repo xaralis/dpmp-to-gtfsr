@@ -1,20 +1,18 @@
 """Async client for api.mhdonline.cz.
 
-Three upstream facts drive the shape of this module:
+Two upstream facts drive the shape of this module:
 
 1. Every call is a plain ``GET`` under ``/{provider}/``. The old API's
    ``POST`` with a ``text/plain`` body is gone, and so is its static key.
 
 2. Authentication is a signature that rotates every 15 minutes
-   (:mod:`dpmp_gtfs.protocol`). A full crawl takes longer than that, so the
-   header is computed per request, never cached on the client. A 401 or 403
-   is treated as "the window rolled under us" and retried once with a fresh
-   signature.
+   (:mod:`dpmp_gtfs.protocol`). A client lives longer than that, so the header
+   is computed per request, never cached on the client. A 401 or 403 is treated
+   as "the window rolled under us" and retried once with a fresh signature.
 
-3. ``connections/{line}/{number}`` answers 404 for a trip number that does
-   not exist. That is data, not failure -- it is how
-   :mod:`dpmp_gtfs.static.discovery` tells where a line's trips stop -- so it
-   is returned as ``None`` rather than raised.
+The timetable is deliberately not here. ``connections/{line}/{number}`` answers
+403 for any trip no vehicle is on, whoever asks, so it comes from CIS -- see
+``docs/upstream-api.md``.
 """
 
 import asyncio
@@ -32,8 +30,7 @@ from dpmp_gtfs.config import settings as default_settings
 from dpmp_gtfs.exceptions import DpmpApiError
 from dpmp_gtfs.protocol import app_protocol
 
-from .cache import MISS, ResponseCache
-from .models import Connection, Line, Stop, Vehicle, VehiclesResponse
+from .models import Line, Stop, Vehicle, VehiclesResponse
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +86,6 @@ class DpmpApiClient:
         )
         self._gate = asyncio.Semaphore(self.settings.crawl_concurrency)
         self._limiter = RateLimiter(self.settings.crawl_rate_limit)
-        self._cache = (
-            ResponseCache(self.settings.http_cache_dir) if self.settings.http_cache else None
-        )
 
     async def __aenter__(self) -> Self:
         return self
@@ -128,18 +122,12 @@ class DpmpApiClient:
                 response = await self._client.get(f"{self._prefix}/{path}", headers=self._headers())
         return response
 
-    async def _get(self, path: str, *, missing_ok: bool = False) -> Any:
+    async def _get(self, path: str) -> Any:
         """GET an endpoint, retrying with exponential backoff.
 
-        Returns ``None`` for a 404 when ``missing_ok`` -- see the module
-        docstring. Raises :class:`DpmpApiError` once retries are exhausted, so
-        callers can tell "upstream is down" from a bug.
+        Raises :class:`DpmpApiError` once retries are exhausted, so callers can
+        tell "upstream is down" from a bug.
         """
-        if self._cache is not None:
-            hit = self._cache.get(path)
-            if hit is not MISS:
-                return hit
-
         last: Exception | None = None
 
         for attempt in range(self.settings.max_retries):
@@ -157,17 +145,12 @@ class DpmpApiClient:
 
             try:
                 response = await self._send(path)
-                if missing_ok and response.status_code == 404:
-                    payload = None
-                else:
-                    response.raise_for_status()
-                    payload = response.json()
+                response.raise_for_status()
+                payload = response.json()
             except (httpx.HTTPError, json.JSONDecodeError) as exc:
                 last = exc
                 continue
 
-            if self._cache is not None:
-                self._cache.put(path, payload)
             return payload
 
         raise DpmpApiError(
@@ -202,11 +185,6 @@ class DpmpApiClient:
                     "skipping vehicle %r that failed validation: %s", raw.get("vid"), exc
                 )
         return VehiclesResponse.model_validate({**payload, "vehicles": vehicles})
-
-    async def connection(self, line: str, number: int) -> Connection | None:
-        """One trip's stop times, or ``None`` if the upstream has no such trip."""
-        payload = await self._get(f"connections/{line}/{number}", missing_ok=True)
-        return None if payload is None else Connection.model_validate(payload)
 
     async def events(self) -> list[dict[str, Any]]:
         """Service disruptions.

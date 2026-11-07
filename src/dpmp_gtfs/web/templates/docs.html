@@ -32,7 +32,8 @@
   </tr>
   <tr>
     <td><code>GET /healthz</code></td><td><code>application/json</code></td><td>—</td>
-    <td>Stáří feedů a poslední chyba. Vrací 503, když jsou data zastaralá.</td>
+    <td>Stáří feedů a poslední chyba. Vrací 503, když není co vydat; selhanou přestavbu
+        statického feedu hlásí jako <code>healthy: false</code> s kódem 200, protože se dál vydává ten poslední.</td>
   </tr>
 </table>
 </div>
@@ -47,15 +48,15 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
 <div class="wrap">
 <table>
   <tr><th>Typ</th><th>Tvar</th><th>Příklad</th></tr>
-  <tr><td>Stanice</td><td><code>S&lt;číslo&gt;</code></td><td><code>S16</code> — Hlavní nádraží</td></tr>
-  <tr><td>Nástupiště</td><td><code>S&lt;číslo&gt;P&lt;nástupiště&gt;</code></td><td><code>S16P2</code></td></tr>
+  <tr><td>Zastávka</td><td><code>S&lt;číslo&gt;</code></td><td><code>S16</code> — Hlavní nádraží</td></tr>
   <tr><td>Linka</td><td><code>L&lt;číslo&gt;</code></td><td><code>L9</code></td></tr>
-  <tr><td>Spoj</td><td><code>L&lt;linka&gt;C&lt;spoj&gt;</code></td><td><code>L9C115</code></td></tr>
+  <tr><td>Spoj</td><td><code>L&lt;linka&gt;C&lt;spoj&gt;</code></td><td><code>L9C115</code>, po změně jízdního řádu <code>L3C446-20261114</code></td></tr>
 </table>
 </div>
 <p>
-  Jízdní řády i realtime odkazují na <strong>nástupiště</strong>, ne na stanici. Stanice existuje
-  jako <code>parent_station</code>, aby šlo nástupiště seskupit a rozumět přestupům mezi nimi.
+  Registr, ze kterého je jízdní řád, nástupiště nezná, takže zastávky žádná nemají a jízdní
+  řády i realtime odkazují přímo na ně. Vůz se se spojem páruje podle příští zastávky a času,
+  číslo spoje se s tím v registru shoduje jen někdy.
 </p>
 
 <h2>Co ve feedu čekat</h2>
@@ -73,40 +74,35 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
   by tvrdilo, že jede přesně, což z dat nevyplývá. Takových vozidel bývá kolem 40 %.
 </p>
 
-<h3>Kalendář — z CIS, ne z API</h3>
+<h3>Jízdní řád — z CIS, ne z API</h3>
 <p>
-  <strong>Dny provozu jsou jediný údaj, který nepochází z API dopravního podniku.</strong>
-  Kódy dnů provozu, které API posílá, zhruba u třetiny spojů neodpovídají vyvěšenému
-  jízdnímu řádu — spoj 46 linky 1 (06:36 ze Slovany,točna) je podle jízdního řádu i podle
-  celostátního registru <a href="https://portal.cisjr.cz/">CIS JŘ</a> pracovní den, podle
-  API víkend. Feed proto bere kalendáře z CIS, kam DPMP jízdní řády odevzdává jako primární
-  zdroj; dopravnímu podniku je rozpor nahlášený. Zhruba 2 % spojů v CIS protějšek nemají
-  a těm zůstávají kódy z API.
+  <strong>Spoje, časy a dny provozu jsou z celostátního registru
+  <a href="https://portal.cisjr.cz/">CIS JŘ</a></strong>, kam DPMP jízdní řády odevzdává jako
+  primární zdroj. Z API dopravního podniku jsou zastávky a polohy vozů; spoje z něj číst nejde,
+  odpovídá jen na ten, na kterém zrovna jede vůz.
 </p>
 <p>
-  Výsledkem je necelá dvacítka služeb: kromě pracovních dnů, soboty, neděle a denního
-  provozu i sezónní varianty, protože DPMP jezdí jiné pracovní dny podle školního
-  vyučování. Rozdíly oproti týdennímu vzorci — včetně státních svátků, kdy síť jede
-  nedělní provoz — jsou v <code>calendar_dates.txt</code>.
+  DPMP jezdí jiné pracovní dny podle školního vyučování. Rozdíly oproti týdennímu vzorci,
+  včetně státních svátků, kdy síť jede nedělní provoz, a prázdninového režimu, jsou
+  v <code>calendar_dates.txt</code>.
 </p>
 <p>
-  <strong>Kolem změny jízdního řádu je feed neúplný.</strong> Nový jízdní řád spoje
-  přečísluje, takže spoj, jehož časy se po změně mění, má poslední den provozu právě den
-  před ní — feed o něm dál neví nic a nic si nedomýšlí. Noční přestavba to srovná, jakmile
-  dopravní podnik nový řád vydá. Kdo si feed stahuje, ať to dělá denně.
+  <strong>Změny jízdního řádu feed zná dopředu</strong>, jakmile jsou v registru. Spoj, který
+  po změně jede jinak, je ve feedu dvakrát: do změny pod svým číslem, po ní s datem v čísle.
+  Kdo si feed stahuje, ať to dělá denně: po změně se ID přejmenuje.
 </p>
 
 <h3>Geometrie tras — odhad</h3>
 <p>
   <strong>Tvar trasy mezi zastávkami není údaj dopravního podniku.</strong> Zastávky, časy
-  a spoje pocházejí přímo z jeho API, ale geometrii jízdy po ulicích nikdo nepublikuje
+  a spoje pocházejí z jeho dat, ale geometrii jízdy po ulicích nikdo nepublikuje
   v podobě, ze které by šel <code>shapes.txt</code> sestavit — dopočítává se proto
   zroutováním posloupnosti zastávek přes
   <a href="https://valhalla.github.io/valhalla/">Valhallu</a> nad daty OpenStreetMap,
   autobusovým profilem.
 </p>
 <p>
-  Spoje sdílejí trasy — 2 728 spojů se scvrkne na 218 různých posloupností — takže shape
+  Spoje sdílejí trasy, různých posloupností zastávek je jen pár stovek, takže shape
   má každý spoj. <code>shape_dist_traveled</code> je v <strong>metrech</strong> a je
   vyplněné jak v <code>shapes.txt</code>, tak v <code>stop_times.txt</code>. Zastávky leží
   od trasy v mediánu 6,6 m, nejvíc 10 m.
@@ -131,10 +127,6 @@ curl -s https://…/gtfs.zip -o gtfs.zip</code></pre>
     Tři zastávky (Vápenka, Svítkov&nbsp;západ, Mikulovice) v podkladových datech DPMP
     <strong>vůbec nemají souřadnice</strong>. Doplněny jsou z OpenStreetMap. Týká se to
     přes 250 spojů, takže je vynechat nešlo.
-  </li>
-  <li>
-    Tři nástupiště, která DPMP neuvádí, jsou umístěna na souřadnice své stanice —
-    nepřesnost v řádu desítek metrů.
   </li>
   <li>
     Zastávky, kam podle jízdních řádů nic nejede, jsou z feedu vyřazené. Změny v této

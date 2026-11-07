@@ -203,6 +203,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state = scheduler.state
         return {
             "healthy": state.healthy,
+            "serving": state.serving,
             "realtime": {
                 "built_at": state.realtime_built_at.isoformat()
                 if state.realtime_built_at
@@ -214,6 +215,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "static": {
                 "version": state.static_version,
                 "built_at": state.static_built_at.isoformat() if state.static_built_at else None,
+                "fresh": state.static_is_fresh(),
                 "trips": state.trip_count,
                 "stops_without_service": len(state.unserved_stops),
                 "error": state.static_error,
@@ -223,9 +225,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/healthz", tags=["status"])
     def healthz() -> JSONResponse:
-        """Feed freshness and the last error from each loop."""
+        """Feed freshness and the last error from each loop.
+
+        503 means there is nothing fit to serve. A static feed that failed to
+        rebuild is still served, so it answers 200 with ``healthy: false`` --
+        the readiness probe reads the code, and taking the pod out of service
+        over a failed nightly rebuild would take the live feed down with it.
+        """
         payload = _status()
-        return JSONResponse(payload, status_code=200 if payload["healthy"] else 503)
+        return JSONResponse(payload, status_code=200 if payload["serving"] else 503)
 
     # -- pages ---------------------------------------------------------------
 

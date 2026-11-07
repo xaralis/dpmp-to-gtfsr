@@ -11,7 +11,7 @@ import hmac
 import time
 
 PROTOCOL_WINDOW_MS = 15 * 60 * 1000
-"""How long one signature stays valid. A full crawl outlasts this, so callers
+"""How long one signature stays valid. A client outlives this, so callers
 must recompute per request rather than once per client."""
 
 

@@ -178,14 +178,21 @@ class Line(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-# --- /{provider}/connections/{line}/{number} --------------------------------
+# --- a trip's stop times ------------------------------------------------------
+#
+# Shaped after ``/{provider}/connections/{line}/{number}``, which served the
+# timetable until it stopped answering for trips no vehicle is on. The timetable
+# now comes from CIS (dpmp_gtfs.static.timetable) and keeps this shape.
 
 
 class ConnectionStop(BaseModel):
     stop_id: int = Field(alias="stopId")
     platform_id: str = Field(alias="platformId", default="")
+    """Empty for a CIS journey: CIS does not know platforms."""
     departure_time: str | None = Field(alias="departureTime", default=None)
     arrival_time: str | None = Field(alias="arrivalTime", default=None)
+    on_request: bool = False
+    """Zastávka na znamení, as this trip's own timetable says."""
 
     model_config = {"populate_by_name": True}
 

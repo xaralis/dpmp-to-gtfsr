@@ -1,8 +1,30 @@
 # API za api.mhdonline.cz
 
-Zpětně zjištěná dokumentace neveřejného API, ze kterého tenhle projekt staví
-oba feedy. Není oficiální a nikdo ho nikde nepopisuje — všechno níž je odvozené
-z pozorování webové aplikace DPMP a ověřené proti reálným odpovědím.
+Zpětně zjištěná dokumentace neveřejného API, ze kterého tenhle projekt bere
+zastávky a živé polohy vozů. Není oficiální a nikdo ho nikde nepopisuje —
+všechno níž je odvozené z pozorování webové aplikace DPMP a ověřené proti
+reálným odpovědím. Jízdní řád z něj od listopadu 2026 nebereme, viz další
+kapitola.
+
+## 403 na `connections`: jízdní řád z API číst nejde
+
+Od 25. 8. 2026 padala noční přestavba na `403` na `connections/1/1`. Změřeno
+7. 11. 2026:
+
+- **Podpis se nezměnil.** Bundl `online.dpmp.cz/assets/index-*.js` počítá
+  `X-App-Protocol` pořád stejně a `stops`, `lines`, `vehicles` i
+  `connections/{line}/longest` na něj odpovídají 200. Bez podpisu je 403 všude.
+- **`connections/{line}/{n}` odpovídá jen pro spoj, na kterém zrovna jede vůz.**
+  Z 56 po sobě jdoucích čísel linky 1 dala 200 právě ta tři, která v tu chvíli
+  hlásilo `/vehicles`, ostatních 53 dalo 403 s prázdným tělem — i čísla, která
+  neexistují (`connections/1/99999`). Neexistující linka je 404.
+- **Není to blokace nás.** Stejná odpověď přijde z jejich vlastní stránky
+  v prohlížeči, se stejnou hlavičkou. Jejich aplikace se na jiný spoj než na ten
+  rozkliknutého vozu nikdy neptá, takže si toho nevšimne.
+
+Je to tedy pravidlo pro všechny, ne chyba ani mechanismus, který by se dal
+odvodit a napodobit. **Neobcházíme ho** a spoje si postupně nesbíráme z jedoucích
+vozů: celý jízdní řád bereme z veřejného registru CIS JŘ, kam ho DPMP odevzdává.
 
 ## Co se stalo
 
@@ -59,7 +81,6 @@ Endpointy, které tenhle projekt používá:
 |---|---|---|---|
 | `stops` | — | zastávky, GPS, `fixedCodes` | `stops.txt` |
 | `lines` | — | linky, `jdfId` (JDF číslo linky, jen k identifikaci) | `routes.txt` |
-| `connections/{line}/{n}` | linka, číslo spoje | zastávkové časy jednoho spoje | `stop_times.txt` |
 | `vehicles` | — | živé polohy vozidel, jedna společná `time` | GTFS-RT |
 | `events` | — | mimořádnosti | zatím nic, vždy prázdné — stejně jako u starého API |
 
@@ -67,116 +88,65 @@ Bundl nabízí i další cesty (`configuration/connectionDetail`, `presets`,
 `vehicles/movement`, `paths/{a}/{b}`, `stops/{id}/incomingArrivals`,
 `connections/{line}/longest`, …), ale žádnou z nich projekt nepotřebuje.
 
-## Zdroj jízdních řádů: dohledávání přes API samotné
+## Jízdní řád: z CIS
 
-Dřív seznam spojů dodával celostátní CIS JŘ (`portal.cisjr.cz`), kam DPMP
-jízdní řády odevzdává jako primární zdroj. Tenhle projekt ho používal přes
-`dpmp_gtfs.cis`, které stahovalo dva NeTEx archivy a z nich stavělo rejstřík
-„která linka má k danému dni která čísla spojů a kterým směrem".
+[`cis/timetable.py`](../src/dpmp_gtfs/cis/timetable.py) čte z NeTEx archivů CIS
+všechno: spoje, časy, směr (`DirectionRef`), nízkopodlažnost, „na znamení" a dny
+provozu. [`static/timetable.py`](../src/dpmp_gtfs/static/timetable.py) to posadí
+na zastávky z `/stops`. Celá přestavba jsou dva dotazy na API a pár set MB
+podmíněně stažených archivů, patnáct sekund práce místo dvaceti minut a 4 400
+dotazů.
 
-**Proč je pryč.** Změřeno proti živému API: ze 32 linek se 3 rozešly s CIS
-rejstříkem (linka 12 o 28,5 %, linka 9 o 15,1 %, linka 3 o 7,1 %), ostatních
-29 sedělo přesně. Rozchod nesouvisí se stářím verze — linka 1 i linka 12
-běžely na verzi staré 40 dní, první s rozchodem 0 %, druhá 28,5 % — je to
-vlastnost jednotlivé linky, ne postupné zastarávání. Celkem 63 z 2 762 spojů
-chybělo v feedu, aniž by o tom cokoli řeklo. A prahová hodnota to nespraví:
-jen si vybírá mezi hlasitým selháním buildu a tichou dírou v feedu, protože
-spoj, o kterém rejstřík neví, se u API nikdy ani nezkusí — nemá číslo, které
-by se dalo požádat. Vlastní zdroj dat, který se s API neshoduje a nedá se s
-ním sesynchronizovat, je horší než mít jenom API.
+- **Zastávky se párují podle jména.** Z 218 jmen v CIS se od `/stops` liší jen
+  čárkami, mezerami a velikostí písmen (`Slovany,U Přejezdu` proti
+  `Slovany,u přejezdu`, `ERA,Zámeček` proti `ERA Zámeček`). Neznámé jméno build
+  zaloguje a zastávku ze spoje vypustí.
+- **Linky rozhoduje `/lines`.** CIS má navíc 902 a 906, které DPMP ve svém seznamu
+  nemá; publikované by zdvojily odjezdy jiných linek. Linku 910 nemá ani jeden
+  zdroj, na dpmp.cz je stránka bez jízdního řádu.
+- **Nástupiště CIS nemá.** Zastávky jsou proto ve feedu bez nástupišť, `S16`
+  s `location_type` 0, a poloha se tím nemění: `/stops` stejně dává jeden bod na
+  stanici. Čísla nástupišť z API zmizela s přístupem k `connections`.
+- **Dny provozu** jsou denní bitmapa (`UicOperatingPeriod/ValidDayBits`), ze které
+  [`static/calendar.py`](../src/dpmp_gtfs/static/calendar.py) udělá týdenní vzorec
+  plus výjimky. Je nutná: DPMP jezdí tři varianty pracovních dnů podle školního
+  vyučování a prázdninové dny neplynou z data.
 
-**Co ho nahradilo.** Dvě věci, obě jen z `api.mhdonline.cz`:
+### Čísla spojů API a CIS nejsou totéž
 
-- **Seznam spojů** dohledá [`static/discovery.py`](../src/dpmp_gtfs/static/discovery.py)
-  procházením číselného prostoru spojů linky — `connections/{line}/{n}` pro
-  rostoucí `n`, dokud nepřijde dost po sobě jdoucích 404. Mezery v číslování
-  jsou v síti běžné (`n` je JDF číslo spoje, ne pořadí), ale nejdelší naměřená
-  mezera je 18, takže hranice 50 po sobě jdoucích chyb má bezpečnou rezervu.
-- **`direction_id`** dopočítá [`static/direction.py`](../src/dpmp_gtfs/static/direction.py)
-  z pořadí zastávek: dva spoje sdílející aspoň dvě zastávky buď jedou ve
-  stejném relativním pořadí (stejný směr), nebo v obráceném (opačný) — nic
-  třetího, dokud srovnání nevyjde nejednoznačně. To dá přesný vztah
-  „stejný/opačný" mezi každou dvojicí spojů linky, který se dvoubarevně
-  prochází jako graf; žádný representativní spoj, žádná většina, žádné
-  hádání terminálů.
+`connectionId` z `/vehicles` se s číslem v CIS často shoduje, ale ne vždy: ze 28
+vozů 7. 11. 2026 jich 9 hlásilo číslo, které je v CIS jiná jízda téže linky. Vůz
+na lince 1 hlásí spoj 383 s odjezdem z Jesničánek ve 20:41, tutéž jízdu API vrací
+pod 383 a CIS vede jako 397, kdežto 383 je v CIS jízda o hodinu dřív.
 
-  Jediná skutečná nejednoznačnost jsou okružní linky: pokud se graf rozpadne
-  na víc souvislých komponent (typicky proto, že některé spoje sdílejí míň
-  než dvě zastávky se zbytkem), nemá relativní značení *mezi* komponentami
-  žádný geometrický podklad — kód to loguje a přijímá, nesnaží se hádat.
+Realtime proto číslu nevěří: [`StaticIndex.trip_of`](../src/dpmp_gtfs/realtime/index.py)
+pozná spoj podle toho, že dnes jede a staví na příští zastávce vozu v čas, kdy tam
+vůz hlásí být. Číslo rozhoduje jen shodu. Radši vůz bez spoje než vůz na cizím
+spoji. Ověřeno proti `connections` jedoucích vozů: 26 z 26 stejných časů, všech 28
+přiřazeno.
 
-**Co dohledávání nedá:** souřadnice nástupišť pořád nemá nikdo — ty dál
-zůstávají po zastávce, ne po nástupišti, viz výše.
-
-## Dny provozu: jediná věc, kterou API neumí
-
-CIS je v projektu zpátky, ale **výhradně jako zdroj dnů provozu**. Rejstřík
-spojů z něj nebereme dál — důvody výš platí beze změny.
-
-**Proč.** `fixedCodes` u zhruba třetiny spojů neodpovídají jízdnímu řádu, který
-DPMP samo vyvěšuje. Doložený případ: spoj 46 linky 1, 06:36 ze Slovany,točna.
-Vyvěšený jízdní řád i CIS říkají *pracovní den*, API posílá kód `+`, tedy
-neděle a svátky. U linky 1 sedí staré API s CIS na 206 z 206 spojů, nové na
-163. Chyba je v hodnotách, ne v našem čtení: tabulka kódů níž je opsaná
-doslova z bundlu oficiální aplikace DPMP. Hlášeno dopravnímu podniku.
-
-**Jak.** [`cis/calendars.py`](../src/dpmp_gtfs/cis/calendars.py) čte z NeTEx
-denní bitmapu (`UicOperatingPeriod/ValidDayBits`) a
-[`static/calendar.py`](../src/dpmp_gtfs/static/calendar.py) z ní udělá týdenní
-vzorec plus výjimky. Bitmapa je nutná, ne přepych: DPMP jezdí tři různé
-varianty pracovních dnů podle školního vyučování a do sedmi sloupců
-`calendar.txt` se to nevejde.
-
-Párování je `(jdf_id linky, číslo spoje)` ↔ `ServiceJourney/Name`, ověřené
-nezávisle časy prvního odjezdu. 63 z 2 762 spojů (2,3 %) v CIS protějšek nemá —
-soustředěně na linkách 12, 9 a 3 — a těm zůstanou kódy z API; build to loguje
-po spojích a přeleze-li podíl 10 %, hlásí to jako chybu.
+**Hlášení o `fixedCodes` z 10. 8. 2026 je tím pravděpodobně špatně.** Tvrzení „kódy
+nesedí u třetiny spojů" vzniklo spojením API a CIS přes číslo spoje, takže část
+rozdílů bude jen tohle. Není to doložené spoj po spoji, protože `connections` už
+na to neodpoví, ale do DPMP by to chtělo poslat opravu.
 
 ### Verze jedné linky se nepřebíjejí, navazují na sebe
 
 Linka je v archivu vícekrát: celoroční verze plus doplněk na dobu školních
-prázdnin. K datu buildu jsou platné obě, ale nesoupeří o celý rok — **dělí si
-časovou osu**. Kdyby doplněk (má pozdější `FromDate`) vyhrál celé okno, sedm
-linek včetně dvojky a šestky by od 1. září zhaslo ve feedu, který se tváří, že
-platí rok. Verzi proto vybíráme **pro každý den zvlášť**.
+prázdnin nebo výluky. K datu buildu jich platí víc, ale nesoupeří o celý rok —
+**dělí si časovou osu**. Verzi proto vybíráme **pro každý den zvlášť**: vyhrává
+pozdější `FromDate`, při shodě kratší platnost (dočasná verze položená přes tu
+dlouhou; na lince 21 od 1. 9. obě a vozy jezdí tu kratší).
 
-Číslo spoje ale **není napříč verzemi identifikátor**. Změřeno na lince 2:
-zářijová verze sdílí se srpnovou 103 čísel spojů a u 45 z nich znamená jinou
-jízdu (spoj 21 vyjíždí v 5:15, po změně v 5:20). Slepé sjednocení by tedy
-publikovalo srpnové časy s zářijovými dny — cestující stojí na zastávce, kudy
-v tu chvíli nic nejede. Pozdější verze proto smí spoj protáhnout jen tehdy,
-když se **shodují všechny jeho časy** s verzí právě platnou; jinak spoj v den
-změny jízdního řádu prostě končí a build to zaloguje po linkách. Feed je pak
-neúplný, ne špatný. Ze změřených 8 linek s návazností se takhle protáhne
-například celá 906 a 92 ze 115 spojů linky 902.
+Číslo spoje **není napříč verzemi identifikátor**. Změřeno na lince 2: zářijová
+verze sdílí se srpnovou 103 čísel spojů a u 45 z nich znamená jinou jízdu. Spoj
+se proto protáhne přes změnu, jen když se **shodují všechny jeho zastávky a časy**.
+Jinak má pozdější jízda spoj sám pro sebe s datem své verze v čísle
+(`L3C446-20261114`). Feed tak zná jízdní řád i za změnou a po ní se jen přejmenuje
+na čisté číslo.
 
-### Kdy půjde CIS vyhodit
-
-Tenhle druhý zdroj je berlička, ne architektura. Drží ho jediná podmínka:
-**`fixedCodes` u spoje musí odpovídat vyvěšenému jízdnímu řádu.** Nic víc se
-po API nechce — časy, zastávky, čísla spojů i realtime jsou v pořádku už teď
-a celý rejstřík spojů si dohledáváme sami.
-
-Ověřit, že je opraveno, jde bez čtení kódu. Postav feed a porovnej ho s CIS:
-
-```bash
-DPMP_HTTP_CACHE=1 uv run dpmp-gtfs build-static
-```
-
-V logu je řádek `calendars: N trips from CIS, M fell back`. Když se u spojů
-mimo CIS začnou kódy z API shodovat s tím, co říká vyvěšený jízdní řád, je
-hotovo. Kontrolní případ, na kterém se to pozná nejrychleji, je spoj 46
-linky 1 — 06:36 ze Slovany,točna má být `X`, ne `+`.
-
-Odstranění je pak jeden commit: smazat `src/dpmp_gtfs/cis/`, volání
-`_fetch_calendars` ve [`scheduler.py`](../src/dpmp_gtfs/web/scheduler.py) a
-[`cli.py`](../src/dpmp_gtfs/cli.py), pole `calendars` z `Timetable`, větev
-`service_from_dates` v [`builder.py`](../src/dpmp_gtfs/static/builder.py),
-nastavení `cis_urls`/`cis_dir` a závislost `defusedxml`. `Service` si výjimky
-(`added`/`removed`) může nechat i tak — jsou zadarmo, když jsou prázdné.
-
-Proto je ta hranice vedená takhle ostře: kdyby se z CIS bralo cokoli dalšího,
-tenhle odstavec by přestal platit.
+To byla příčina dřívějšího stavu „17 služeb končí 31. 8.": spoje další verze ve
+feedu nebyly vůbec, spoléhalo se na noční přestavbu, a ta neběžela.
 
 ## Na co si dát pozor
 
@@ -212,7 +182,7 @@ věci:
 
 | úroveň | kód | význam |
 |---|---|---|
-| spoj (`/connections/{line}/{n}`) | `X` | jede v pracovních dnech |
+| spoj | `X` | jede v pracovních dnech |
 | spoj | `6` / `+` | sobota / neděle a svátky |
 | spoj | `@` | nízkopodlažní vůz |
 | zastávka (`/stops`) | `@` | bezbariérová zastávka (`wheelchair_boarding`) |
@@ -220,17 +190,3 @@ věci:
 
 Velké `X` a malé `x` jsou dva různé kódy. Porovnání kódů musí být
 case-sensitive.
-
-### Pole, která v `/connections` zmizela
-
-Starý `ConnectionStop` nesl `index`, `distance` a per-zastávkové `codes`. Nový
-vrací jen `stopId`, `platformId` a `departureTime`/`arrivalTime`. Dopad:
-
-- **`index` živil směr spoje.** Náhrada je popsaná výše: `direction_id` se
-  dopočítá z pořadí zastávek napříč spoji stejné linky, ne z pole, které API
-  publikuje.
-- **`distance`** byl už dřív příliš hrubý na `shape_dist_traveled`. Nechybí.
-- **per-zastávkové `codes`** živily „na znamení". Náhrada je `fixedCodes` na
-  zastávce v `/stops` — sémantika se mírně mění, „na znamení" je nově
-  vlastnost zastávky, ne zastávky v rámci konkrétního spoje. To je spíš
-  správnější.

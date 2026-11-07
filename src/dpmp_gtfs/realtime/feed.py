@@ -44,7 +44,7 @@ def build_feed_message(
     reported_at = int(now.timestamp())
 
     for vehicle in vehicles:
-        trip = index.lookup(vehicle.line_id, vehicle.connection_id)
+        trip = index.trip_of(vehicle, now)
         if trip is None:
             unmatched += 1
             logger.debug(

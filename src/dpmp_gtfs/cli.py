@@ -10,7 +10,7 @@ from typing import Any
 import typer
 
 from dpmp_gtfs.api import DpmpApiClient
-from dpmp_gtfs.cis import build_calendars, fetch_archives
+from dpmp_gtfs.cis import fetch_archives, read_timetable
 from dpmp_gtfs.config import settings
 from dpmp_gtfs.error_tracking import init_error_tracking
 from dpmp_gtfs.static.builder import (
@@ -19,8 +19,7 @@ from dpmp_gtfs.static.builder import (
     iter_missing_stop_references,
     with_shapes,
 )
-from dpmp_gtfs.static.crawler import crawl
-from dpmp_gtfs.static.discovery import discover_trips
+from dpmp_gtfs.static.timetable import load_timetable
 from dpmp_gtfs.static.writer import write_feed
 
 app = typer.Typer(help="GTFS / GTFS-Realtime feed tooling for Pardubice public transport.")
@@ -34,7 +33,7 @@ logger = logging.getLogger("dpmp_gtfs")
 
 @app.callback()
 def main() -> None:
-    # Here rather than in ``serve`` alone: ``build-static`` is a twenty-minute
+    # Here rather than in ``serve`` alone: ``build-static`` is an unattended
     # job whose failures matter just as much. Without ``--reload`` uvicorn
     # serves from this same process, so the app is covered too.
     init_error_tracking()
@@ -45,21 +44,20 @@ def build_static(
     dest: Path = typer.Option(None, help="Output path. Defaults to <data_dir>/gtfs.zip."),
     shapes: bool = typer.Option(True, help="Route trip geometry against OpenStreetMap."),
 ) -> None:
-    """Crawl the full timetable and write a GTFS zip."""
+    """Read the full timetable and write a GTFS zip."""
 
     async def run() -> None:
         today = dt.date.today()
         archives = await fetch_archives(settings.cis_urls, settings.cis_dir)
-        calendars = build_calendars(archives, today, today + dt.timedelta(days=VALIDITY_DAYS))
-        if not calendars:
-            # Every trip would fall back to the API's days of operation, which
-            # are wrong for about a third of them. Overwriting a good gtfs.zip
-            # with that is the one outcome worth refusing outright.
+        cis = read_timetable(archives, today, today + dt.timedelta(days=VALIDITY_DAYS))
+        if not cis.calendars:
+            # There would be no trips at all. Overwriting a good gtfs.zip with
+            # that is the one outcome worth refusing outright.
             typer.echo("Aborting: the CIS archives describe no DPMP calendars", err=True)
             raise typer.Exit(1)
 
         async with DpmpApiClient() as api:
-            timetable = await crawl(api, calendars)
+            timetable = await load_timetable(api, cis)
 
         destination = dest or settings.gtfs_zip_path
         feed = build_feed(timetable, start_date=today)
@@ -97,7 +95,6 @@ def serve(
 @app.command("dump-fixtures")
 def dump_fixtures(
     dest: Path = typer.Option(Path("tests/fixtures"), help="Where to write the recordings."),
-    lines: int = typer.Option(2, help="How many lines to record connection details for."),
 ) -> None:
     """Record live API responses so tests can run against real data offline."""
 
@@ -107,16 +104,6 @@ def dump_fixtures(
 
             line_list = await api.lines()
             _write(dest / "lines.json", [line.model_dump(mode="json") for line in line_list])
-
-            for line in line_list[:lines]:
-                connections = await discover_trips(api, line.id)
-                # A couple of trips is enough to exercise the stop_times path.
-                for number in sorted(connections)[:3]:
-                    _write(
-                        dest / f"connection-{line.id}-{number}.json",
-                        connections[number].model_dump(mode="json"),
-                    )
-
             _write(dest / "vehicles.json", (await api.vehicles()).model_dump(mode="json"))
 
     asyncio.run(run())

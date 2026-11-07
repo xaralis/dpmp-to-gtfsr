@@ -21,6 +21,7 @@ def stub_cis(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, int], frozenset
     a test that does care can put trips in it. Deliberately not empty: the
     scheduler refuses to build a feed on no calendars at all.
     """
+    from dpmp_gtfs.cis import CisTimetable
     from dpmp_gtfs.web import scheduler as scheduler_module
 
     calendars = {("655001", 1): frozenset({dt.date(2026, 8, 10)})}
@@ -28,11 +29,11 @@ def stub_cis(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, int], frozenset
     async def fetch_archives(urls: Any, dest: Any, client: Any = None) -> list[Path]:
         return []
 
-    def build_calendars(paths: Any, on_date: dt.date, horizon: dt.date) -> Any:
-        return calendars
+    def read_timetable(paths: Any, on_date: dt.date, horizon: dt.date) -> Any:
+        return CisTimetable(calendars=calendars)  # type: ignore[arg-type]
 
     monkeypatch.setattr(scheduler_module, "fetch_archives", fetch_archives)
-    monkeypatch.setattr(scheduler_module, "build_calendars", build_calendars)
+    monkeypatch.setattr(scheduler_module, "read_timetable", read_timetable)
     return calendars
 
 

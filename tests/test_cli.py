@@ -7,6 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from dpmp_gtfs import cli
+from dpmp_gtfs.cis import CisTimetable
 
 
 def test_build_static_refuses_when_cis_describes_no_calendars(
@@ -27,15 +28,17 @@ def test_build_static_refuses_when_cis_describes_no_calendars(
     async def no_archives(*args: object, **kwargs: object) -> list[Path]:
         return []
 
-    def no_calendars(*args: object, **kwargs: object) -> dict[tuple[str, int], frozenset[object]]:
-        return {}
+    def no_calendars(*args: object, **kwargs: object) -> CisTimetable:
+        return CisTimetable()
 
     def must_not_run(*args: object, **kwargs: object) -> None:
-        raise AssertionError("the crawl must not start once the calendars are known to be missing")
+        raise AssertionError(
+            "the timetable must not be assembled once the calendars are known to be missing"
+        )
 
     monkeypatch.setattr(cli, "fetch_archives", no_archives)
-    monkeypatch.setattr(cli, "build_calendars", no_calendars)
-    monkeypatch.setattr(cli, "crawl", must_not_run)
+    monkeypatch.setattr(cli, "read_timetable", no_calendars)
+    monkeypatch.setattr(cli, "load_timetable", must_not_run)
 
     result = CliRunner().invoke(cli.app, ["build-static", "--dest", str(existing)])
 
