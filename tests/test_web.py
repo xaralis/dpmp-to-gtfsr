@@ -264,15 +264,19 @@ async def test_openapi_explorer_moved_aside(client: httpx.AsyncClient) -> None:
 async def test_map_page_renders(client: httpx.AsyncClient) -> None:
     response = await client.get("/map")
     assert response.status_code == 200
-    assert "/static/vendor/leaflet.js" in response.text
+    assert "/static/map.js" in response.text
+    assert "/static/vendor/maplibre-gl.css" in response.text
 
 
-async def test_leaflet_is_served_locally(client: httpx.AsyncClient) -> None:
-    """Vendored rather than pulled from a CDN, so the page works on a locked
-    down network and does not leak visitors to a third party."""
-    response = await client.get("/static/vendor/leaflet.js")
-    assert response.status_code == 200
-    assert "Leaflet" in response.text[:200]
+async def test_maplibre_is_served_locally(client: httpx.AsyncClient) -> None:
+    """Vendored rather than pulled from a CDN, so the page's own code does not
+    depend on a third party. A browser refuses a module or a worker served
+    without a JavaScript type, so the type is part of what is being checked."""
+    for name in ("maplibre-gl.mjs", "maplibre-gl-worker.mjs"):
+        response = await client.get(f"/static/vendor/{name}")
+        assert response.status_code == 200
+        assert "MapLibre GL JS" in response.text[:200]
+        assert response.headers["content-type"].startswith("text/javascript")
 
 
 async def test_coverage_is_503_before_the_feed_exists(client: httpx.AsyncClient) -> None:

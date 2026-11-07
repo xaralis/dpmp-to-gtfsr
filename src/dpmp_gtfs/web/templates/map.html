@@ -4,13 +4,13 @@
 {% block main_class %}fullscreen{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/static/vendor/leaflet.css">
+<link rel="stylesheet" href="/static/vendor/maplibre-gl.css">
 <link rel="stylesheet" href="/static/map.css">
 {% endblock %}
 
 {% block content %}
 {# The page is sized to the viewport and does not scroll. That is what lets the
-   map keep Leaflet's own wheel handling: with no page scroll to steal, the
+   map keep its stock wheel handling: with no page scroll to steal, the
    wheel has nothing to do but zoom, and a trackpad pinch -- which browsers
    deliver as ctrl+wheel -- works without any code of ours. #}
 <div class="lines">
@@ -24,25 +24,30 @@
   {# Overlaid rather than stacked above the map: as a block element it appeared
      and disappeared with the selection, shifting the map under the cursor. #}
   <div class="detail" id="detail" hidden></div>
-  <div id="map-status" aria-live="polite">Načítám…</div>
 
-  <div class="legend">
-  {# The actual vehicle marker, not an abstract swatch: it is what people are
-     matching against on the map, and the square/circle carries the mode. #}
-  <span><i class="veh trolley">3</i> trolejbus</span>
-  <span><i class="veh bus">6</i> autobus</span>
-  <span><i class="swatch" style="background:#c6f432"></i> vybraná linka</span>
-  {# Both dots mean the same thing; lime just marks the ones on the selected
-     line, which the map makes obvious in context. #}
-  <span>
-    <i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i>
-    <i class="dot" style="background:#c6f432"></i> zastávka
-  </span>
+  {# Status and legend share one box, so they can never overlap: side by side
+     where the width allows, stacked on a phone. #}
+  <div class="map-foot" id="map-foot">
+    <div id="map-status" aria-live="polite">Načítám…</div>
+
+    <div class="legend">
+    {# The actual vehicle marker, not an abstract swatch: it is what people are
+       matching against on the map, and the square/circle carries the mode. #}
+    <span><i class="veh trolley">3</i> trolejbus</span>
+    <span><i class="veh bus">6</i> autobus</span>
+    <span><i class="swatch" style="background:#c6f432"></i> vybraná linka</span>
+    {# Both dots mean the same thing; lime just marks the ones on the selected
+       line, which the map makes obvious in context. #}
+    <span>
+      <i class="dot" style="background:#f5f5f0;border:1px solid #0a0a0a"></i>
+      <i class="dot" style="background:#c6f432"></i> zastávka
+    </span>
+    </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/vendor/leaflet.js"></script>
-<script src="/static/map.js"></script>
+{# A module, because that is the only form MapLibre 6 ships in. map.js imports it. #}
+<script type="module" src="/static/map.js"></script>
 {% endblock %}

@@ -2,68 +2,144 @@
 // checked by a syntax-aware tool, and never mixed with Jinja braces.
 // Its one server-supplied value arrives on #map as data-refresh-ms.
 
+import * as maplibregl from "/static/vendor/maplibre-gl.mjs";
+
 (function () {
   "use strict";
 
   var mapEl = document.getElementById("map");
+  var statusEl = document.getElementById("map-status");
+  var detailEl = document.getElementById("detail");
+  var chipsEl = document.getElementById("chips");
+  var footEl = document.getElementById("map-foot");
   var REFRESH_MS = Number(mapEl.dataset.refreshMs) || 15000;
 
   // Brand colours straight from the palette -- on a dark basemap they need no
   // adjustment, which is what they were designed for.
-  // Vehicle colours live in CSS (.veh.bus / .trolley / .picked); these are
-  // only the ones Leaflet needs for polylines.
+  var palette = getComputedStyle(document.documentElement);
   var TROLLEY = "#2ad4c5", BUS = "#8b93a3", PICKED = "#c6f432";
+  var COAL = palette.getPropertyValue("--coal").trim();
+  var LINEN = palette.getPropertyValue("--linen").trim();
+  var VEHICLE_FILL = {
+    trolley: palette.getPropertyValue("--teal").trim(),
+    bus: palette.getPropertyValue("--warning").trim()
+  };
 
-  // Leaflet's own defaults, deliberately. There used to be thirty lines below
-  // reimplementing pinch-to-zoom, because scrollWheelZoom was off to stop the
-  // map trapping the page scroll -- and turning it off kills trackpad pinch
-  // too, which browsers deliver as a wheel event with ctrlKey set. Sizing the
-  // page to the window removed the reason: with nothing to scroll past, the
-  // wheel has no other job, so Leaflet handles wheel, trackpad pinch and
-  // two-finger touch on its own. online.dpmp.cz gets it right the same way,
-  // on the same Leaflet version.
+  // Free and keyless: no registration, no limits on views or requests. Its tile
+  // metadata carries the OpenFreeMap / OpenMapTiles / OpenStreetMap attribution,
+  // which the attribution control below picks up by itself.
+  var BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/dark";
+  // The public instance comes with no availability promise, and the vehicles
+  // are the point of this page. Without the style there are no glyphs either,
+  // so the overlays below drop their text and keep working.
+  var NO_BASEMAP = {
+    version: 8, sources: {},
+    layers: [{ id: "background", type: "background", paint: { "background-color": COAL } }]
+  };
+
+  // This style is tuned for maps that carry their own data, so at city zoom the
+  // street grid all but disappears. Lifting these brings roads and labels back
+  // without swapping to a light basemap.
+  var LIFTED_ROADS = {
+    highway_path: "#2c2c30", highway_minor: "#343434",
+    highway_major_casing: "#5c5c5c", highway_major_inner: "#2a2a2a", highway_major_subtle: "#484848",
+    highway_motorway_casing: "#6a6a6a", highway_motorway_inner: "#2e2e2e",
+    highway_motorway_subtle: "#3c3c3c"
+  };
+  var LIFTED_LABEL = "#9a9a95";
+
+  // Vendored too; left to itself MapLibre would look for it beside a bundle.
+  maplibregl.setWorkerUrl("/static/vendor/maplibre-gl-worker.mjs");
+
+  // Zoom numbers are one lower than Leaflet's were for the same picture:
+  // MapLibre counts in 512 px tiles, Leaflet counted in 256 px ones.
   //
-  // No zoom options at all, deliberately. zoomSnap 0 and a raised
-  // wheelPxPerZoomLevel were both tried and both made the wheel feel sluggish:
-  // with snapping off, Leaflet's wheel maths spreads one gesture across
-  // fractional levels, so a flick that should cross a level barely moves.
-  // Stock Leaflet steps one level per gesture, which is what every other map
-  // does and what people are expecting.
-  var map = L.map("map").setView([50.0343, 15.7812], 12);
+  // Wheel, trackpad pinch (a wheel event with ctrlKey set) and two-finger touch
+  // are all stock behaviour. Only rotation and tilt are off: a passenger map
+  // gains nothing from them, and a stray two-finger twist on a phone would
+  // leave it turned with no obvious way back.
+  var map;
+  try {
+    map = new maplibregl.Map({
+      container: mapEl,
+      style: BASEMAP_STYLE,
+      center: [15.7812, 50.0343],
+      zoom: 11,
+      maxZoom: 18,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+      // Always the full text. The compact form hides the OpenStreetMap credit
+      // behind a button on exactly the screens where it fits fine.
+      attributionControl: { compact: false },
+      // The vehicle source is replaced every refresh; fading its symbols back
+      // in each time reads as flicker.
+      fadeDuration: 0
+    });
+  } catch (err) {
+    // No WebGL, which MapLibre cannot do without.
+    statusEl.textContent = "Mapu nelze zobrazit: prohlížeč nepodporuje WebGL.";
+    return;
+  }
+  map.touchZoomRotate.disableRotation();
+  map.keyboard.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    maxZoom: 19,
-    subdomains: "abcd",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-      '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }).addTo(map);
+  // The legend and status sit just above the attribution, which wraps to a
+  // second line on the narrowest phones.
+  var attributionEl = mapEl.querySelector(".maplibregl-ctrl-attrib");
+  if (attributionEl && window.ResizeObserver) {
+    new ResizeObserver(function () {
+      footEl.style.bottom = attributionEl.offsetHeight + 6 + "px";
+    }).observe(attributionEl);
+  }
 
   // Exposed for debugging from the console, and so tests can assert on zoom
   // without depending on tile URLs appearing in the DOM.
   window.dpmpMap = map;
 
-
-  var routeLayer = L.layerGroup().addTo(map);
-  var stopLayer = L.layerGroup().addTo(map);
-  var vehicleLayer = L.layerGroup().addTo(map);
-  // Platforms of the selected line only: all 390 at once would bury the map.
-  var platformLayer = L.layerGroup().addTo(map);
+  var basemapSettled = false;
+  var hasGlyphs = true;
+  map.once("style.load", function () {
+    basemapSettled = true;
+    map.getStyle().layers.forEach(function (layer) {
+      if (LIFTED_ROADS[layer.id]) map.setPaintProperty(layer.id, "line-color", LIFTED_ROADS[layer.id]);
+      if (/^(place|highway_name)/.test(layer.id)) map.setPaintProperty(layer.id, "text-color", LIFTED_LABEL);
+      // Names a pattern the style's own sprite does not have; the flat fill
+      // underneath is all it ever shows, minus a warning on every tile.
+      if (layer.id === "landcover_wood") map.setPaintProperty(layer.id, "fill-pattern", undefined);
+    });
+  });
+  map.on("error", function (e) {
+    console.warn("map:", e.error && e.error.message);
+    if (basemapSettled) return;
+    basemapSettled = true;
+    hasGlyphs = false;
+    map.setStyle(NO_BASEMAP);
+  });
+  var mapReady = new Promise(function (resolve) { map.once("load", resolve); });
 
   // Below this the whole network is in view, vehicles are a few pixels apart
   // and an arrow on each is noise rather than information.
-  var HEADING_MIN_ZOOM = 14;
+  var HEADING_MIN_ZOOM = 13;
+  // Generous for a fingertip; a 3.5 px stop is otherwise close to untappable.
+  var HIT_RADIUS = 8;
+  // Topmost first, so whatever is drawn on top also wins the click.
+  var CLICK_ORDER = ["vehicles", "platforms", "stops", "routes"];
+  var LAYER_GROUPS = [
+    { label: "Trasy", key: "routes", layers: ["routes"] },
+    { label: "Zastávky", key: "stops", layers: ["stops"] },
+    { label: "Zastávky linky", key: "platforms", layers: ["platforms", "platform-labels"] },
+    { label: "Vozidla", key: "vehicles", layers: ["vehicle-arrows", "vehicles"] }
+  ];
 
-  var statusEl = document.getElementById("map-status");
-  var detailEl = document.getElementById("detail");
-  var chipsEl = document.getElementById("chips");
-
-  // route number -> { polylines, bounds, name, trolleybus }
+  // route number -> { routes (GeoJSON features), bounds, name, trolleybus }
   var lines = {};
   var selected = null;
   var allBounds = null;
   var counts = { routes: 0, stops: 0 };
   var lastVehicles = [];
+  var stations = [];    // every stop; layer features refer to it by index
   var platforms = [];   // every platform, with the lines that call there
   var feedTime = null;
   var failure = null;
@@ -75,15 +151,15 @@
   var buildPhase = null;
   var coverageError = null;
   var buildPollTimer = null;
-  // Which vehicle's popup is open, if any. Markers are rebuilt from scratch on
-  // every refresh and on every selection, so without remembering this the
-  // popup would close by itself every fifteen seconds -- and clicking a
-  // vehicle, which now also picks its line, would close the popup it opened.
+  // The one open popup, and which layer group it belongs to.
+  var popup = null;
+  var popupOwner = null;
+  // Which vehicle's popup should be open, if any. It outlives the popup itself:
+  // a vehicle that drops out of the feed for one refresh, or is hidden by the
+  // current selection, gets its popup back when it returns.
   var openVehicle = null;
-  // Leaflet fires popupclose when a marker is removed, not only when the user
-  // dismisses it. Without this flag the teardown at the start of a rebuild
-  // would clear openVehicle before the rebuild could act on it.
-  var rebuilding = false;
+  // Set while a refresh closes a popup, which is not the user dismissing it.
+  var syncing = false;
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
@@ -91,31 +167,330 @@
     });
   }
 
-  // --- styling --------------------------------------------------------------
+  function featureCollection(features) {
+    return { type: "FeatureCollection", features: features };
+  }
 
-  map.on("zoomend", syncHeadings);
-  syncHeadings();
+  function point(lon, lat, properties) {
+    return {
+      type: "Feature", properties: properties,
+      geometry: { type: "Point", coordinates: [lon, lat] }
+    };
+  }
 
-  function syncHeadings() {
-    mapEl.classList.toggle("show-headings", map.getZoom() >= HEADING_MIN_ZOOM);
+  // --- layers ---------------------------------------------------------------
+
+  // Drawn rather than taken from CSS, because a symbol layer can only use
+  // images. Same shape language as the chips: buses are rounded, trolleybuses
+  // are square. The stretch zones keep the corners intact when a longer line
+  // number widens the badge.
+  function addBadgeImage(id, fill, radius) {
+    var scale = 2, size = 20 * scale, middle = size / 2;
+    var canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = COAL;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, radius * scale);
+    ctx.fill();
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.roundRect(scale, scale, size - 2 * scale, size - 2 * scale, Math.max(radius - 1, 0) * scale);
+    ctx.fill();
+    map.addImage(id, ctx.getImageData(0, 0, size, size), {
+      pixelRatio: scale,
+      stretchX: [[middle - 1, middle + 1]],
+      stretchY: [[middle - 1, middle + 1]]
+    });
+  }
+
+  // Direction of travel: an arrow orbiting the marker, pointing at the next
+  // stop. Outside the badge rather than on top of it -- drawn over the fill it
+  // read as a bite taken out of the circle, not as a heading. The outline is
+  // there because the arrow crosses lime route lines and the dark background
+  // alike.
+  //
+  // The bearing comes from the server, because the upstream's gps_course is
+  // null on every vehicle ever recorded.
+  function addArrowImage() {
+    // 27 px from the centre to the tip, which clears the 20 px badge at any bearing.
+    var scale = 2, size = 54 * scale, middle = size / 2;
+    var canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    var ctx = canvas.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(middle, 2 * scale);
+    ctx.lineTo(middle + 8 * scale, 15 * scale);
+    ctx.lineTo(middle - 8 * scale, 15 * scale);
+    ctx.closePath();
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 3 * scale;
+    ctx.strokeStyle = COAL;
+    ctx.stroke();
+    ctx.fillStyle = LINEN;
+    ctx.fill();
+    map.addImage("vehicle-arrow", ctx.getImageData(0, 0, size, size), { pixelRatio: scale });
+  }
+
+  function addDataLayers() {
+    addBadgeImage("vehicle-bus", VEHICLE_FILL.bus, 10);
+    addBadgeImage("vehicle-trolley", VEHICLE_FILL.trolley, 0);
+    addArrowImage();
+
+    ["routes", "stops", "platforms", "vehicles"].forEach(function (id) {
+      map.addSource(id, { type: "geojson", data: featureCollection([]) });
+    });
+
+    map.addLayer({
+      id: "routes", type: "line", source: "routes",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": PICKED, "line-width": 5, "line-opacity": 0.95 }
+    });
+    map.addLayer({
+      id: "stops", type: "circle", source: "stops",
+      paint: {
+        "circle-radius": 3.5, "circle-color": LINEN, "circle-opacity": 0.9,
+        "circle-stroke-color": COAL, "circle-stroke-width": 1.5
+      }
+    });
+    map.addLayer({
+      id: "platforms", type: "circle", source: "platforms",
+      paint: {
+        "circle-radius": 4, "circle-color": PICKED,
+        "circle-stroke-color": COAL, "circle-stroke-width": 1.5
+      }
+    });
+    if (hasGlyphs) {
+      // Stop names for the selected line. Where they would collide the less
+      // important one waits for the next zoom level instead of stacking.
+      map.addLayer({
+        id: "platform-labels", type: "symbol", source: "platforms",
+        layout: {
+          "text-field": ["get", "name"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 11,
+          "text-anchor": "left",
+          "text-offset": [0.8, -0.5]
+        },
+        paint: { "text-color": LINEN, "text-halo-color": COAL, "text-halo-width": 1.5 }
+      });
+    }
+    // Above stops and lines, so a vehicle is never hidden behind them.
+    map.addLayer({
+      id: "vehicle-arrows", type: "symbol", source: "vehicles",
+      minzoom: HEADING_MIN_ZOOM,
+      filter: ["has", "heading"],
+      layout: {
+        "icon-image": "vehicle-arrow",
+        "icon-rotate": ["get", "heading"],
+        "icon-rotation-alignment": "map",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true
+      }
+    });
+    var vehicleLayout = {
+      "icon-image": ["concat", "vehicle-", ["get", "kind"]],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true
+    };
+    if (hasGlyphs) {
+      vehicleLayout["icon-text-fit"] = "both";
+      // Top, right, bottom, left: makes a one-digit badge the same 20 px circle
+      // the legend shows, and lets a longer number grow it sideways.
+      vehicleLayout["icon-text-fit-padding"] = [2, 6, 3, 6];
+      // Vehicles are labelled with their line number: a plain dot tells you a
+      // bus is there, not which one, and "which line is that" is the first
+      // thing anyone asks of a live map.
+      vehicleLayout["text-field"] = ["get", "line"];
+      vehicleLayout["text-font"] = ["Noto Sans Bold"];
+      vehicleLayout["text-size"] = 11;
+      vehicleLayout["text-allow-overlap"] = true;
+      vehicleLayout["text-ignore-placement"] = true;
+    }
+    map.addLayer({
+      id: "vehicles", type: "symbol", source: "vehicles",
+      layout: vehicleLayout, paint: { "text-color": COAL }
+    });
+
+    map.on("click", onMapClick);
+    map.on("mousemove", function (e) {
+      map.getCanvas().style.cursor = hitAt(e.point) ? "pointer" : "";
+    });
+  }
+
+  // Whatever is under the pointer, by CLICK_ORDER and then by distance: with a
+  // fingertip-sized radius several stops can fall inside it at once.
+  function hitAt(where) {
+    var hits = map.queryRenderedFeatures([
+      [where.x - HIT_RADIUS, where.y - HIT_RADIUS],
+      [where.x + HIT_RADIUS, where.y + HIT_RADIUS]
+    ], { layers: CLICK_ORDER });
+
+    for (var i = 0; i < CLICK_ORDER.length; i++) {
+      var inLayer = hits.filter(function (f) { return f.layer.id === CLICK_ORDER[i]; });
+      if (inLayer.length && CLICK_ORDER[i] === "routes") return inLayer[0];
+      if (inLayer.length) {
+        return inLayer.reduce(function (best, f) {
+          return distanceTo(where, f) < distanceTo(where, best) ? f : best;
+        });
+      }
+    }
+    return null;
+  }
+
+  function distanceTo(where, feature) {
+    return where.dist(map.project(feature.geometry.coordinates));
+  }
+
+  function onMapClick(e) {
+    var hit = hitAt(e.point);
+    if (!hit) return;
+    var layer = hit.layer.id, props = hit.properties;
+
+    if (layer === "routes") {
+      select(String(props.route));
+    } else if (layer === "stops") {
+      openStopPopup(stations[props.index], "stops");
+    } else if (layer === "platforms") {
+      openStopPopup(platforms[props.index], "platforms");
+    } else if (layer === "vehicles") {
+      // Clicking a vehicle picks its line too: the question that follows
+      // "which bus is that" is almost always "and where does it go".
+      openVehicle = props.vehicle_id;
+      var vehicle = lastVehicles.filter(function (v) { return v.vehicle_id === openVehicle; })[0];
+      if (vehicle && selected !== vehicle.line) select(vehicle.line, true);
+      else syncVehiclePopup();
+    }
+  }
+
+  // The layer switch Leaflet used to supply. MapLibre has none built in.
+  function addLayerSwitch() {
+    var box = document.createElement("div");
+    box.className = "maplibregl-ctrl maplibregl-ctrl-group layer-switch";
+
+    var toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.setAttribute("aria-label", "Vrstvy mapy");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.innerHTML =
+      '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">' +
+      '<path d="M10 3 18 7.5 10 12 2 7.5Z"/><path d="M4.5 11 2 12.5 10 17 18 12.5 15.5 11"/></svg>';
+
+    var panel = document.createElement("div");
+    panel.className = "layer-panel";
+    panel.hidden = true;
+
+    function setOpen(open) {
+      panel.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+    }
+    toggle.addEventListener("click", function () { setOpen(panel.hidden); });
+    map.on("click", function () { setOpen(false); });
+
+    LAYER_GROUPS.forEach(function (group) {
+      var label = document.createElement("label");
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = true;
+      box.addEventListener("change", function () { setGroupVisible(group, box.checked); });
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(" " + group.label));
+      panel.appendChild(label);
+    });
+
+    box.appendChild(toggle);
+    box.appendChild(panel);
+    map.addControl({
+      onAdd: function () { return box; },
+      onRemove: function () { box.remove(); }
+    }, "top-right");
+  }
+
+  function setGroupVisible(group, visible) {
+    group.layers.forEach(function (id) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+    });
+    // A popup does not outlive the thing it points at.
+    if (group.key === "vehicles") syncVehiclePopup();
+    else if (!visible) closePopupOf(group.key);
+  }
+
+  // --- popups ---------------------------------------------------------------
+
+  function openPopup(lngLat, html, owner) {
+    if (popup) popup.remove();
+    var opened = new maplibregl.Popup({ anchor: "bottom", offset: 12, maxWidth: "min(360px, calc(100vw - 16px))" });
+    opened.on("close", function () {
+      if (popup !== opened) return;
+      popup = null;
+      popupOwner = null;
+      if (!syncing) openVehicle = null;
+    });
+    popup = opened;
+    popupOwner = owner;
+    opened.setLngLat(lngLat).setHTML(html).addTo(map);
+    keepInView(opened);
+    return opened;
+  }
+
+  function closePopupOf(owner) {
+    if (popup && popupOwner === owner) popup.remove();
+  }
+
+  // MapLibre leaves this to the page. Fixed anchor plus panning, rather than
+  // letting the popup flip around its point, so it never ends up under the line
+  // chips or half off a phone screen.
+  function keepInView(target) {
+    var el = target.getElement();
+    if (!el) return;
+    // Measured from the projected anchor rather than the element, which is
+    // mid-transition while an earlier pan is still running.
+    map.stop();
+    var at = map.project(target.getLngLat());
+    var width = el.offsetWidth, height = el.offsetHeight;
+    var margin = 8;
+    var top = chipsEl.getBoundingClientRect().bottom - mapEl.getBoundingClientRect().top + margin;
+    var dy = Math.min(at.y - height - top, 0);
+    var dx = Math.min(at.x - width / 2 - margin, 0) ||
+             Math.max(at.x + width / 2 - mapEl.clientWidth + margin, 0);
+    if (dx || dy) map.panBy([dx, dy]);
+  }
+
+  function openStopPopup(stop, owner) {
+    var id = stop.stop_id || stop.id;
+    var opened = openPopup([stop.lon, stop.lat],
+      '<div class="popup-title">' + escapeHtml(stop.name) + "</div>" +
+      '<div class="popup-meta">' + (stop.meta || platformLabel(stop) + escapeHtml(id)) + "</div>" +
+      '<div class="dep-none">Načítám odjezdy…</div>', owner);
+    loadDepartures(stop, opened);
+  }
+
+  function syncVehiclePopup() {
+    if (openVehicle === null) return;
+    var hidden = map.getLayoutProperty("vehicles", "visibility") === "none";
+    var vehicle = hidden ? null : lastVehicles.filter(function (v) {
+      return v.vehicle_id === openVehicle && (selected === null || v.line === selected);
+    })[0];
+
+    if (!vehicle) {
+      syncing = true;
+      closePopupOf("vehicles");
+      syncing = false;
+    } else if (popupOwner === "vehicles") {
+      popup.setLngLat([vehicle.longitude, vehicle.latitude]).setHTML(vehiclePopup(vehicle));
+    } else {
+      var wanted = openVehicle;
+      openPopup([vehicle.longitude, vehicle.latitude], vehiclePopup(vehicle), "vehicles");
+      // Replacing another popup counts as dismissing that one.
+      openVehicle = wanted;
+    }
   }
 
   function restyle() {
-    Object.keys(lines).forEach(function (number) {
-      var line = lines[number];
-      var isPicked = selected === number;
-      line.polylines.forEach(function (p) {
-        // On the map only while its line is picked. Drawing every route at
-        // once buries the vehicles and stops under 425 overlapping shapes.
-        if (isPicked) {
-          p.setStyle({ color: PICKED, weight: 5, opacity: 0.95 });
-          if (!routeLayer.hasLayer(p)) routeLayer.addLayer(p);
-          p.bringToFront();
-        } else if (routeLayer.hasLayer(p)) {
-          routeLayer.removeLayer(p);
-        }
-      });
-    });
+    // On the map only while its line is picked. Drawing every route at once
+    // buries the vehicles and stops under 425 overlapping shapes.
+    map.getSource("routes").setData(featureCollection(selected === null ? [] : lines[selected].routes));
 
     Array.prototype.forEach.call(chipsEl.querySelectorAll(".chip[data-line]"), function (chip) {
       chip.setAttribute("aria-pressed", String(chip.dataset.line === selected));
@@ -128,29 +503,18 @@
     return p.platform ? "nástupiště " + escapeHtml(p.platform) + " · " : "";
   }
 
+  // Platforms of the selected line only: all 390 at once would bury the map.
   function renderPlatforms() {
-    platformLayer.clearLayers();
-    if (selected === null) return;
-
-    platforms.filter(function (p) { return p.lines.indexOf(selected) !== -1; })
-      .forEach(function (p) {
-        L.circleMarker([p.lat, p.lon], {
-          radius: 4, color: "#0a0a0a", weight: 1.5,
-          fillColor: "#c6f432", fillOpacity: 1
-        }).bindPopup(
-          '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
-          '<div class="popup-meta">' + platformLabel(p) + escapeHtml(p.stop_id || p.id) + "</div>" +
-          '<div class="dep-none">Načítám odjezdy…</div>'
-        ).on("popupopen", function (e) { loadDepartures(p, e.popup); }).addTo(platformLayer);
-
-        L.marker([p.lat, p.lon], {
-          icon: L.divIcon({
-            className: "", iconSize: null,
-            html: '<div class="stop-label">' + escapeHtml(p.name) + "</div>"
-          }),
-          interactive: false
-        }).addTo(platformLayer);
+    closePopupOf("platforms");
+    var features = [];
+    if (selected !== null) {
+      platforms.forEach(function (p, index) {
+        if (p.lines.indexOf(selected) !== -1) {
+          features.push(point(p.lon, p.lat, { index: index, name: p.name }));
+        }
       });
+    }
+    map.getSource("platforms").setData(featureCollection(features));
   }
 
   function departureRows(payload, showPlatform) {
@@ -176,7 +540,7 @@
     }).join("") + "</div>";
   }
 
-  function loadDepartures(p, popup) {
+  function loadDepartures(p, target) {
     var id = p.stop_id || p.id;
     // A station board merges platforms, so it has to say which one each
     // departure leaves from; a platform board obviously does not.
@@ -186,15 +550,18 @@
     var head = '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
                '<div class="popup-meta">' + meta + "</div>";
 
+    function show(html) {
+      if (popup !== target) return;
+      target.setHTML('<div class="dep-pop">' + head + html + "</div>");
+      // The board is far taller than the placeholder it replaces.
+      keepInView(target);
+    }
+
     fetch("/departures/" + encodeURIComponent(id) + ".json")
       .then(function (r) { if (!r.ok) throw new Error("nedostupné"); return r.json(); })
-      .then(function (payload) {
-        popup.setContent(
-          '<div class="dep-pop">' + head + departureRows(payload, isStation) + "</div>");
-      })
+      .then(function (payload) { show(departureRows(payload, isStation)); })
       .catch(function () {
-        popup.setContent('<div class="dep-pop">' + head +
-          '<div class="dep-none">Odjezdy se nepodařilo načíst.</div></div>');
+        show('<div class="dep-none">Odjezdy se nepodařilo načíst.</div>');
       });
   }
 
@@ -211,7 +578,21 @@
     // jump away from the vehicle just clicked, taking its popup with it.
     if (keepView) return;
     var target = selected ? lines[selected].bounds : allBounds;
-    if (target && target.isValid()) map.fitBounds(target, { padding: [24, 24] });
+    if (target && !target.isEmpty()) fitTo(target);
+  }
+
+  // Clear of the chips and the detail box above and the legend and status
+  // below, which on a phone take up a good part of the screen. Where they leave
+  // too little room, the detail box is the one allowed to cover the map.
+  function fitTo(bounds) {
+    var frame = mapEl.getBoundingClientRect();
+    var bottom = frame.bottom - footEl.getBoundingClientRect().top + 16;
+    var top = 96;
+    if (!detailEl.hidden) {
+      var belowDetail = detailEl.getBoundingClientRect().bottom - frame.top + 16;
+      if (frame.height - belowDetail - bottom > 160) top = belowDetail;
+    }
+    map.fitBounds(bounds, { padding: { top: top, bottom: bottom, left: 24, right: 24 } });
   }
 
   function describe() {
@@ -228,42 +609,48 @@
       '<span class="detail-line">Linka ' + escapeHtml(selected) + "</span> — " +
       escapeHtml(line.name || "") +
       '<br><span class="muted">' + (line.trolleybus ? "trolejbus" : "autobus") +
-      " · " + line.polylines.length + " tras · " +
+      " · " + line.routes.length + " tras · " +
       (running === 1 ? "1 vůz právě jede" : running + " vozů právě jede") + "</span>";
   }
 
   // --- static coverage ------------------------------------------------------
 
-  fetch("/coverage.geojson").then(function (r) {
+  addLayerSwitch();
+
+  Promise.all([fetch("/coverage.geojson").then(function (r) {
     if (!r.ok) throw new Error("feed není hotový (" + r.status + ")");
     return r.json();
-  }).then(function (geo) {
-    var everything = [];
+  }), mapReady]).then(function (loaded) {
+    var geo = loaded[0];
+    var stopFeatures = [];
+    allBounds = new maplibregl.LngLatBounds();
+
+    addDataLayers();
 
     geo.features.forEach(function (f) {
       var p = f.properties;
 
       if (p.kind === "route") {
         counts.routes++;
-        var latlngs = f.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
         var number = String(p.route);
 
         if (!lines[number]) {
           lines[number] = {
-            polylines: [], bounds: L.latLngBounds([]),
+            routes: [], bounds: new maplibregl.LngLatBounds(),
             name: p.name, trolleybus: p.trolleybus
           };
         }
         var line = lines[number];
-        // Built now, attached only while its line is selected. All 425 shapes
-        // at once turn the city into a thicket that hides the vehicles and
-        // stops, which are the parts that are actually live.
-        var poly = L.polyline(latlngs, { weight: 2.5, opacity: 0.55 })
-          .on("click", function () { select(number); });
-
-        line.polylines.push(poly);
-        line.bounds.extend(poly.getBounds());
-        everything = everything.concat(latlngs);
+        // Kept here, handed to the map only while its line is selected. All 425
+        // shapes at once turn the city into a thicket that hides the vehicles
+        // and stops, which are the parts that are actually live.
+        line.routes.push({
+          type: "Feature", geometry: f.geometry, properties: { route: number }
+        });
+        f.geometry.coordinates.forEach(function (c) {
+          line.bounds.extend(c);
+          allBounds.extend(c);
+        });
 
       } else if (p.kind === "platform") {
         platforms.push({
@@ -276,33 +663,21 @@
         // Stations carry a board too, merged across their platforms. Until a
         // line is picked they are the only thing on the map to click, so a
         // board that answered only for platforms answered for nothing.
-        var station = {
-          stop_id: p.stop_id, name: p.name,
+        var lon = f.geometry.coordinates[0], lat = f.geometry.coordinates[1];
+        stopFeatures.push(point(lon, lat, { index: stations.length }));
+        stations.push({
+          stop_id: p.stop_id, name: p.name, lat: lat, lon: lon,
           meta: escapeHtml(p.stop_id) + (p.step_free ? " · bezbariérová" : "")
-        };
-        L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
-          radius: 3.5, color: "#0a0a0a", weight: 1.5,
-          fillColor: "#f5f5f0", fillOpacity: 0.9
-        }).bindPopup(
-          '<div class="popup-title">' + escapeHtml(p.name) + "</div>" +
-          '<div class="popup-meta">' + station.meta + "</div>" +
-          '<div class="dep-none">Načítám odjezdy…</div>'
-        ).on("popupopen", function (e) { loadDepartures(station, e.popup); })
-         .addTo(stopLayer);
+        });
       }
     });
 
-    allBounds = L.latLngBounds(everything);
-    if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [20, 20] });
+    map.getSource("stops").setData(featureCollection(stopFeatures));
+    if (!allBounds.isEmpty()) fitTo(allBounds);
 
     buildChips();
     restyle();
     describe();
-
-    L.control.layers(null, {
-      "Trasy": routeLayer, "Zastávky": stopLayer,
-      "Zastávky linky": platformLayer, "Vozidla": vehicleLayer
-    }, { collapsed: true }).addTo(map);
 
     refreshVehicles();
     setInterval(refreshVehicles, REFRESH_MS);
@@ -368,7 +743,7 @@
       renderPlatforms();
       renderVehicles(lastVehicles);
       paintStatus();
-      if (allBounds && allBounds.isValid()) map.fitBounds(allBounds, { padding: [20, 20] });
+      if (allBounds && !allBounds.isEmpty()) fitTo(allBounds);
     });
   }
 
@@ -407,55 +782,29 @@
   }
 
   function renderVehicles(vehicles) {
-    rebuilding = true;
-    vehicleLayer.clearLayers();
-    var shown = 0;
+    var features = [];
 
     vehicles.forEach(function (v) {
       if (selected !== null && v.line !== selected) return;
-      shown++;
 
-      // Always the vehicle's own mode colours. Recolouring the selected line
-      // lime cost the bus/trolleybus distinction exactly when the map is
-      // focused on that line -- and when a line is selected its vehicles are
-      // the only ones drawn, so they need no further emphasis.
-      var kind = v.trolleybus ? "trolley" : "bus";
-
-      var marker = L.marker([v.latitude, v.longitude], {
-        icon: L.divIcon({
-          className: "",
-          // The arrow points at the next stop. It is computed on the server,
-          // because the upstream never populates gps_course.
-          html: '<div class="veh ' + kind + '">' + escapeHtml(v.line) +
-                (v.heading === null || v.heading === undefined ? "" :
-                  '<i class="veh-arrow" style="transform:rotate(' +
-                  Number(v.heading).toFixed(0) + 'deg)"></i>') + "</div>",
-          iconSize: null,
-          iconAnchor: [10, 10]
-        }),
-        // Above stops and lines, so a vehicle is never hidden behind them.
-        zIndexOffset: 1000
-      });
-
-      marker
-        .bindPopup(vehiclePopup(v))
-        // Clicking a vehicle picks its line too: the question that follows
-        // "which bus is that" is almost always "and where does it go".
-        .on("click", function () {
-          openVehicle = v.vehicle_id;
-          if (selected !== v.line) select(v.line, true);
-        })
-        .on("popupclose", function () {
-          if (!rebuilding && openVehicle === v.vehicle_id) openVehicle = null;
-        })
-        .addTo(vehicleLayer);
-
-      // Restore the popup this vehicle had open before the rebuild.
-      if (openVehicle === v.vehicle_id) marker.openPopup();
+      var props = {
+        vehicle_id: v.vehicle_id, line: v.line,
+        // Always the vehicle's own mode colours. Recolouring the selected line
+        // lime cost the bus/trolleybus distinction exactly when the map is
+        // focused on that line -- and when a line is selected its vehicles are
+        // the only ones drawn, so they need no further emphasis.
+        kind: v.trolleybus ? "trolley" : "bus"
+      };
+      // The arrow points at the next stop. It is computed on the server,
+      // because the upstream never populates gps_course.
+      if (v.heading !== null && v.heading !== undefined) props.heading = v.heading;
+      features.push(point(v.longitude, v.latitude, props));
     });
 
-    rebuilding = false;
-    return shown;
+    map.getSource("vehicles").setData(featureCollection(features));
+    // Keeps an open popup on its vehicle and its numbers current.
+    syncVehiclePopup();
+    return features.length;
   }
 
   function refreshVehicles() {

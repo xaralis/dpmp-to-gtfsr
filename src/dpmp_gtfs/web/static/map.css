@@ -1,34 +1,45 @@
 .map-wrap { position: absolute; inset: 0; }
-  #map { height: 100%; width: 100%; background: var(--surface-2); }
-  /* A properly designed dark basemap (CARTO Dark Matter) rather than a CSS
-     filter over light tiles: inverting tiles turns place labels into
-     unreadable mush, and the brand's lime and teal were made for dark
-     backgrounds anyway. */
-  .leaflet-container { font-family: var(--font-sans); background: var(--coal); }
-  /* Dark Matter is tuned for maps that carry their own data, so at city zoom
-     the street grid all but disappears. Lifting the tiles brings roads and
-     labels back without swapping to a light basemap. */
-  .leaflet-tile-pane { filter: brightness(1.75) contrast(1.08) saturate(1.15); }
+  #map { height: 100%; width: 100%; background: var(--coal); }
+  .maplibregl-map { font-family: var(--font-sans); }
   /* Clear of the nav and the single chip row above it. */
-  .leaflet-top.leaflet-left { margin-top: 5.3rem; }
-  .leaflet-bar a, .leaflet-control-layers { border-radius: 0 !important; }
-  .leaflet-bar a {
-    background: var(--surface-2); color: var(--linen); border-bottom-color: var(--border-2);
+  .maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right { margin-top: 5.3rem; }
+  /* Above the detail box, so an opened layer panel is not covered by it. */
+  .maplibregl-ctrl-top-right { z-index: 550; }
+  .maplibregl-ctrl-group { border-radius: 0; background: var(--surface-2); box-shadow: none;
+                           border: 1px solid var(--border-2); }
+  .maplibregl-ctrl-group button { color: var(--linen); }
+  .maplibregl-ctrl-group button + button { border-top-color: var(--border-2); }
+  .maplibregl-ctrl-group button:not(:disabled):hover { background-color: var(--surface-3); }
+  /* The stock zoom icons are dark glyphs drawn for a white button. */
+  .maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+  .maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon { filter: invert(1) brightness(.95); }
+  .layer-switch button { display: grid; place-items: center; }
+  .layer-panel { padding: .45rem .6rem; font-size: .8125rem; color: var(--linen); }
+  .layer-panel[hidden] { display: none; }
+  .layer-panel label { display: flex; align-items: center; gap: .4rem; padding: .15rem 0;
+                       white-space: nowrap; cursor: pointer; }
+  .layer-panel input { accent-color: var(--lime); margin: 0; }
+  /* Fingers need more than the stock 29 px. */
+  @media (pointer: coarse) {
+    .maplibregl-ctrl-group button { width: 38px; height: 38px; }
+    .layer-panel label { padding: .35rem 0; }
   }
-  .leaflet-bar a:hover { background: var(--surface-3); color: var(--lime); }
-  .leaflet-control-layers {
-    background: var(--surface-2); color: var(--linen); border: 1px solid var(--border-2);
+  .maplibregl-ctrl-attrib.maplibregl-ctrl {
+    background: rgba(10,10,10,.75); color: var(--text-muted);
   }
-  .leaflet-control-attribution {
-    background: rgba(10,10,10,.75) !important; color: var(--text-muted) !important;
-  }
-  .leaflet-control-attribution a { color: var(--text-secondary) !important; }
-  .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  .maplibregl-ctrl-attrib a { color: var(--text-secondary); }
+  /* Above the chips, the detail box and the status: picking a line by clicking
+     a vehicle opens the detail box at the very moment its popup needs reading. */
+  .maplibregl-popup { z-index: 700; }
+  .maplibregl-popup-content {
     background: var(--surface-2); color: var(--linen); border-radius: 0;
-    border: 1px solid var(--border-2);
+    border: 1px solid var(--border-2); padding: .7rem 1.5rem .7rem .8rem;
+    font-size: .8125rem; line-height: 1.4;
   }
-  .leaflet-popup-content-wrapper a { color: var(--lime); }
-  .leaflet-popup-close-button { color: var(--text-muted) !important; }
+  .maplibregl-popup-content a { color: var(--lime); }
+  .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--border-2); }
+  .maplibregl-popup-close-button { color: var(--text-muted); font-size: 1.1rem; padding: 0 .4rem; }
+  .maplibregl-popup-close-button:hover { background: none; color: var(--linen); }
 
   /* --- line picker --- */
   /* Floating over the map, clear of the nav above and the zoom control below
@@ -81,8 +92,7 @@
   /* --- detail + status --- */
   /* Sits on the map, not above it. As a block element it changed the page
      height whenever a line was picked, moving the map out from under you.
-     Cleared to the right of the zoom buttons, which own the top-left corner:
-     Leaflet leaves only the bottom-left free, and that is the status bar's. */
+     Cleared below the zoom buttons, which own the top-left corner. */
   .detail {
     position: absolute; left: 10px; top: 9.6rem; z-index: 500;
     padding: .5rem .7rem;
@@ -91,14 +101,24 @@
     max-width: calc(100% - 64px);
   }
   .detail[hidden] { display: none; }
+  /* The larger zoom buttons are that much taller. */
+  @media (pointer: coarse) { .detail { top: 10.8rem; } }
   .detail .muted { color: var(--text-muted); }
   .detail-line { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
 
-  /* On the map, bottom right -- the last corner Leaflet leaves free once the
-     zoom (top left), layers (top right) and status bar (bottom left) have
-     taken theirs. Attribution sits under it. */
-  .legend { position: absolute; right: 10px; bottom: 10px; z-index: 500;
-            display: flex; flex-wrap: wrap; gap: .5rem 1rem; max-width: 40%;
+  /* Status and legend along the bottom edge, above the attribution, which is
+     the map's own and has to stay readable. In one box so they share the width
+     instead of each claiming a corner and meeting in the middle on a narrow
+     screen. Nothing here is clickable, so the map underneath stays draggable. */
+  .map-foot {
+    position: absolute; left: 10px; right: 10px; bottom: 1.7rem; z-index: 500;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: .5rem;
+    pointer-events: none;
+  }
+  @media (max-width: 860px) {
+    .map-foot { flex-direction: column; align-items: flex-start; gap: .35rem; }
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem;
             background: rgba(10,10,10,.85); border: 1px solid var(--border-2);
             padding: .4rem .6rem;
             font-size: .75rem; color: var(--text-muted); }
@@ -110,15 +130,12 @@
   .dot { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; }
   /* Overlaid on the map rather than sitting under it: this is the one part of
      the page that changes by itself, and below the fold nobody notices it
-     move. Bottom-left is the only corner Leaflet leaves alone -- zoom is top
-     left, layers top right, attribution bottom right. */
+     move. */
   #map-status {
-    position: absolute; left: 10px; bottom: 10px; z-index: 500;
     font-family: var(--font-mono); font-size: .75rem; color: var(--text-secondary);
     background: rgba(10,10,10,.85); border: 1px solid var(--border-2);
     padding: .4rem .6rem;
-    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
-    max-width: calc(100% - 20px);
+    display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .5rem;
   }
   #map-status .sep { color: var(--border-2); }
   #map-status .fresh { color: var(--text-secondary); }
@@ -142,9 +159,7 @@
   .popup-title { font-family: var(--font-mono); font-weight: 700; color: var(--lime); }
   .popup-meta { color: var(--text-muted); font-size: .85em; }
 
-  /* Vehicles are labelled with their line number: a plain dot tells you a bus
-     is there, not which one, and "which line is that" is the first thing
-     anyone asks of a live map. */
+  /* The legend's vehicle markers, matching the badges drawn on the map. */
   .veh {
     font-family: var(--font-mono); font-size: 11px; font-weight: 700;
     line-height: 18px; text-align: center;
@@ -158,16 +173,6 @@
      square, so mode survives on a small marker without relying on colour. */
   .veh.bus { background: var(--warning); border-radius: 10px; }
   .veh.trolley { background: var(--teal); }
-
-  /* Stop labels for the selected line. Rendered as markers rather than
-     tooltips so they stay put while panning and can be read at a glance. */
-  .stop-label {
-    font-family: var(--font-mono); font-size: 10.5px; line-height: 1.25;
-    color: var(--linen); background: rgba(10,10,10,.82);
-    padding: 1px 4px;
-    white-space: nowrap; transform: translate(9px, -9px);
-    pointer-events: none;
-  }
 
   /* Vehicle popup: a small table of where it has been and where it is going. */
   .veh-pop { min-width: 190px; }
@@ -189,7 +194,7 @@
   .veh-pop .est { font-size: .72rem; color: var(--text-muted); }
 
   /* Departure board in a stop popup. */
-  .dep-pop { min-width: 268px; max-width: 340px; }
+  .dep-pop { min-width: min(268px, calc(100vw - 64px)); max-width: 340px; }
   .dep-board { margin: .45rem 0 0; display: grid;
                grid-template-columns: auto auto minmax(0, 1fr); gap: .2rem .5rem;
                font-size: .8rem; align-items: baseline; }
@@ -207,28 +212,3 @@
   .dep-in { color: var(--text-muted); font-variant-numeric: tabular-nums;
             white-space: nowrap; flex: none; }
   .dep-none { color: var(--text-muted); font-size: .8rem; margin-top: .4rem; }
-
-  /* Direction of travel: an arrow orbiting the marker, pointing at the next
-     stop. Outside the badge rather than on top of it -- drawn over the fill it
-     read as a bite taken out of the circle, not as a heading.
-
-     The bearing comes from the server, because the upstream's gps_course is
-     null on every vehicle ever recorded. */
-  /* Hidden until the map is zoomed in far enough for it to mean something;
-     see HEADING_MIN_ZOOM. */
-  .veh-arrow { display: none; }
-  #map.show-headings .veh-arrow {
-    display: block;
-    position: absolute; left: 50%; top: 50%;
-    width: 46px; height: 46px; margin: -23px 0 0 -23px;
-    transform-origin: 50% 50%; pointer-events: none; z-index: 1;
-  }
-  #map.show-headings .veh-arrow::before {
-    content: ""; position: absolute; left: 50%; top: -2px; margin-left: -8px;
-    border-left: 8px solid transparent; border-right: 8px solid transparent;
-    border-bottom: 13px solid var(--linen);
-    /* An outline as well as a shadow: the arrow crosses lime route lines, pale
-       tiles and the dark background, and a shadow alone vanishes on the first
-       of those. */
-    filter: drop-shadow(0 0 1px rgba(10,10,10,1)) drop-shadow(0 0 2px rgba(10,10,10,.9));
-  }
