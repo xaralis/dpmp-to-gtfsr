@@ -19,7 +19,6 @@ from dpmp_gtfs.archive import read_tables
 from dpmp_gtfs.ids import station_id, trip_id
 from dpmp_gtfs.timeutil import DAY, PRAGUE
 
-
 logger = logging.getLogger(__name__)
 
 _DUE = re.compile(r"^(\d{2,}):([0-5]\d):([0-5]\d)$")
